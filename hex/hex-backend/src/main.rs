@@ -1,4 +1,5 @@
 mod hex_game;
+mod hex_test;
 
 use hex_game::{HexState, Color, make_random_turn};
 
