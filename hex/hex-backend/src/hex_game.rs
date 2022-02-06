@@ -26,7 +26,7 @@ pub enum Color {
 
 impl Color {
     fn opposite(&self) -> Color {
-         match self {
+        match self {
             Color::Red => Color::Blue,
             Color::Blue => Color::Red,
         }
@@ -42,8 +42,8 @@ pub struct HexPosition {
     /// The board is a rhombus, slanted right. So, board[0][BOARD_SIZE - 1] is the "top right end",
     /// also called the "top end" of the board, and board[BOARD_SIZE - 1][0] is the "bottom end".
     /// Red tries to move left-right and blue tries to move top-bottom.
-    pub board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE],
-    pub turn: Color,
+    board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE],
+    turn: Color,
 }
 
 impl HexPosition {
@@ -54,6 +54,14 @@ impl HexPosition {
         }
     }
 
+    pub fn get_turn(&self) -> Color {
+        self.turn
+    }
+
+    pub fn flip_turn(&mut self) -> () {
+        self.turn = self.turn.opposite();
+    }
+
     pub fn contains(loc: Location) -> bool {
         loc.0 < BOARD_SIZE && loc.1 < BOARD_SIZE
     }
@@ -62,12 +70,22 @@ impl HexPosition {
         return HexPosition::contains(loc) && self.board[loc.0][loc.1] == Hexagon::Empty;
     }
 
+    pub fn get_tile(&self, x: usize, y: usize) -> Hexagon {
+        assert!(x < BOARD_SIZE && y < BOARD_SIZE);
+        self.board[x][y]
+    }
+
+    pub fn make_move(&mut self, x: usize, y: usize) {
+        assert!(x < BOARD_SIZE && y < BOARD_SIZE);
+        self.board[x][y] = Hexagon::Full(self.turn);
+        self.flip_turn();
+    }
+
     pub fn get_moved_position(&self, loc: Location) -> HexPosition {
         assert!(self.is_valid_move(loc));
-        let mut n = self.clone();
-        n.board[loc.0][loc.1] = Hexagon::Full(n.turn);
-        n.turn = n.turn.opposite();
-        return n;
+        let mut res = self.clone();
+        res.make_move(loc.0, loc.1);
+        return res;
     }
 
     pub fn get_legal_moves(&self) -> Vec<Location> {
@@ -116,8 +134,7 @@ impl HexPosition {
         let relevant_src: HashSet<Location> = src
             .iter()
             .filter(|&loc| {
-                HexPosition::contains(loc.clone())
-                    && self.board[loc.0][loc.1] == Hexagon::Full(color)
+                HexPosition::contains(*loc) && self.board[loc.0][loc.1] == Hexagon::Full(color)
             })
             .cloned()
             .collect();
@@ -203,18 +220,15 @@ impl<'a> HexGame<'a> {
         if self.is_over {
             return false;
         }
-        let next_move = match self.position.turn {
+        let next_move = match self.position.get_turn() {
             Color::Red => self.player_red.next_move(&self.position),
             Color::Blue => self.player_blue.next_move(&self.position),
         };
         if !self.position.is_valid_move(next_move) {
             return false;
         }
-        self.position.board[next_move.0][next_move.1] = Hexagon::Full(self.position.turn);
+        self.position.make_move(next_move.0, next_move.1);
         self.check_if_over();
-        if !self.is_over {
-            self.flip_turn();
-        }
         return true;
     }
 
@@ -229,10 +243,6 @@ impl<'a> HexGame<'a> {
         let win_status = self.position.get_winner();
         self.is_over = win_status.0;
         self.winner = win_status.1;
-    }
-
-    fn flip_turn(&mut self) -> () {
-        self.position.turn = self.position.turn.opposite();
     }
 }
 

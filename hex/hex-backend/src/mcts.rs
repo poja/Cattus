@@ -205,7 +205,7 @@ impl HexPlayer for MCTSPlayer {
         let root_id = self.search_tree.add_node(root);
 
         // Develop tree
-        self.develop_tree(root_id, pos.turn);
+        self.develop_tree(root_id, pos.get_turn());
         let m = self.get_best_child_move(root_id);
 
         self.search_tree.clear();
