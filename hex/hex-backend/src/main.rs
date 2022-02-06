@@ -4,10 +4,11 @@ mod hex_test;
 use hex_game::{Color, HexGame, HexPlayerCmd, HexPlayerRand, HexPosition};
 
 fn main() {
-    let player1 = HexPlayerRand::new();
-    // let player2 = HexPlayerRand::new();
-    let player2 = HexPlayerCmd::new();
-    let mut game = HexGame::new(Color::Red, &player1, &player2);
+    let mut player1 = HexPlayerRand::new();
+    // let mut player2 = HexPlayerRand::new();
+    let mut player2 = HexPlayerRand::new();
+
+    let mut game = HexGame::new(Color::Red, &mut player1, &mut player2);
     game.play_until_over();
 
     println!("This is the board:");

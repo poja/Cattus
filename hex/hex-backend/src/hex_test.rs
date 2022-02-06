@@ -11,8 +11,8 @@ mod tests {
         let e = Hexagon::Empty;
         let r = Hexagon::Full(Red);
         let b = Hexagon::Full(Blue);
-        let player1 = HexPlayerRand::new();
-        let player2 = HexPlayerRand::new();
+        let mut player1 = HexPlayerRand::new();
+        let mut player2 = HexPlayerRand::new();
 
         let pos = HexPosition {
             board: [
@@ -30,7 +30,7 @@ mod tests {
             ],
             turn: Blue,
         };
-        let mut s = HexGame::from_position(&pos, &player1, &player2);
+        let mut s = HexGame::from_position(&pos, &mut player1, &mut player2);
         s.check_if_over();
         assert!(s.winner == Some(Red));
 
@@ -50,7 +50,7 @@ mod tests {
             ],
             turn: Red,
         };
-        s = HexGame::from_position(&pos, &player1, &player2);
+        s = HexGame::from_position(&pos, &mut player1, &mut player2);
         s.check_if_over();
         assert!(s.winner == Some(Blue));
     }
@@ -60,8 +60,8 @@ mod tests {
         let e = Hexagon::Empty;
         let r = Hexagon::Full(Red);
         let b = Hexagon::Full(Blue);
-        let player1 = HexPlayerRand::new();
-        let player2 = HexPlayerRand::new();
+        let mut player1 = HexPlayerRand::new();
+        let mut player2 = HexPlayerRand::new();
 
         let pos = HexPosition {
             board: [
@@ -79,7 +79,7 @@ mod tests {
             ],
             turn: Blue,
         };
-        let mut s = HexGame::from_position(&pos, &player1, &player2);
+        let mut s = HexGame::from_position(&pos, &mut player1, &mut player2);
         s.check_if_over();
         assert!(!s.is_over);
 
@@ -99,7 +99,7 @@ mod tests {
             ],
             turn: Red,
         };
-        s = HexGame::from_position(&pos, &player1, &player2);
+        s = HexGame::from_position(&pos, &mut player1, &mut player2);
         s.check_if_over();
         assert!(!s.is_over);
     }
@@ -109,8 +109,8 @@ mod tests {
         let e = Hexagon::Empty;
         let r = Hexagon::Full(Red);
         let b = Hexagon::Full(Blue);
-        let player1 = HexPlayerRand::new();
-        let player2 = HexPlayerRand::new();
+        let mut player1 = HexPlayerRand::new();
+        let mut player2 = HexPlayerRand::new();
 
         let pos = HexPosition {
             board: [
@@ -128,7 +128,7 @@ mod tests {
             ],
             turn: Blue,
         };
-        let mut s = HexGame::from_position(&pos, &player1, &player2);
+        let mut s = HexGame::from_position(&pos, &mut player1, &mut player2);
         s.check_if_over();
         assert!(!s.is_over);
 
@@ -148,7 +148,7 @@ mod tests {
             ],
             turn: Red,
         };
-        s = HexGame::from_position(&pos, &player1, &player2);
+        s = HexGame::from_position(&pos, &mut player1, &mut player2);
         s.check_if_over();
         assert!(!s.is_over);
     }

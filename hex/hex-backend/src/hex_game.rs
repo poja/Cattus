@@ -2,7 +2,7 @@ use rand::Rng;
 use std::collections::HashSet;
 use std::io;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Hexagon {
     Empty,
     Full(Color),
@@ -18,16 +18,25 @@ impl Hexagon {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Color {
     Red,
     Blue,
 }
 
-const BOARD_SIZE: usize = 11;
-type Location = (usize, usize);
+impl Color {
+    fn opposite(&self) -> Color {
+         match self {
+            Color::Red => Color::Blue,
+            Color::Blue => Color::Red,
+        }
+    }
+}
 
-#[derive(Clone)]
+pub const BOARD_SIZE: usize = 11;
+pub type Location = (usize, usize);
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct HexPosition {
     /// The board should be imagined in 2D like so:
     /// The board is a rhombus, slanted right. So, board[0][BOARD_SIZE - 1] is the "top right end",
@@ -53,6 +62,91 @@ impl HexPosition {
         return HexPosition::contains(loc) && self.board[loc.0][loc.1] == Hexagon::Empty;
     }
 
+    pub fn get_moved_position(&self, loc: Location) -> HexPosition {
+        assert!(self.is_valid_move(loc));
+        let mut n = self.clone();
+        n.board[loc.0][loc.1] = Hexagon::Full(n.turn);
+        n.turn = n.turn.opposite();
+        return n;
+    }
+
+    pub fn get_legal_moves(&self) -> Vec<Location> {
+        let mut moves = Vec::new();
+        for x in 0..BOARD_SIZE {
+            for y in 0..BOARD_SIZE {
+                if self.board[x][y] == Hexagon::Empty {
+                    moves.push((x, y));
+                }
+            }
+        }
+        return moves;
+    }
+
+    pub fn get_winner(&self) -> (bool, Option<Color>) {
+        let top: HashSet<Location> = (0..BOARD_SIZE)
+            .into_iter()
+            .map(|x| (0, x.clone()))
+            .collect();
+        let bottom: HashSet<Location> = (0..BOARD_SIZE)
+            .into_iter()
+            .map(|x| (BOARD_SIZE - 1, x))
+            .collect();
+        let left: HashSet<Location> = (0..BOARD_SIZE).into_iter().map(|x| (x, 0)).collect();
+        let right: HashSet<Location> = (0..BOARD_SIZE)
+            .into_iter()
+            .map(|x| (x, BOARD_SIZE - 1))
+            .collect();
+        if self.has_path(Color::Red, &left, &right) {
+            return (true, Some(Color::Red));
+        } else if self.has_path(Color::Blue, &top, &bottom) {
+            return (true, Some(Color::Blue));
+        } else {
+            for x in 0..BOARD_SIZE {
+                for y in 0..BOARD_SIZE {
+                    if self.board[x][y] == Hexagon::Empty {
+                        return (false, None);
+                    }
+                }
+            }
+            return (true, None);
+        }
+    }
+
+    fn has_path(&self, color: Color, src: &HashSet<Location>, dst: &HashSet<Location>) -> bool {
+        let relevant_src: HashSet<Location> = src
+            .iter()
+            .filter(|&loc| {
+                HexPosition::contains(loc.clone())
+                    && self.board[loc.0][loc.1] == Hexagon::Full(color)
+            })
+            .cloned()
+            .collect();
+
+        // BFS
+        let mut seen = relevant_src.clone();
+        let mut worklist = seen.clone();
+        while !worklist.is_empty() {
+            // pop from worklist
+            let loc = worklist.iter().next().cloned().unwrap();
+            worklist.remove(&loc);
+
+            for neighbor in location_neighbors(loc) {
+                let neighbor_hexagon: Hexagon = self.board[neighbor.0][neighbor.1];
+                if neighbor_hexagon != Hexagon::Full(color) {
+                    continue;
+                }
+                if dst.contains(&neighbor) {
+                    return true;
+                }
+                if !seen.contains(&neighbor) {
+                    seen.insert(neighbor);
+                    worklist.insert(neighbor);
+                }
+            }
+        }
+        return false;
+    }
+
     pub fn print(&self) -> () {
         // TODO there's a RUST way to print
         for row_i in 0..BOARD_SIZE {
@@ -67,7 +161,7 @@ impl HexPosition {
 }
 
 pub trait HexPlayer {
-    fn next_move(&self, position: &HexPosition) -> Location;
+    fn next_move(&mut self, position: &HexPosition) -> Location;
 }
 
 pub struct HexGame<'a> {
@@ -75,24 +169,23 @@ pub struct HexGame<'a> {
     pub is_over: bool,
     pub winner: Option<Color>,
 
-    player_red: &'a dyn HexPlayer,
-    player_blue: &'a dyn HexPlayer,
+    player_red: &'a mut dyn HexPlayer,
+    player_blue: &'a mut dyn HexPlayer,
 }
 
 impl<'a> HexGame<'a> {
     pub fn new(
         starting_color: Color,
-        player_red: &'a dyn HexPlayer,
-        player_blue: &'a dyn HexPlayer,
+        player_red: &'a mut dyn HexPlayer,
+        player_blue: &'a mut dyn HexPlayer,
     ) -> Self {
-        let empty_position = HexPosition::new(starting_color);
-        return HexGame::from_position(&empty_position, player_red, player_blue);
+        HexGame::from_position(&HexPosition::new(starting_color), player_red, player_blue)
     }
 
     pub fn from_position(
         starting_position: &HexPosition,
-        player_red: &'a dyn HexPlayer,
-        player_blue: &'a dyn HexPlayer,
+        player_red: &'a mut dyn HexPlayer,
+        player_blue: &'a mut dyn HexPlayer,
     ) -> Self {
         let mut n = Self {
             position: starting_position.clone(),
@@ -133,79 +226,13 @@ impl<'a> HexGame<'a> {
     }
 
     pub fn check_if_over(&mut self) -> () {
-        // TODO move these to be static
-        let top: HashSet<Location> = (0..BOARD_SIZE)
-            .into_iter()
-            .map(|x| (0, x.clone()))
-            .collect();
-        let bottom: HashSet<Location> = (0..BOARD_SIZE)
-            .into_iter()
-            .map(|x| (BOARD_SIZE - 1, x))
-            .collect();
-        let left: HashSet<Location> = (0..BOARD_SIZE).into_iter().map(|x| (x, 0)).collect();
-        let right: HashSet<Location> = (0..BOARD_SIZE)
-            .into_iter()
-            .map(|x| (x, BOARD_SIZE - 1))
-            .collect();
-        if self.has_path(Color::Red, &left, &right) {
-            self.is_over = true;
-            self.winner = Some(Color::Red);
-        } else if self.has_path(Color::Blue, &top, &bottom) {
-            self.is_over = true;
-            self.winner = Some(Color::Blue);
-        } else {
-            for x in 0..BOARD_SIZE {
-                for y in 0..BOARD_SIZE {
-                    if self.position.board[x][y] == Hexagon::Empty {
-                        return;
-                    }
-                }
-            }
-            self.is_over = true;
-            self.winner = None;
-        }
-    }
-
-    fn has_path(&self, color: Color, src: &HashSet<Location>, dst: &HashSet<Location>) -> bool {
-        let relevant_src: HashSet<Location> = src
-            .iter()
-            .filter(|&loc| {
-                HexPosition::contains(loc.clone())
-                    && self.position.board[loc.0][loc.1] == Hexagon::Full(color)
-            })
-            .cloned()
-            .collect();
-
-        // BFS
-        let mut seen = relevant_src.clone();
-        let mut worklist = seen.clone();
-        while !worklist.is_empty() {
-            // pop from worklist
-            let loc = worklist.iter().next().cloned().unwrap();
-            worklist.remove(&loc);
-
-            for neighbor in location_neighbors(loc) {
-                let neighbor_hexagon: Hexagon = self.position.board[neighbor.0][neighbor.1];
-                if neighbor_hexagon != Hexagon::Full(color) {
-                    continue;
-                }
-                if dst.contains(&neighbor) {
-                    return true;
-                }
-                if !seen.contains(&neighbor) {
-                    seen.insert(neighbor);
-                    worklist.insert(neighbor);
-                }
-            }
-        }
-        return false;
+        let win_status = self.position.get_winner();
+        self.is_over = win_status.0;
+        self.winner = win_status.1;
     }
 
     fn flip_turn(&mut self) -> () {
-        self.position.turn = match self.position.turn {
-            Color::Red => Color::Blue,
-            Color::Blue => Color::Red,
-        }
+        self.position.turn = self.position.turn.opposite();
     }
 }
 
@@ -240,7 +267,7 @@ impl HexPlayerRand {
 }
 
 impl HexPlayer for HexPlayerRand {
-    fn next_move(&self, position: &HexPosition) -> Location {
+    fn next_move(&mut self, position: &HexPosition) -> Location {
         let mut rng = rand::thread_rng();
         loop {
             let i = rng.gen_range(0..BOARD_SIZE);
@@ -260,6 +287,8 @@ impl HexPlayerCmd {
     }
 }
 
+const READ_USIZE_INVALID: usize = usize::MAX;
+
 fn read_usize() -> usize {
     let mut line = String::new();
     io::stdin()
@@ -268,7 +297,7 @@ fn read_usize() -> usize {
     match line.trim().parse::<usize>() {
         Err(e) => {
             println!("invalid number: {}", e);
-            return 0xffffffff;
+            return READ_USIZE_INVALID;
         }
         Ok(x) => {
             return x;
@@ -277,18 +306,18 @@ fn read_usize() -> usize {
 }
 
 impl HexPlayer for HexPlayerCmd {
-    fn next_move(&self, position: &HexPosition) -> Location {
+    fn next_move(&mut self, position: &HexPosition) -> Location {
         println!("Current position:");
         position.print();
 
         loop {
             println!("Waiting for input move...");
             let x = read_usize();
-            if x == 0xffffffff {
+            if x == READ_USIZE_INVALID {
                 continue;
             }
             let y = read_usize();
-            if y == 0xffffffff {
+            if y == READ_USIZE_INVALID {
                 continue;
             }
 
