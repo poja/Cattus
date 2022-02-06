@@ -1,9 +1,9 @@
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
+use rand::prelude::SliceRandom;
 
 use crate::hex_game;
-use crate::utils;
 use hex_game::{HexGame, HexPlayer, HexPlayerRand, HexPosition, Location};
 
 /// Monte Carlo Tree Search (MCTS) implementation
@@ -28,7 +28,7 @@ impl MCTSNode {
         }
     }
 
-    pub fn get_score(&self) -> f32 {
+    pub fn get_expected_reward(&self) -> f32 {
         assert!(self.simulations_n > 0);
         return (self.score_w as f32) / (self.simulations_n as f32);
     }
@@ -38,15 +38,18 @@ pub struct MCTSPlayer {
     search_tree: DiGraph<MCTSNode, Location>,
 
     // exploration_parameter_c: f32, TODO
-    simulations_per_move: i32,
+    simulations_per_move: u32,
 }
 
 impl MCTSPlayer {
     pub fn new() -> Self {
+        MCTSPlayer::with_simulations_per_move(100)
+    }
+    pub fn with_simulations_per_move(simulations_per_move: u32) -> Self {
         Self {
             search_tree: DiGraph::new(),
             // exploration_parameter_c: (2 as f32).sqrt(),
-            simulations_per_move: 100,
+            simulations_per_move: simulations_per_move,
         }
     }
 
@@ -114,13 +117,12 @@ impl MCTSPlayer {
             existing_children.insert(*m, child_id);
         }
 
-        let legal_moves = parent.position.get_legal_moves();
+        let mut legal_moves = parent.position.get_legal_moves();
         assert!(legal_moves.len() > 0);
-        let mut legal_moves_poll = utils::RandPoll::new(legal_moves.len());
+        legal_moves.shuffle(&mut rand::thread_rng());
 
         // Select successive child nodes randomly until a leaf node is reached
-        while !legal_moves_poll.is_empty() {
-            let m = legal_moves[legal_moves_poll.next()];
+        for m in legal_moves {
             assert!(parent.position.is_valid_move(m));
 
             match existing_children.get(&m) {
@@ -177,7 +179,7 @@ impl MCTSPlayer {
             let child_id = edge.target();
             let m = edge.weight();
             let child = self.search_tree.node_weight(child_id).unwrap();
-            let score = child.get_score();
+            let score = child.get_expected_reward();
 
             match best {
                 None => best = Some((*m, score)),
