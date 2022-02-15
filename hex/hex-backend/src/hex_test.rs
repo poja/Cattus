@@ -2,9 +2,9 @@
 mod tests {
     use crate::hex_game::Hexagon;
     use crate::Color::{Blue, Red};
-    use crate::HexPosition;
+    use crate::hex_game::HexPosition;
+    use crate::simple_players::HexPlayerRand;
     use crate::HexGame;
-    use crate::HexPlayerRand;
 
     #[test]
     fn short_diagonal_wins() {
@@ -60,8 +60,8 @@ mod tests {
         let e = Hexagon::Empty;
         let r = Hexagon::Full(Red);
         let b = Hexagon::Full(Blue);
-        let mut player1 = HexPlayerRand::new();
-        let mut player2 = HexPlayerRand::new();
+        let mut player1 = modname::HexPlayerRand::new();
+        let mut player2 = modname::HexPlayerRand::new();
 
         let pos = HexPosition {
             board: [
@@ -109,8 +109,8 @@ mod tests {
         let e = Hexagon::Empty;
         let r = Hexagon::Full(Red);
         let b = Hexagon::Full(Blue);
-        let mut player1 = HexPlayerRand::new();
-        let mut player2 = HexPlayerRand::new();
+        let mut player1 = modname::HexPlayerRand::new();
+        let mut player2 = modname::HexPlayerRand::new();
 
         let pos = HexPosition {
             board: [

@@ -1,8 +1,8 @@
 mod hex_game;
-mod hex_test;
+mod simple_players;
 mod mcts;
 
-use hex_game::{Color, HexGame, HexPlayerCmd, HexPlayerRand, HexPosition};
+use hex_game::{Color, HexGame};
 
 fn main() {
     // let mut player1 = HexPlayerRand::new();

@@ -3,8 +3,9 @@ use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
 use rand::prelude::SliceRandom;
 
+use crate::simple_players::HexPlayerRand;
 use crate::hex_game;
-use hex_game::{HexGame, HexPlayer, HexPlayerRand, HexPosition, Location};
+use hex_game::{HexGame, HexPlayer, HexPosition, Location};
 
 /// Monte Carlo Tree Search (MCTS) implementation
 /// TODO make this general and not Hex-specific

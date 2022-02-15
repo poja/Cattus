@@ -1,6 +1,7 @@
-use rand::Rng;
+use cached::proc_macro::cached;
+
 use std::collections::HashSet;
-use std::io;
+
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Hexagon {
@@ -42,8 +43,8 @@ pub struct HexPosition {
     /// The board is a rhombus, slanted right. So, board[0][BOARD_SIZE - 1] is the "top right end",
     /// also called the "top end" of the board, and board[BOARD_SIZE - 1][0] is the "bottom end".
     /// Red tries to move left-right and blue tries to move top-bottom.
-    board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE],
-    turn: Color,
+    pub board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE],
+    pub turn: Color,
 }
 
 impl HexPosition {
@@ -101,23 +102,10 @@ impl HexPosition {
     }
 
     pub fn get_winner(&self) -> (bool, Option<Color>) {
-        // TODO optimize this
-        let top: HashSet<Location> = (0..BOARD_SIZE)
-            .into_iter()
-            .map(|x| (0, x.clone()))
-            .collect();
-        let bottom: HashSet<Location> = (0..BOARD_SIZE)
-            .into_iter()
-            .map(|x| (BOARD_SIZE - 1, x))
-            .collect();
-        let left: HashSet<Location> = (0..BOARD_SIZE).into_iter().map(|x| (x, 0)).collect();
-        let right: HashSet<Location> = (0..BOARD_SIZE)
-            .into_iter()
-            .map(|x| (x, BOARD_SIZE - 1))
-            .collect();
-        if self.has_path(Color::Red, &left, &right) {
+       
+        if self.has_path(Color::Red, &left_edge(), &right_edge()) {
             return (true, Some(Color::Red));
-        } else if self.has_path(Color::Blue, &top, &bottom) {
+        } else if self.has_path(Color::Blue, &top_edge(), &bottom_edge()) {
             return (true, Some(Color::Blue));
         } else {
             for x in 0..BOARD_SIZE {
@@ -177,6 +165,37 @@ impl HexPosition {
         }
     }
 }
+
+#[cached]
+fn top_edge() -> HashSet<Location> {
+    (0..BOARD_SIZE)
+            .into_iter()
+            .map(|x| (0, x.clone()))
+            .collect()
+}
+
+#[cached]
+fn bottom_edge() -> HashSet<Location> {
+    (0..BOARD_SIZE)
+            .into_iter()
+            .map(|x| (BOARD_SIZE - 1, x))
+            .collect()
+}
+
+#[cached]
+fn left_edge() -> HashSet<Location> {
+    (0..BOARD_SIZE).into_iter().map(|x| (x, 0)).collect()
+}
+
+#[cached]
+fn right_edge() -> HashSet<Location> {
+    (0..BOARD_SIZE)
+            .into_iter()
+            .map(|x| (x, BOARD_SIZE - 1))
+            .collect()
+}
+
+
 
 pub trait HexPlayer {
     fn next_move(&mut self, position: &HexPosition) -> Location;
@@ -267,75 +286,4 @@ fn location_neighbors(loc: Location) -> Vec<Location> {
         .into_iter()
         .filter(|&neighbor| HexPosition::contains(neighbor))
         .collect()
-}
-
-pub struct HexPlayerRand {}
-
-impl HexPlayerRand {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl HexPlayer for HexPlayerRand {
-    fn next_move(&mut self, position: &HexPosition) -> Location {
-        let mut rng = rand::thread_rng();
-        loop {
-            let i = rng.gen_range(0..BOARD_SIZE);
-            let j = rng.gen_range(0..BOARD_SIZE);
-            if position.is_valid_move((i, j)) {
-                return (i, j);
-            }
-        }
-    }
-}
-
-pub struct HexPlayerCmd {}
-
-impl HexPlayerCmd {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-const READ_USIZE_INVALID: usize = usize::MAX;
-
-fn read_usize() -> usize {
-    let mut line = String::new();
-    io::stdin()
-        .read_line(&mut line)
-        .expect("failed to read input");
-    match line.trim().parse::<usize>() {
-        Err(e) => {
-            println!("invalid number: {}", e);
-            return READ_USIZE_INVALID;
-        }
-        Ok(x) => {
-            return x;
-        }
-    }
-}
-
-impl HexPlayer for HexPlayerCmd {
-    fn next_move(&mut self, position: &HexPosition) -> Location {
-        println!("Current position:");
-        position.print();
-
-        loop {
-            println!("Waiting for input move...");
-            let x = read_usize();
-            if x == READ_USIZE_INVALID {
-                continue;
-            }
-            let y = read_usize();
-            if y == READ_USIZE_INVALID {
-                continue;
-            }
-
-            if position.is_valid_move((x, y)) {
-                return (x, y);
-            }
-            println!("invalid move");
-        }
-    }
 }
