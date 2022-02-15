@@ -101,6 +101,7 @@ impl HexPosition {
     }
 
     pub fn get_winner(&self) -> (bool, Option<Color>) {
+        // TODO optimize this
         let top: HashSet<Location> = (0..BOARD_SIZE)
             .into_iter()
             .map(|x| (0, x.clone()))

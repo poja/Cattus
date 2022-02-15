@@ -121,6 +121,8 @@ impl MCTSPlayer {
         assert!(legal_moves.len() > 0);
         legal_moves.shuffle(&mut rand::thread_rng());
 
+        // TODO should we first expand unexplored nodes before existing children?
+
         // Select successive child nodes randomly until a leaf node is reached
         for m in legal_moves {
             assert!(parent.position.is_valid_move(m));
@@ -174,6 +176,7 @@ impl MCTSPlayer {
     }
 
     fn get_best_child_move(&self, node_id: NodeIndex<u32>) -> Option<Location> {
+        // TODO choose randomly if some children on tie
         let mut best: Option<(Location, f32)> = None;
         for edge in self.search_tree.edges(node_id) {
             let child_id = edge.target();
