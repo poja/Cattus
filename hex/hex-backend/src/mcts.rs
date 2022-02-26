@@ -1,7 +1,8 @@
+use petgraph::graph::EdgeReference;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
-use rand::prelude::SliceRandom;
+use rand::prelude::{SliceRandom, IteratorRandom};
 
 use crate::simple_players::HexPlayerRand;
 use crate::hex_game;
@@ -177,27 +178,21 @@ impl MCTSPlayer {
     }
 
     fn get_best_child_move(&self, node_id: NodeIndex<u32>) -> Option<Location> {
-        // TODO choose randomly if some children on tie
-        let mut best: Option<(Location, f32)> = None;
-        for edge in self.search_tree.edges(node_id) {
-            let child_id = edge.target();
-            let m = edge.weight();
-            let child = self.search_tree.node_weight(child_id).unwrap();
-            let score = child.get_expected_reward();
-
-            match best {
-                None => best = Some((*m, score)),
-                Some((_, best_score)) => {
-                    if score > best_score {
-                        best = Some((*m, score));
-                    }
-                }
-            }
-        }
-        match best {
-            Some((m, _)) => Some(m),
-            None => None,
-        }
+        let edges = self.search_tree.edges(node_id);
+        let edges_with_scores: Vec<_> = edges.into_iter().map(|edge| {
+            let child = self.search_tree.node_weight(edge.target()).unwrap();
+            (edge, child.get_expected_reward())
+        }).collect();
+        if edges_with_scores.len() == 0 { return None; }
+        let best_score = edges_with_scores.iter().max_by(
+            |&x, &y| x.1.partial_cmp(&y.1).unwrap()
+        ).unwrap().1;
+        let edges_with_best_score = edges_with_scores.iter().filter_map(|&(edge, score)| {
+            if score == best_score { Some(edge) }
+            else { None }
+        });
+        let chosen_edge = edges_with_best_score.choose(&mut rand::thread_rng());
+        return Some(chosen_edge.unwrap().weight().clone());
     }
 }
 
