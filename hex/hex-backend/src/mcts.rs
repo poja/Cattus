@@ -1,4 +1,3 @@
-use petgraph::graph::EdgeReference;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
@@ -56,7 +55,7 @@ impl MCTSPlayer {
     }
 
     fn develop_tree(&mut self, root_id: NodeIndex<u32>, us: hex_game::Color) -> () {
-        for i in 1..self.simulations_per_move {
+        for _ in 1..self.simulations_per_move {
             // println!("Simulating: ({}/{})", i, self.simulations_per_move);
             match self.select_node(root_id) {
                 Some((leaf_id, path)) => {
@@ -196,7 +195,7 @@ impl MCTSPlayer {
 }
 
 impl HexPlayer for MCTSPlayer {
-    fn next_move(&mut self, pos: &HexPosition) -> Location {
+    fn next_move(&mut self, pos: &HexPosition) -> Option<Location> {
         // Init search tree with one root node
         assert!(self.search_tree.node_count() == 0);
         let root = MCTSNode::from_position(pos.clone());
@@ -208,6 +207,6 @@ impl HexPlayer for MCTSPlayer {
 
         self.search_tree.clear();
 
-        return m.unwrap();
+        return m;
     }
 }

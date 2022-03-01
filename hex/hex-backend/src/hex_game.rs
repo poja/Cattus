@@ -102,9 +102,9 @@ impl HexPosition {
         return HexPosition::contains(loc) && self.board[loc.0][loc.1] == Hexagon::Empty;
     }
 
-    pub fn get_tile(&self, x: usize, y: usize) -> Hexagon {
-        assert!(x < BOARD_SIZE && y < BOARD_SIZE);
-        self.board[x][y]
+    pub fn get_tile(&self, r: usize, c: usize) -> Hexagon {
+        assert!(r < BOARD_SIZE && c < BOARD_SIZE);
+        self.board[r][c]
     }
 
     fn foreach_neighbor<OP: FnMut(usize, usize)>(r: usize, c: usize, mut op: OP) {
@@ -221,7 +221,7 @@ impl HexPosition {
 }
 
 pub trait HexPlayer {
-    fn next_move(&mut self, position: &HexPosition) -> Location;
+    fn next_move(&mut self, position: &HexPosition) -> Option<Location>;
 }
 
 pub struct HexGame<'a> {
@@ -257,15 +257,20 @@ impl<'a> HexGame<'a> {
         if self.position.is_over() {
             return false;
         }
-        let next_move = match self.position.get_turn() {
+        let m = match self.position.get_turn() {
             Color::Red => self.player_red.next_move(&self.position),
             Color::Blue => self.player_blue.next_move(&self.position),
         };
-        if !self.position.is_valid_move(next_move) {
-            return false;
+        match m {
+            None => return false,
+            Some(next_move) => {
+                if !self.position.is_valid_move(next_move) {
+                    return false;
+                }
+                self.position.make_move(next_move.0, next_move.1);
+                return true;
+            }
         }
-        self.position.make_move(next_move.0, next_move.1);
-        return true;
     }
 
     pub fn play_until_over(&mut self) -> Option<Color> {

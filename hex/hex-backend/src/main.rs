@@ -1,7 +1,7 @@
 mod hex_game;
+mod hex_test;
 mod mcts;
 mod simple_players;
-mod hex_test;
 use hex_game::{Color, HexGame};
 use std::time::Instant;
 

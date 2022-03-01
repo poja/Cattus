@@ -1,8 +1,6 @@
-use std::io;
-
-use rand::Rng;
-
 use crate::hex_game::{HexPlayer, HexPosition, Location, BOARD_SIZE};
+use rand::Rng;
+use std::io;
 
 pub struct HexPlayerRand {}
 
@@ -13,13 +11,13 @@ impl HexPlayerRand {
 }
 
 impl HexPlayer for HexPlayerRand {
-    fn next_move(&mut self, position: &HexPosition) -> Location {
+    fn next_move(&mut self, position: &HexPosition) -> Option<Location> {
         let mut rng = rand::thread_rng();
         loop {
             let i = rng.gen_range(0..BOARD_SIZE);
             let j = rng.gen_range(0..BOARD_SIZE);
             if position.is_valid_move((i, j)) {
-                return (i, j);
+                return Some((i, j));
             }
         }
     }
@@ -52,7 +50,7 @@ fn read_usize() -> usize {
 }
 
 impl HexPlayer for HexPlayerCmd {
-    fn next_move(&mut self, position: &HexPosition) -> Location {
+    fn next_move(&mut self, position: &HexPosition) -> Option<Location> {
         println!("Current position:");
         position.print();
 
@@ -68,7 +66,7 @@ impl HexPlayer for HexPlayerCmd {
             }
 
             if position.is_valid_move((x, y)) {
-                return (x, y);
+                return Some((x, y));
             }
             println!("invalid move");
         }
