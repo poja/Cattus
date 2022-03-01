@@ -57,7 +57,7 @@ impl MCTSPlayer {
 
     fn develop_tree(&mut self, root_id: NodeIndex<u32>, us: hex_game::Color) -> () {
         for i in 1..self.simulations_per_move {
-            println!("Simulating: ({}/{})", i, self.simulations_per_move);
+            // println!("Simulating: ({}/{})", i, self.simulations_per_move);
             match self.select_node(root_id) {
                 Some((leaf_id, path)) => {
                     let leaf = self.search_tree.node_weight(leaf_id).unwrap();
@@ -105,8 +105,7 @@ impl MCTSPlayer {
         parent_id: NodeIndex<u32>,
     ) -> Option<(NodeIndex<u32>, Location, Vec<NodeIndex<u32>>)> {
         let parent = self.search_tree.node_weight(parent_id).unwrap();
-        let win_status = parent.position.get_winner();
-        if win_status.0 == true {
+        if parent.position.is_over() {
             // Node has no children that can be explored
             return None;
         }

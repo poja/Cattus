@@ -1,8 +1,9 @@
 mod hex_game;
-mod simple_players;
 mod mcts;
-
+mod simple_players;
+mod hex_test;
 use hex_game::{Color, HexGame};
+use std::time::Instant;
 
 fn main() {
     // let mut player1 = HexPlayerRand::new();
@@ -11,9 +12,19 @@ fn main() {
     let mut player2 = mcts::MCTSPlayer::with_simulations_per_move(100);
 
     let mut game = HexGame::new(Color::Red, &mut player1, &mut player2);
-    game.play_until_over();
+    let start = Instant::now();
+    let winner = game.play_until_over();
+    let duration = start.elapsed();
+    println!("Game duration was: {:?}", duration);
 
     println!("This is the board:");
     game.position.print();
-    println!("The winner is: {:?}", game.winner.unwrap())
+    match winner {
+        Some(color) => {
+            println!("The winner is: {:?}", color)
+        }
+        None => {
+            println!("The game ended in draw")
+        }
+    }
 }
