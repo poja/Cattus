@@ -5,18 +5,21 @@ use std::string::String;
 use std::{io, process, thread, time};
 
 /**
- * UXI (Universal Hex Interface), similar to UCI (Universal Chess Interface) is general interface for
+ * UXI (Universal Hex Interface), similar to UCI (Universal Chess Interface) is a general interface for
  * Hex engine communication. All communication is done by standard input and output, each command has '\n' at the end.
  *
  * Input commands (from host to engine):
  *      next_move [pos] [color]
- *          pos - current position, string of 121 characters, e/r/b (empty, red, blue),
- *              i'th character corresponding to the [i/11][i%11] tile]
- *          color - the engine color, one character, r,b (red, blue)
+ *          calculate the next move of the engine.
+ *              [pos] - current position, string of 121 characters, e/r/b (empty, red, blue),
+ *                  i'th character corresponding to the [i/11][i%11] tile
+ *              [color] - the engine color, one character, r/b (red, blue)
  *      quit
+ *          quit from the program, the engine should exit in 0.1 sec
  * Output commands (from engine to host):
  *      move [indices]
- *          indices - the engine move, two numbers with comma separation, "c,r"
+ *          the next move of the engine
+ *              indices - the engine move, two numbers with comma separation, "c,r"
  */
 
 struct HexPlayerUXI {
@@ -134,12 +137,24 @@ impl HexPlayerUXI {
 impl HexPlayer for HexPlayerUXI {
     fn next_move(&mut self, position: &HexPosition) -> Option<Location> {
         let command = String::from("next_move ") + &UXI::position_to_uxi(position);
-        match self.send_command(command) {
-            None => None,
-            Some(response) => {
-                let m_str: Vec<_> = response.split(",").collect();
+        let r = self.send_command(command);
+        if r.is_none() {
+            return None;
+        }
+        let resp = r.unwrap();
+        let response: Vec<_> = resp.split(" ").collect();
+        if response.is_empty() {
+            return None;
+        }
+        match response[0] {
+            "move" => {
+                if response.len() != 2 {
+                    eprintln!("Expected \"move r,c\" format: \"{}\"", resp);
+                    return None;
+                }
+                let m_str: Vec<_> = response[1].split(",").collect();
                 if m_str.len() != 2 {
-                    eprintln!("Expected move as r,c format: \"{}\"", response);
+                    eprintln!("Expected \"move r,c\" format: \"{}\"", resp);
                     return None;
                 }
                 let r = match m_str[0].parse::<usize>() {
@@ -158,7 +173,11 @@ impl HexPlayer for HexPlayerUXI {
                 };
                 return Some((r, c));
             }
-        }
+            unknown_cmd => {
+                eprintln!("Unknown command: {}", unknown_cmd);
+                return None;
+            }
+        };
     }
 }
 
@@ -259,7 +278,7 @@ impl UXI {
                         Some(pos) => {
                             match player.next_move(&pos) {
                                 None => println!("error"),
-                                Some(m) => println!("{},{}", m.0, m.1),
+                                Some(m) => println!("move {},{}", m.0, m.1),
                             };
                         }
                     }
