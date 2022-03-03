@@ -3,5 +3,6 @@ use hex_backend::uxi;
 
 fn main() {
     let mut player = mcts::MCTSPlayer::new();
-    uxi::UXI::run_engine(&mut player);
+    let mut engine = uxi::UXIEngine::new(&mut player);
+    engine.run();
 }

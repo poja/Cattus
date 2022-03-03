@@ -22,7 +22,7 @@ use std::{io, process, thread, time};
  *              indices - the engine move, two numbers with comma separation, "c,r"
  */
 
-struct HexPlayerUXI {
+pub struct HexPlayerUXI {
     exe_filename: String,
     // err_filename: String,
     // err_file: Option<File>,
@@ -103,7 +103,7 @@ impl HexPlayerUXI {
         }
     }
 
-    pub fn send_command(&mut self, cmd: String) -> Option<String> {
+    fn send_command(&mut self, cmd: String) -> Option<String> {
         if self.process.is_none() {
             eprintln!("Engine was not started.");
             return None;
@@ -136,7 +136,7 @@ impl HexPlayerUXI {
 
 impl HexPlayer for HexPlayerUXI {
     fn next_move(&mut self, position: &HexPosition) -> Option<Location> {
-        let command = String::from("next_move ") + &UXI::position_to_uxi(position);
+        let command = String::from("next_move ") + &position_to_uxi(position);
         let r = self.send_command(command);
         if r.is_none() {
             return None;
@@ -181,77 +181,16 @@ impl HexPlayer for HexPlayerUXI {
     }
 }
 
-pub struct UXI {}
-impl UXI {
-    pub fn compare_engines(
-        engine1_filename: &std::path::Path,
-        engine2_filename: &std::path::Path,
-        number_of_games: usize,
-        working_dir: &std::path::Path,
-    ) -> Option<String> {
-        let mut rng = rand::thread_rng();
-        // let engine1_errfile = working_dir.join("errlog" + rng.gen::<u64>().to_string());
-        // let engine2_errfile = working_dir.join("errlog" + rng.gen::<u64>().to_string());
-        let mut engine1 = HexPlayerUXI::new(engine1_filename /*, engine1_errfile*/);
-        let mut engine2 = HexPlayerUXI::new(engine2_filename /*, engine2_errfile*/);
+pub struct UXIEngine<'a> {
+    player: &'a mut dyn HexPlayer,
+}
 
-        let engine1_started = engine1.start();
-        let engine2_started = engine2.start();
-
-        if !engine1_started || !engine2_started {
-            if engine1_started {
-                engine1.stop();
-            }
-            if engine2_started {
-                engine2.stop();
-            }
-            eprintln!("Failed to start engines.");
-            return None;
-        }
-
-        let mut player1_wins = 0;
-        let mut player2_wins = 0;
-        for _ in 0..number_of_games {
-            let starting_player = match rng.gen::<bool>() {
-                true => Color::Red,
-                false => Color::Blue,
-            };
-            let mut game = HexGame::new(starting_player, &mut engine1, &mut engine2);
-            match game.play_until_over() {
-                None => {}
-                Some(winner) => match winner {
-                    Color::Red => player1_wins += 1,
-                    Color::Blue => player2_wins += 1,
-                },
-            };
-        }
-        println!("Engines results:");
-        println!(
-            "{}/{} : {}",
-            player1_wins,
-            number_of_games,
-            engine1_filename.display()
-        );
-        println!(
-            "{}/{} : {}",
-            player2_wins,
-            number_of_games,
-            engine2_filename.display()
-        );
-
-        engine1.stop();
-        engine2.stop();
-
-        if player1_wins == player2_wins {
-            return None;
-        }
-        if player1_wins > player2_wins {
-            return Some(String::from(engine1_filename.to_str().unwrap()));
-        }
-        return Some(String::from(engine2_filename.to_str().unwrap()));
+impl<'a> UXIEngine<'a> {
+    pub fn new(player: &'a mut dyn HexPlayer) -> Self {
+        Self { player: player }
     }
 
-    pub fn run_engine(player: &mut dyn HexPlayer) {
+    pub fn run(&mut self) {
         loop {
             let mut line = String::new();
             io::stdin()
@@ -270,13 +209,13 @@ impl UXI {
                     }
                     let pos_str = args[1];
                     let color_str = args[2];
-                    match UXI::uxi_to_position(pos_str, color_str) {
+                    match uxi_to_position(pos_str, color_str) {
                         None => {
                             eprintln!("Failed to parse position.");
                             continue;
                         }
                         Some(pos) => {
-                            match player.next_move(&pos) {
+                            match self.player.next_move(&pos) {
                                 None => println!("error"),
                                 Some(m) => println!("move {},{}", m.0, m.1),
                             };
@@ -292,60 +231,59 @@ impl UXI {
             }
         }
     }
+}
 
-    fn position_to_uxi(position: &HexPosition) -> String {
-        let mut s = String::new();
-        for r in 0..BOARD_SIZE {
-            for c in 0..BOARD_SIZE {
-                s += match position.get_tile(r, c) {
-                    Hexagon::Empty => "e",
-                    Hexagon::Full(color) => match color {
-                        Color::Red => "r",
-                        Color::Blue => "b",
-                    },
-                };
-            }
-        }
-        return s
-            + " "
-            + match position.get_turn() {
-                Color::Red => "r",
-                Color::Blue => "b",
+fn position_to_uxi(position: &HexPosition) -> String {
+    let mut s = String::new();
+    for r in 0..BOARD_SIZE {
+        for c in 0..BOARD_SIZE {
+            s += match position.get_tile(r, c) {
+                Hexagon::Empty => "e",
+                Hexagon::Full(color) => match color {
+                    Color::Red => "r",
+                    Color::Blue => "b",
+                },
             };
+        }
     }
+    return s
+        + " "
+        + match position.get_turn() {
+            Color::Red => "r",
+            Color::Blue => "b",
+        };
+}
 
-    fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
-        let mut board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE] =
-            [[Hexagon::Empty; BOARD_SIZE]; BOARD_SIZE];
-        let mut i = 0;
-        for tile in pos_str.chars() {
-            if i >= BOARD_SIZE * BOARD_SIZE {
-                eprintln!("Too many chars in position string");
-                return None;
-            }
-            board[i / BOARD_SIZE][i % BOARD_SIZE] = match tile {
-                'e' => Hexagon::Empty,
-                'r' => Hexagon::Full(Color::Red),
-                'b' => Hexagon::Full(Color::Blue),
-                unknown_tile => {
-                    eprintln!("Unknown tile: {}", unknown_tile);
-                    return None;
-                }
-            };
-            i += 1;
-        }
-        if i != BOARD_SIZE * BOARD_SIZE {
-            eprintln!("Too few chars in position string");
+fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
+    let mut board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE] = [[Hexagon::Empty; BOARD_SIZE]; BOARD_SIZE];
+    let mut i = 0;
+    for tile in pos_str.chars() {
+        if i >= BOARD_SIZE * BOARD_SIZE {
+            eprintln!("Too many chars in position string");
             return None;
         }
-        let player = match color_str {
-            "r" => Color::Red,
-            "b" => Color::Blue,
-            unknown_player => {
-                eprintln!("Unknown player: {}", unknown_player);
+        board[i / BOARD_SIZE][i % BOARD_SIZE] = match tile {
+            'e' => Hexagon::Empty,
+            'r' => Hexagon::Full(Color::Red),
+            'b' => Hexagon::Full(Color::Blue),
+            unknown_tile => {
+                eprintln!("Unknown tile: {}", unknown_tile);
                 return None;
             }
         };
-        return Some(HexPosition::from_board(board, player));
+        i += 1;
     }
+    if i != BOARD_SIZE * BOARD_SIZE {
+        eprintln!("Too few chars in position string");
+        return None;
+    }
+    let player = match color_str {
+        "r" => Color::Red,
+        "b" => Color::Blue,
+        unknown_player => {
+            eprintln!("Unknown player: {}", unknown_player);
+            return None;
+        }
+    };
+    return Some(HexPosition::from_board(board, player));
 }
