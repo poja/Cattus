@@ -136,7 +136,9 @@ impl HexPlayerUXI {
 
 impl HexPlayer for HexPlayerUXI {
     fn next_move(&mut self, position: &HexPosition) -> Option<Location> {
-        let command = String::from("next_move ") + &position_to_uxi(position);
+        let mut command = String::with_capacity(10 + BOARD_SIZE * BOARD_SIZE + 3);
+        command.push_str("next_move ");
+        position_to_uxi(position, &mut command);
         let r = self.send_command(command);
         if r.is_none() {
             return None;
@@ -233,25 +235,23 @@ impl<'a> UXIEngine<'a> {
     }
 }
 
-fn position_to_uxi(position: &HexPosition) -> String {
-    let mut s = String::new();
+fn position_to_uxi(position: &HexPosition, s: &mut String) {
     for r in 0..BOARD_SIZE {
         for c in 0..BOARD_SIZE {
-            s += match position.get_tile(r, c) {
-                Hexagon::Empty => "e",
+            s.push(match position.get_tile(r, c) {
+                Hexagon::Empty => 'e',
                 Hexagon::Full(color) => match color {
-                    Color::Red => "r",
-                    Color::Blue => "b",
+                    Color::Red => 'r',
+                    Color::Blue => 'b',
                 },
-            };
+            });
         }
     }
-    return s
-        + " "
-        + match position.get_turn() {
-            Color::Red => "r",
-            Color::Blue => "b",
-        };
+    s.push(' ');
+    s.push(match position.get_turn() {
+        Color::Red => 'r',
+        Color::Blue => 'b',
+    });
 }
 
 fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
