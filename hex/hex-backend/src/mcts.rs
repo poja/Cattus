@@ -1,11 +1,11 @@
 use petgraph::graph::EdgeReference;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
+use rand::prelude::{IteratorRandom, SliceRandom};
 use std::collections::HashMap;
-use rand::prelude::{SliceRandom, IteratorRandom};
 
+use crate::hex_game::{self, Color};
 use crate::simple_players::HexPlayerRand;
-use crate::hex_game;
 use hex_game::{HexGame, HexPlayer, HexPosition, Location};
 
 /// Monte Carlo Tree Search (MCTS) implementation
@@ -18,7 +18,8 @@ struct MCTSNode {
     simulations_n: u32,
 
     /// This is the variable w from UCT formula
-    score_w: i32,
+    /// Float because could be half for games with ties
+    score_w: f32,
 }
 
 impl MCTSNode {
@@ -26,7 +27,7 @@ impl MCTSNode {
         Self {
             position: pos,
             simulations_n: 0,
-            score_w: 0,
+            score_w: 0.0,
         }
     }
 
@@ -61,8 +62,8 @@ impl MCTSPlayer {
             match self.select_node(root_id) {
                 Some((leaf_id, path)) => {
                     let leaf = self.search_tree.node_weight(leaf_id).unwrap();
-                    let game_outcome = self.simulate_playout(&leaf.position, us);
-                    self.backpropagate(path, game_outcome);
+                    let game_winner = self.simulate_playout(&leaf.position, us);
+                    self.backpropagate(path, game_winner);
                 }
                 None => {
                     println!("No more unexplored nodes found, terminating simulation...");
@@ -151,47 +152,57 @@ impl MCTSPlayer {
         return None;
     }
 
-    /// Returns 1 if "we" won, -1 if lost, 0 if draw
-    fn simulate_playout(&self, pos: &HexPosition, us: hex_game::Color) -> i32 {
+    fn simulate_playout(&self, pos: &HexPosition, us: hex_game::Color) -> Option<Color> {
         // Play randomly and return the simulation game result
         let mut player1 = HexPlayerRand::new();
         let mut player2 = HexPlayerRand::new();
         let mut sim_game = HexGame::from_position(pos, &mut player1, &mut player2);
-        match sim_game.play_until_over() {
-            Some(winner) => {
-                if winner == us {
-                    1
-                } else {
-                    -1
-                }
-            }
-            None => 0,
-        }
+        sim_game.play_until_over()
     }
 
-    fn backpropagate(&mut self, path: Vec<NodeIndex<u32>>, game_outcome: i32) {
+    fn backpropagate(&mut self, path: Vec<NodeIndex<u32>>, winner: Option<Color>) {
         for node_id in path {
             let mut node = self.search_tree.node_weight_mut(node_id).unwrap();
             node.simulations_n += 1;
-            node.score_w += game_outcome;
+            node.score_w += match winner {
+                None => 0.5,
+                Some(color) => {
+                    // Notice - this score is used by the parent, so the values represent value for parent.
+                    if color == node.position.turn {
+                        0.0
+                    } else {
+                        1.0
+                    }
+                }
+            };
         }
     }
 
     fn get_best_child_move(&self, node_id: NodeIndex<u32>) -> Option<Location> {
         let edges = self.search_tree.edges(node_id);
-        let edges_with_scores: Vec<_> = edges.into_iter().map(|edge| {
-            let child = self.search_tree.node_weight(edge.target()).unwrap();
-            (edge, child.get_expected_reward())
-        }).collect();
-        if edges_with_scores.len() == 0 { return None; }
-        let best_score = edges_with_scores.iter().max_by(
-            |&x, &y| x.1.partial_cmp(&y.1).unwrap()
-        ).unwrap().1;
-        let edges_with_best_score = edges_with_scores.iter().filter_map(|&(edge, score)| {
-            if score == best_score { Some(edge) }
-            else { None }
+        let edges_with_rewards: Vec<_> = edges
+            .into_iter()
+            .map(|edge| {
+                let child = self.search_tree.node_weight(edge.target()).unwrap();
+                (edge, child.get_expected_reward())
+            })
+            .collect();
+        if edges_with_rewards.len() == 0 {
+            return None;
+        }
+        let best_reward = edges_with_rewards
+            .iter()
+            .max_by(|&x, &y| x.1.partial_cmp(&y.1).unwrap())
+            .unwrap()
+            .1;
+        let edges_with_best_reward = edges_with_rewards.iter().filter_map(|&(edge, reward)| {
+            if reward == best_reward {
+                Some(edge)
+            } else {
+                None
+            }
         });
-        let chosen_edge = edges_with_best_score.choose(&mut rand::thread_rng());
+        let chosen_edge = edges_with_best_reward.choose(&mut rand::thread_rng());
         return Some(chosen_edge.unwrap().weight().clone());
     }
 }
