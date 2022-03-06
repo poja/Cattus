@@ -57,7 +57,6 @@ impl MCTSPlayer {
 
     fn develop_tree(&mut self, root_id: NodeIndex<u32>, us: hex_game::Color) -> () {
         for _ in 1..self.simulations_per_move {
-            // println!("Simulating: ({}/{})", i, self.simulations_per_move);
             match self.select_node(root_id) {
                 Some((leaf_id, path)) => {
                     let leaf = self.search_tree.node_weight(leaf_id).unwrap();
@@ -120,30 +119,28 @@ impl MCTSPlayer {
 
         let mut legal_moves = parent.position.get_legal_moves();
         assert!(legal_moves.len() > 0);
-        legal_moves.shuffle(&mut rand::thread_rng());
 
-        // TODO should we first expand unexplored nodes before existing children?
+        // TODO need to expand ALL unexplored nodes, currently not possible with number of simulations.
+        // First expand unexplored nodes
+        for m in &legal_moves {
+            if !existing_children.contains_key(&m) {
+                return Some((parent_id, *m, vec![parent_id]));
+            }
+        }
 
         // Select successive child nodes randomly until a leaf node is reached
+        legal_moves.shuffle(&mut rand::thread_rng());
         for m in legal_moves {
             assert!(parent.position.is_valid_move(m));
-
-            match existing_children.get(&m) {
-                // Explored position, child already exist in tree, continue exploring his sub tree
-                Some(existing_child_id) => {
-                    match self.select_node0(*existing_child_id) {
-                        // Child sub tree has no unexplored leafs, continue to next child
-                        None => continue,
-                        // Found unexplored position in child sub tree
-                        Some((leaf_parent, m, mut path)) => {
-                            path.push(parent_id);
-                            return Some((leaf_parent, m, path));
-                        }
-                    }
-                }
-                // Unexplored position
-                None => {
-                    return Some((parent_id, m, vec![parent_id]));
+            let existing_child_id = existing_children.get(&m).unwrap();
+            // Explored position, child already exist in tree, continue exploring his sub tree
+            match self.select_node0(*existing_child_id) {
+                // Child sub tree has no unexplored leafs, continue to next child
+                None => continue,
+                // Found unexplored position in child sub tree
+                Some((leaf_parent, m, mut path)) => {
+                    path.push(parent_id);
+                    return Some((leaf_parent, m, path));
                 }
             }
         }
@@ -166,7 +163,7 @@ impl MCTSPlayer {
                 None => 0.5,
                 Some(color) => {
                     // Notice - this score is used by the parent, so the values represent value for parent.
-                    if color == node.position.turn {
+                    if color == node.position.get_turn() {
                         0.0
                     } else {
                         1.0

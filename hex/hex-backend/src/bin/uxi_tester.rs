@@ -3,6 +3,7 @@ use hex_backend::hex_game::{Color, HexGame, HexPlayer};
 use hex_backend::uxi::HexPlayerUXI;
 use rand::Rng;
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 fn comapre_engines(
     engine1_filename: &String,
@@ -57,6 +58,7 @@ fn compare_players(
     println!("\tnumber of games: {}", number_of_games);
 
     // TODO progress bar
+    let run_time = Instant::now();
     let mut player1_wins = 0;
     let mut player2_wins = 0;
     for _ in 0..number_of_games {
@@ -82,6 +84,7 @@ fn compare_players(
         "\t{}/{} : {}",
         player2_wins, number_of_games, player2_display_name
     );
+    println!("\tRunning time: {}s", run_time.elapsed().as_secs());
 }
 
 #[derive(Parser, Debug)]

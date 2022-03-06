@@ -47,8 +47,8 @@ impl HexPlayerUXI {
 
         // assert!(self.err_file.is_none());
         // match File::create(self.err_filename) {
-        //     Err(_) => {
-        //         eprintln!("Failed to open error file for process");
+        //     Err(error) => {
+        //         eprintln!("Failed to open error file for process: {}", error);
         //         self.err_file = None;
         //         return false;
         //     }
@@ -63,8 +63,8 @@ impl HexPlayerUXI {
             // ))
             .spawn()
         {
-            Err(_) => {
-                eprintln!("Failed to launch process");
+            Err(error) => {
+                eprintln!("Failed to launch process: {}", error);
                 None
             }
             Ok(process) => Some(process),
@@ -80,8 +80,8 @@ impl HexPlayerUXI {
 
             let mut kill_needed = false;
             match self.process.as_mut().unwrap().try_wait() {
-                Err(_) => {
-                    eprintln!("Failed to get engine process status");
+                Err(error) => {
+                    eprintln!("Failed to get engine process status: {}", error);
                     kill_needed = true;
                 }
                 Ok(status) => match status {
@@ -95,7 +95,7 @@ impl HexPlayerUXI {
             if kill_needed {
                 /* don't be nice */
                 match self.process.as_mut().unwrap().kill() {
-                    Err(_) => eprintln!("Failed to kill process..."),
+                    Err(error) => eprintln!("Failed to kill process: {}", error),
                     Ok(_) => {}
                 }
             }
@@ -111,8 +111,8 @@ impl HexPlayerUXI {
         let process = self.process.as_mut().unwrap();
         let engine_stdin = process.stdin.as_mut().unwrap();
         match engine_stdin.write((String::from(cmd.trim()) + "\n").as_bytes()) {
-            Err(_) => {
-                eprintln!("Failed to pass command");
+            Err(error) => {
+                eprintln!("Failed to pass command: {}", error);
                 return None;
             }
             Ok(_) => {}
@@ -123,8 +123,8 @@ impl HexPlayerUXI {
         let mut output_line = String::new();
 
         match engine_stdout.read_line(&mut output_line) {
-            Err(_) => {
-                eprintln!("Failed to read output from engine");
+            Err(error) => {
+                eprintln!("Failed to read output from engine: {}", error);
                 return None;
             }
             Ok(_) => {
@@ -160,15 +160,15 @@ impl HexPlayer for HexPlayerUXI {
                     return None;
                 }
                 let r = match m_str[0].parse::<usize>() {
-                    Err(_) => {
-                        eprintln!("Failed to parse row index");
+                    Err(error) => {
+                        eprintln!("Failed to parse row index: {}", error);
                         return None;
                     }
                     Ok(row) => row,
                 };
                 let c = match m_str[1].parse::<usize>() {
-                    Err(_) => {
-                        eprintln!("Failed to parse column index");
+                    Err(error) => {
+                        eprintln!("Failed to parse column index: {}", error);
                         return None;
                     }
                     Ok(column) => column,
