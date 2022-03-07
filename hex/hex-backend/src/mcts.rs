@@ -1,6 +1,6 @@
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
-use rand::prelude::{IteratorRandom, SliceRandom};
+use rand::prelude::IteratorRandom;
 use std::collections::HashMap;
 
 use crate::hex_game::{self, Color};
@@ -39,29 +39,29 @@ impl MCTSNode {
 pub struct MCTSPlayer {
     search_tree: DiGraph<MCTSNode, Location>,
 
-    // exploration_parameter_c: f32, TODO
+    exploration_param_c: f32,
     simulations_per_move: u32,
 }
 
 impl MCTSPlayer {
     pub fn new() -> Self {
-        MCTSPlayer::with_simulations_per_move(100)
+        MCTSPlayer::new_custom(100, (2 as f32).sqrt())
     }
-    pub fn with_simulations_per_move(simulations_per_move: u32) -> Self {
+    pub fn new_custom(simulations_per_move: u32, exploration_param_c: f32) -> Self {
         Self {
             search_tree: DiGraph::new(),
-            // exploration_parameter_c: (2 as f32).sqrt(),
+            exploration_param_c: exploration_param_c,
             simulations_per_move: simulations_per_move,
         }
     }
 
-    fn develop_tree(&mut self, root_id: NodeIndex<u32>, us: hex_game::Color) -> () {
+    fn develop_tree(&mut self, root_id: NodeIndex<u32>) -> () {
         for _ in 1..self.simulations_per_move {
             let selection = self.select_node(root_id);
             let leaf_id = selection.0;
             let path = selection.1;
             let leaf = self.search_tree.node_weight(leaf_id).unwrap();
-            let game_winner = self.simulate_playout(&leaf.position, us);
+            let game_winner = self.simulate_playout(&leaf.position);
             self.backpropagate(path, game_winner);
         }
     }
@@ -142,14 +142,13 @@ impl MCTSPlayer {
     }
 
     fn calc_selection_heuristic(&self, parent: &MCTSNode, child: &MCTSNode) -> f32 {
-        let c = 2 as f32;
         let exploit = (child.score_w as f32) / (child.simulations_n as f32);
-        let explore =
-            c * ((parent.simulations_n as f32).ln() / (child.simulations_n as f32)).sqrt();
+        let explore = self.exploration_param_c
+            * ((parent.simulations_n as f32).ln() / (child.simulations_n as f32)).sqrt();
         return exploit + explore;
     }
 
-    fn simulate_playout(&self, pos: &HexPosition, us: hex_game::Color) -> Option<Color> {
+    fn simulate_playout(&self, pos: &HexPosition) -> Option<Color> {
         // Play randomly and return the simulation game result
         let mut player1 = HexPlayerRand::new();
         let mut player2 = HexPlayerRand::new();
@@ -212,7 +211,7 @@ impl HexPlayer for MCTSPlayer {
         let root_id = self.search_tree.add_node(root);
 
         // Develop tree
-        self.develop_tree(root_id, pos.get_turn());
+        self.develop_tree(root_id);
         let m = self.get_best_child_move(root_id);
 
         self.search_tree.clear();

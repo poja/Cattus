@@ -115,7 +115,7 @@ struct Args {
  *
  * Another example:
  * ./target/release/uxi_tester
- *      --engine1 ./target/release/uxi_mcts --engine1-params \"--sim-count\ 150\"
+ *      --engine1 ./target/release/uxi_mcts --engine1-params \"--sim-count\ 600\ --explore-param-c\ 10\"
  *      --engine2 ./target/release/uxi_mcts --engine2-params \"--sim-count\ 1500\"
  */
 

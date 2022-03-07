@@ -7,9 +7,9 @@ use std::time::Instant;
 
 fn main() {
     // let mut player1 = HexPlayerRand::new();
-    let mut player1 = mcts::MCTSPlayer::with_simulations_per_move(50);
+    let mut player1 = mcts::MCTSPlayer::new_custom(50, (2 as f32).sqrt());
     // let mut player2 = HexPlayerRand::new();
-    let mut player2 = mcts::MCTSPlayer::with_simulations_per_move(100);
+    let mut player2 = mcts::MCTSPlayer::new_custom(100, (2 as f32).sqrt());
 
     let mut game = HexGame::new(Color::Red, &mut player1, &mut player2);
     let start = Instant::now();
