@@ -24,7 +24,7 @@ pub trait IGame {
 }
 
 pub trait GamePosition: Clone + Copy + Eq {
-    type Game: IGame;
+    type Game: IGame<Position = Self>;
     fn get_turn(&self) -> GameColor;
     fn get_legal_moves(&self) -> Vec<<Self::Game as IGame>::Move>;
     fn get_moved_position(&self, m: <Self::Game as IGame>::Move)
@@ -34,7 +34,7 @@ pub trait GamePosition: Clone + Copy + Eq {
 }
 
 pub trait GameMove: Clone + Copy + Eq + std::cmp::Eq + std::hash::Hash {
-    type Game: IGame;
+    type Game: IGame<Move = Self>;
 }
 
 pub trait GamePlayer<Game: IGame> {

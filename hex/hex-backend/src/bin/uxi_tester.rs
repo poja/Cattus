@@ -1,5 +1,5 @@
 use clap::Parser;
-use hex_backend::game::{IGame, GameColor, GamePlayer};
+use hex_backend::game::{GameColor, GamePlayer, IGame};
 use hex_backend::hex_game::{HexGame, HexPosition};
 use hex_backend::uxi::HexPlayerUXI;
 use rand::Rng;
@@ -125,10 +125,12 @@ fn main() {
         args.workdir = String::from(std::env::current_dir().unwrap().to_str().unwrap());
     }
     let parse_engine_args = |engine_args_str: &String| -> Option<Vec<String>> {
-        if engine_args_str.len() > 0
-            && !(engine_args_str.len() >= 2
-                && engine_args_str.starts_with("\"")
-                && engine_args_str.ends_with("\""))
+        if engine_args_str.len() == 0 {
+            return Some(vec![]);
+        }
+        if !(engine_args_str.len() >= 2
+            && engine_args_str.starts_with("\"")
+            && engine_args_str.ends_with("\""))
         {
             eprintln!("Engine args must be wrapper with \"_args_\"");
             return None;

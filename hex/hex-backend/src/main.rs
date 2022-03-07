@@ -5,12 +5,13 @@ mod mcts;
 mod simple_players;
 use game::{GameColor, IGame};
 use hex_game::{HexGame, HexPosition};
+// use simple_players::HexPlayerCmd;
 use std::time::Instant;
 
 fn main() {
     // let mut player1 = PlayerRand::new();
-    let mut player1 = mcts::MCTSPlayer::new_custom(50, (2 as f32).sqrt());
-    // let mut player2 = PlayerRand::new();
+    let mut player1 = mcts::MCTSPlayer::new_custom(100, (2 as f32).sqrt());
+    // let mut player2 = HexPlayerCmd::new();
     let mut player2 = mcts::MCTSPlayer::new_custom(100, (2 as f32).sqrt());
 
     let start = Instant::now();

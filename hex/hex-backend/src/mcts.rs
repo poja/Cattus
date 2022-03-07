@@ -1,7 +1,6 @@
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use rand::prelude::IteratorRandom;
-use std::collections::HashMap;
 
 use crate::game::{GameColor, GamePlayer, GamePosition, IGame};
 use crate::simple_players::PlayerRand;
@@ -55,87 +54,82 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
     fn develop_tree(&mut self, root_id: NodeIndex<u32>) -> () {
         for _ in 1..self.simulations_per_move {
-            let selection = self.select_node(root_id);
-            let leaf_id = selection.0;
-            let path = selection.1;
-            let leaf = self.search_tree.node_weight(leaf_id).unwrap();
-            let game_winner = self.simulate_playout(&leaf.position);
-            self.backpropagate(path, game_winner);
+            self.select_and_simulate(root_id);
         }
     }
 
-    // Find an unexplored node and add it to the search tree, return (leaf_ID, [nodes on path]) or None if non found.
+    // Select a node to run simulation from (and add it to the search tree), return (leaf_ID, [nodes on path]).
     // The list of nodes on path is used for back propagation.
-    fn select_node(&mut self, root_id: NodeIndex<u32>) -> (NodeIndex<u32>, Vec<NodeIndex<u32>>) {
-        let selection = self.select_node0(root_id);
-        let leaf_parent = selection.0;
-        let m_option = selection.1;
-        let mut path = selection.2;
-        path.reverse();
+    fn select_and_simulate(&mut self, root_id: NodeIndex<u32>) {
+        let mut path: Vec<NodeIndex<u32>> = vec![];
 
-        match m_option {
-            None => return (leaf_parent, path),
-            Some(m) => {
-                let parent = self.search_tree.node_weight(leaf_parent).unwrap();
-                let leaf_pos = parent.position.get_moved_position(m);
-                let leaf = MCTSNode::from_position(&leaf_pos);
-                let leaf_id = self.search_tree.add_node(leaf);
-                self.search_tree.add_edge(leaf_parent, leaf_id, m);
-                path.push(leaf_id);
-                return (leaf_id, path);
+        let mut node_id = root_id;
+        loop {
+            path.push(node_id);
+            let node = self.search_tree.node_weight(node_id).unwrap();
+
+            /* Node has no children, perform a (very) short simulation and done */
+            if node.position.is_over() {
+                let (player1_wins, player2_wins, draws) = match node.position.get_winner() {
+                    Some(color) => match color {
+                        GameColor::Player1 => (1, 0, 0),
+                        GameColor::Player2 => (0, 1, 0),
+                    },
+                    None => (0, 0, 1),
+                };
+                self.backpropagate(&path, player1_wins, player2_wins, draws);
+                return;
             }
-        }
-    }
 
-    // Find an unexplored (leaf) node and return (leaf_parent, move, [nodes on path]), or None if non found.
-    // The list of nodes on path is used for back propagation (returned in reverse order, shouldn't matter).
-    fn select_node0(
-        &self,
-        parent_id: NodeIndex<u32>,
-    ) -> (NodeIndex<u32>, Option<Game::Move>, Vec<NodeIndex<u32>>) {
-        let parent = self.search_tree.node_weight(parent_id).unwrap();
-        if parent.position.is_over() {
-            // Node has no children that can be explored
-            return (parent_id, None, vec![parent_id]);
-        }
+            // Node has no children in tree, expand all and simulate one simulation per child
+            if self.search_tree.edges(node_id).next().is_none() {
+                let parent_pos = node.position;
 
-        // TODO: This is slow
-        let mut existing_children: HashMap<Game::Move, NodeIndex<u32>> = HashMap::new();
-        for edge in self.search_tree.edges(parent_id) {
-            let child_id = edge.target();
-            let m = edge.weight();
-            existing_children.insert(*m, child_id);
-        }
-
-        let legal_moves = parent.position.get_legal_moves();
-        assert!(legal_moves.len() > 0);
-
-        // TODO need to expand ALL unexplored nodes, currently not possible with number of simulations.
-        // First expand unexplored nodes
-        for m in &legal_moves {
-            if !existing_children.contains_key(m) {
-                return (parent_id, Some(*m), vec![parent_id]);
-            }
-        }
-
-        let mut m_best: Option<(NodeIndex<u32>, f32)> = None;
-        for m in &legal_moves {
-            let child_id = *existing_children.get(m).unwrap();
-            let child = self.search_tree.node_weight(child_id).unwrap();
-            let val = self.calc_selection_heuristic(parent, child);
-            match m_best {
-                None => m_best = Some((child_id, val)),
-                Some((_, val_best)) => {
-                    if val > val_best {
-                        m_best = Some((child_id, val));
+                let (mut player1_wins, mut player2_wins, mut draws) = (0, 0, 0);
+                for m in parent_pos.get_legal_moves() {
+                    let leaf_pos = parent_pos.get_moved_position(m);
+                    let leaf_id = self
+                        .search_tree
+                        .add_node(MCTSNode::from_position(&leaf_pos));
+                    self.search_tree.add_edge(node_id, leaf_id, m);
+                    let mut leaf = self.search_tree.node_weight_mut(leaf_id).unwrap();
+                    match MCTSPlayer::<Game>::simulate_playout(&leaf_pos) {
+                        Some(color) => {
+                            if parent_pos.get_turn() == color {
+                                leaf.score_w += 1.0;
+                            }
+                            match color {
+                                GameColor::Player1 => player1_wins += 1,
+                                GameColor::Player2 => player2_wins += 1,
+                            };
+                        }
+                        None => {
+                            leaf.score_w += 0.5;
+                            draws += 1;
+                        }
                     }
+                    leaf.simulations_n += 1;
                 }
+
+                /* back propagate a single time for all children */
+                self.backpropagate(&path, player1_wins, player2_wins, draws);
+                return;
             }
+
+            /* Node children already been expanded, choose best one and continue in it's sub tree */
+            node_id = self
+                .search_tree
+                .edges(node_id)
+                .map(|edge| edge.target())
+                .max_by(|&child1_id, &child2_id| {
+                    let child1 = self.search_tree.node_weight(child1_id).unwrap();
+                    let child2 = self.search_tree.node_weight(child2_id).unwrap();
+                    let val1 = self.calc_selection_heuristic(node, child1);
+                    let val2 = self.calc_selection_heuristic(node, child2);
+                    return val1.partial_cmp(&val2).unwrap();
+                })
+                .unwrap();
         }
-        let chosen_child_id = m_best.unwrap().0;
-        let mut res = self.select_node0(chosen_child_id);
-        res.2.push(parent_id);
-        return res;
     }
 
     fn calc_selection_heuristic(
@@ -149,28 +143,33 @@ impl<Game: IGame> MCTSPlayer<Game> {
         return exploit + explore;
     }
 
-    fn simulate_playout(&self, pos: &Game::Position) -> Option<GameColor> {
+    fn simulate_playout(pos: &Game::Position) -> Option<GameColor> {
         // Play randomly and return the simulation game result
         let mut player1 = PlayerRand::new();
         let mut player2 = PlayerRand::new();
         Game::play_until_over(pos, &mut player1, &mut player2).1
     }
 
-    fn backpropagate(&mut self, path: Vec<NodeIndex<u32>>, winner: Option<GameColor>) {
+    fn backpropagate(
+        &mut self,
+        path: &Vec<NodeIndex<u32>>,
+        player1_wins: u32,
+        player2_wins: u32,
+        draws: u32,
+    ) {
+        let first_node = self.search_tree.node_weight(path[0]).unwrap();
+        let games_num = player1_wins + player2_wins + draws;
+        let mut applied_score = (draws as f32) / 2.0
+            + match first_node.position.get_turn() {
+                GameColor::Player1 => player2_wins,
+                GameColor::Player2 => player1_wins,
+            } as f32;
+
         for node_id in path {
-            let mut node = self.search_tree.node_weight_mut(node_id).unwrap();
-            node.simulations_n += 1;
-            node.score_w += match winner {
-                None => 0.5,
-                Some(color) => {
-                    // Notice - this score is used by the parent, so the values represent value for parent.
-                    if color == node.position.get_turn() {
-                        0.0
-                    } else {
-                        1.0
-                    }
-                }
-            };
+            let mut node = self.search_tree.node_weight_mut(*node_id).unwrap();
+            node.simulations_n += games_num;
+            node.score_w += applied_score as f32;
+            applied_score = games_num as f32 - applied_score;
         }
     }
 
