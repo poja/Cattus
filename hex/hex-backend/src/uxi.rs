@@ -1,5 +1,4 @@
-use crate::hex_game::{Color, HexGame, HexPlayer, HexPosition, Hexagon, Location, BOARD_SIZE};
-use rand::Rng;
+use crate::hex_game::{Color, HexPlayer, HexPosition, Hexagon, Location, BOARD_SIZE};
 use std::io::{BufRead, BufReader, Write};
 use std::string::String;
 use std::{io, process, thread, time};
@@ -17,6 +16,8 @@ use std::{io, process, thread, time};
  *      quit
  *          quit from the program, the engine should exit in 0.1 sec
  * Output commands (from engine to host):
+ *      ready
+ *          after engine was started, this is the first command it should issue to let the host know its ready
  *      move [indices]
  *          the next move of the engine
  *              indices - the engine move, two numbers with comma separation, "c,r"
@@ -69,7 +70,25 @@ impl HexPlayerUXI {
             }
             Ok(process) => Some(process),
         };
-        return self.process.is_some();
+        if self.process.is_none() {
+            return false;
+        }
+        let r = self.receive_command();
+        if r.is_none() {
+            return false;
+        }
+        let resp = r.unwrap();
+        let response: Vec<_> = resp.split(" ").collect();
+        if response.is_empty() {
+            return false;
+        }
+        match response[0] {
+            "ready" => return true,
+            unknown_cmd => {
+                eprintln!("Unknown command: {}", unknown_cmd);
+                return false;
+            }
+        };
     }
 
     pub fn stop(&mut self) {
@@ -103,22 +122,28 @@ impl HexPlayerUXI {
         }
     }
 
-    fn send_command(&mut self, cmd: String) -> Option<String> {
+    fn send_command(&mut self, cmd: String) {
         if self.process.is_none() {
             eprintln!("Engine was not started.");
-            return None;
+            return;
         }
         let process = self.process.as_mut().unwrap();
         let engine_stdin = process.stdin.as_mut().unwrap();
         match engine_stdin.write((String::from(cmd.trim()) + "\n").as_bytes()) {
             Err(error) => {
                 eprintln!("Failed to pass command: {}", error);
-                return None;
             }
             Ok(_) => {}
         }
         drop(engine_stdin);
+    }
 
+    fn receive_command(&mut self) -> Option<String> {
+        if self.process.is_none() {
+            eprintln!("Engine was not started.");
+            return None;
+        }
+        let process = self.process.as_mut().unwrap();
         let mut engine_stdout = BufReader::new(process.stdout.as_mut().unwrap());
         let mut output_line = String::new();
 
@@ -139,7 +164,8 @@ impl HexPlayer for HexPlayerUXI {
         let mut command = String::with_capacity(10 + BOARD_SIZE * BOARD_SIZE + 3);
         command.push_str("next_move ");
         position_to_uxi(position, &mut command);
-        let r = self.send_command(command);
+        self.send_command(command);
+        let r = self.receive_command();
         if r.is_none() {
             return None;
         }
@@ -193,6 +219,7 @@ impl<'a> UXIEngine<'a> {
     }
 
     pub fn run(&mut self) {
+        println!("ready");
         loop {
             let mut line = String::new();
             io::stdin()
