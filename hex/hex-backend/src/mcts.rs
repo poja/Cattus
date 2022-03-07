@@ -57,42 +57,34 @@ impl MCTSPlayer {
 
     fn develop_tree(&mut self, root_id: NodeIndex<u32>, us: hex_game::Color) -> () {
         for _ in 1..self.simulations_per_move {
-            match self.select_node(root_id) {
-                Some((leaf_id, path)) => {
-                    let leaf = self.search_tree.node_weight(leaf_id).unwrap();
-                    let game_winner = self.simulate_playout(&leaf.position, us);
-                    self.backpropagate(path, game_winner);
-                }
-                None => {
-                    println!("No more unexplored nodes found, terminating simulation...");
-                    break;
-                }
-            }
+            let selection = self.select_node(root_id);
+            let leaf_id = selection.0;
+            let path = selection.1;
+            let leaf = self.search_tree.node_weight(leaf_id).unwrap();
+            let game_winner = self.simulate_playout(&leaf.position, us);
+            self.backpropagate(path, game_winner);
         }
     }
 
     // Find an unexplored node and add it to the search tree, return (leaf_ID, [nodes on path]) or None if non found.
     // The list of nodes on path is used for back propagation.
-    fn select_node(
-        &mut self,
-        root_id: NodeIndex<u32>,
-    ) -> Option<(NodeIndex<u32>, Vec<NodeIndex<u32>>)> {
-        match self.select_node0(root_id) {
-            // No more unexplored nodes
-            None => None,
-            // Found unexplored node, create and add to search tree
-            Some((leaf_parent, m, mut path)) => {
+    fn select_node(&mut self, root_id: NodeIndex<u32>) -> (NodeIndex<u32>, Vec<NodeIndex<u32>>) {
+        let selection = self.select_node0(root_id);
+        let leaf_parent = selection.0;
+        let m_option = selection.1;
+        let mut path = selection.2;
+        path.reverse();
+
+        match m_option {
+            None => return (leaf_parent, path),
+            Some(m) => {
                 let parent = self.search_tree.node_weight(leaf_parent).unwrap();
                 let leaf_pos = parent.position.get_moved_position(m);
                 let leaf = MCTSNode::from_position(leaf_pos);
-
                 let leaf_id = self.search_tree.add_node(leaf);
                 self.search_tree.add_edge(leaf_parent, leaf_id, m);
-
-                path.reverse();
                 path.push(leaf_id);
-
-                return Some((leaf_id, path));
+                return (leaf_id, path);
             }
         }
     }
@@ -102,11 +94,11 @@ impl MCTSPlayer {
     fn select_node0(
         &self,
         parent_id: NodeIndex<u32>,
-    ) -> Option<(NodeIndex<u32>, Location, Vec<NodeIndex<u32>>)> {
+    ) -> (NodeIndex<u32>, Option<Location>, Vec<NodeIndex<u32>>) {
         let parent = self.search_tree.node_weight(parent_id).unwrap();
         if parent.position.is_over() {
             // Node has no children that can be explored
-            return None;
+            return (parent_id, None, vec![parent_id]);
         }
 
         // TODO: This is slow
@@ -124,27 +116,37 @@ impl MCTSPlayer {
         // First expand unexplored nodes
         for m in &legal_moves {
             if !existing_children.contains_key(&m) {
-                return Some((parent_id, *m, vec![parent_id]));
+                return (parent_id, Some(*m), vec![parent_id]);
             }
         }
 
-        // Select successive child nodes randomly until a leaf node is reached
-        legal_moves.shuffle(&mut rand::thread_rng());
-        for m in legal_moves {
-            assert!(parent.position.is_valid_move(m));
-            let existing_child_id = existing_children.get(&m).unwrap();
-            // Explored position, child already exist in tree, continue exploring his sub tree
-            match self.select_node0(*existing_child_id) {
-                // Child sub tree has no unexplored leafs, continue to next child
-                None => continue,
-                // Found unexplored position in child sub tree
-                Some((leaf_parent, m, mut path)) => {
-                    path.push(parent_id);
-                    return Some((leaf_parent, m, path));
+        let mut m_best: Option<(NodeIndex<u32>, f32)> = None;
+        for m in &legal_moves {
+            assert!(parent.position.is_valid_move(*m));
+            let child_id = *existing_children.get(m).unwrap();
+            let child = self.search_tree.node_weight(child_id).unwrap();
+            let val = self.calc_selection_heuristic(parent, child);
+            match m_best {
+                None => m_best = Some((child_id, val)),
+                Some((_, val_best)) => {
+                    if val > val_best {
+                        m_best = Some((child_id, val));
+                    }
                 }
             }
         }
-        return None;
+        let chosen_child_id = m_best.unwrap().0;
+        let mut res = self.select_node0(chosen_child_id);
+        res.2.push(parent_id);
+        return res;
+    }
+
+    fn calc_selection_heuristic(&self, parent: &MCTSNode, child: &MCTSNode) -> f32 {
+        let c = 2 as f32;
+        let exploit = (child.score_w as f32) / (child.simulations_n as f32);
+        let explore =
+            c * ((parent.simulations_n as f32).ln() / (child.simulations_n as f32)).sqrt();
+        return exploit + explore;
     }
 
     fn simulate_playout(&self, pos: &HexPosition, us: hex_game::Color) -> Option<Color> {
