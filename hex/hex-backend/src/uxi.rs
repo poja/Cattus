@@ -40,7 +40,7 @@ impl HexPlayerUXI {
         }
     }
 
-    pub fn start(&mut self) -> bool {
+    pub fn start(&mut self, engine_params: &Vec<String>) -> bool {
         if self.process.is_some() {
             println!("Process is already launched");
             return false;
@@ -57,6 +57,7 @@ impl HexPlayerUXI {
         // }
 
         self.process = match process::Command::new(self.exe_filename.clone())
+            .args(engine_params)
             .stdin(process::Stdio::piped())
             .stdout(process::Stdio::piped())
             // .stderr(process::Stdio::from_raw_fd(

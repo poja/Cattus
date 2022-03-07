@@ -109,7 +109,7 @@ impl MCTSPlayer {
             existing_children.insert(*m, child_id);
         }
 
-        let mut legal_moves = parent.position.get_legal_moves();
+        let legal_moves = parent.position.get_legal_moves();
         assert!(legal_moves.len() > 0);
 
         // TODO need to expand ALL unexplored nodes, currently not possible with number of simulations.

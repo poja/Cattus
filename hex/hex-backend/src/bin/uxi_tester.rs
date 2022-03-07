@@ -3,13 +3,15 @@ use hex_backend::hex_game::{Color, HexGame, HexPlayer};
 use hex_backend::uxi::HexPlayerUXI;
 use rand::Rng;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 fn comapre_engines(
     engine1_filename: &String,
     engine2_filename: &String,
+    engine1_params: &Vec<String>,
+    engine2_params: &Vec<String>,
     number_of_games: usize,
-    working_dir: &String,
+    _working_dir: &String,
 ) {
     // let mut rng = rand::thread_rng();
     // let engine1_errfile = working_dir.join("errlog" + rng.gen::<u64>().to_string());
@@ -17,8 +19,8 @@ fn comapre_engines(
     let mut engine1 = HexPlayerUXI::new(&Path::new(engine1_filename) /*, engine1_errfile*/);
     let mut engine2 = HexPlayerUXI::new(&Path::new(engine2_filename) /*, engine2_errfile*/);
 
-    let engine1_started = engine1.start();
-    let engine2_started = engine2.start();
+    let engine1_started = engine1.start(engine1_params);
+    let engine2_started = engine2.start(engine2_params);
 
     if !engine1_started || !engine2_started {
         if engine1_started {
@@ -94,6 +96,10 @@ struct Args {
     engine1: String,
     #[clap(long)]
     engine2: String,
+    #[clap(long, default_value = "")]
+    engine1_params: String,
+    #[clap(long, default_value = "")]
+    engine2_params: String,
     #[clap(short, long, default_value_t = 10)]
     repeat: usize,
     #[clap(short, long, default_value = "_CURRENT_DIR_")]
@@ -106,6 +112,11 @@ struct Args {
  * .\target\debug\uxi_tester.exe
  *      --engine1 .\target\debug\uxi_mcts.exe
  *      --engine2 .\target\debug\uxi_rand.exe
+ *
+ * Another example:
+ * ./target/release/uxi_tester
+ *      --engine1 ./target/release/uxi_mcts --engine1-params \"--sim-count\ 150\"
+ *      --engine2 ./target/release/uxi_mcts --engine2-params \"--sim-count\ 1500\"
  */
 
 fn main() {
@@ -113,6 +124,31 @@ fn main() {
     if args.workdir == "_CURRENT_DIR_" {
         args.workdir = String::from(std::env::current_dir().unwrap().to_str().unwrap());
     }
+    let parse_engine_args = |engine_args_str: &String| -> Option<Vec<String>> {
+        if engine_args_str.len() > 0
+            && !(engine_args_str.len() >= 2
+                && engine_args_str.starts_with("\"")
+                && engine_args_str.ends_with("\""))
+        {
+            eprintln!("Engine args must be wrapper with \"_args_\"");
+            return None;
+        }
+        Some(
+            engine_args_str[1..engine_args_str.len() - 1]
+                .split(" ")
+                .map(|s| -> String { String::from(s) })
+                .collect(),
+        )
+    };
+    let engine1_params = parse_engine_args(&args.engine1_params).unwrap();
+    let engine2_params = parse_engine_args(&args.engine2_params).unwrap();
 
-    comapre_engines(&args.engine1, &args.engine2, args.repeat, &args.workdir);
+    comapre_engines(
+        &args.engine1,
+        &args.engine2,
+        &engine1_params,
+        &engine2_params,
+        args.repeat,
+        &args.workdir,
+    );
 }
