@@ -1,25 +1,24 @@
-use crate::hex_game::{HexPlayer, HexPosition, Location, BOARD_SIZE};
+use crate::game::{GamePlayer, GamePosition, IGame};
+use crate::hex_game::{HexGame, HexPosition, Location};
 use rand::Rng;
 use std::io;
 
-pub struct HexPlayerRand {}
+pub struct PlayerRand {}
 
-impl HexPlayerRand {
+impl PlayerRand {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl HexPlayer for HexPlayerRand {
-    fn next_move(&mut self, position: &HexPosition) -> Option<Location> {
-        let mut rng = rand::thread_rng();
-        loop {
-            let i = rng.gen_range(0..BOARD_SIZE);
-            let j = rng.gen_range(0..BOARD_SIZE);
-            if position.is_valid_move((i, j)) {
-                return Some((i, j));
-            }
+impl<Game: IGame> GamePlayer<Game> for PlayerRand {
+    fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
+        let moves = position.get_legal_moves();
+        if moves.len() == 0 {
+            return None;
         }
+        let mut rng = rand::thread_rng();
+        return Some(moves[rng.gen_range(0..moves.len()) as usize]);
     }
 }
 
@@ -49,7 +48,7 @@ fn read_usize() -> usize {
     }
 }
 
-impl HexPlayer for HexPlayerCmd {
+impl GamePlayer<HexGame> for HexPlayerCmd {
     fn next_move(&mut self, position: &HexPosition) -> Option<Location> {
         println!("Current position:");
         position.print();

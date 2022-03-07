@@ -1,4 +1,5 @@
-use crate::hex_game::{Color, HexPlayer, HexPosition, Hexagon, Location, BOARD_SIZE};
+use crate::game::{GameColor, GamePlayer, GamePosition, IGame};
+use crate::hex_game::{HexGame, HexPosition, Hexagon, BOARD_SIZE};
 use std::io::{BufRead, BufReader, Write};
 use std::string::String;
 use std::{io, process, thread, time};
@@ -160,8 +161,11 @@ impl HexPlayerUXI {
     }
 }
 
-impl HexPlayer for HexPlayerUXI {
-    fn next_move(&mut self, position: &HexPosition) -> Option<Location> {
+impl GamePlayer<HexGame> for HexPlayerUXI {
+    fn next_move(
+        &mut self,
+        position: &<HexGame as IGame>::Position,
+    ) -> Option<<HexGame as IGame>::Move> {
         let mut command = String::with_capacity(10 + BOARD_SIZE * BOARD_SIZE + 3);
         command.push_str("next_move ");
         position_to_uxi(position, &mut command);
@@ -211,11 +215,11 @@ impl HexPlayer for HexPlayerUXI {
 }
 
 pub struct UXIEngine<'a> {
-    player: &'a mut dyn HexPlayer,
+    player: &'a mut dyn GamePlayer<HexGame>,
 }
 
 impl<'a> UXIEngine<'a> {
-    pub fn new(player: &'a mut dyn HexPlayer) -> Self {
+    pub fn new(player: &'a mut dyn GamePlayer<HexGame>) -> Self {
         Self { player: player }
     }
 
@@ -269,16 +273,16 @@ fn position_to_uxi(position: &HexPosition, s: &mut String) {
             s.push(match position.get_tile(r, c) {
                 Hexagon::Empty => 'e',
                 Hexagon::Full(color) => match color {
-                    Color::Red => 'r',
-                    Color::Blue => 'b',
+                    GameColor::Player1 => 'r',
+                    GameColor::Player2 => 'b',
                 },
             });
         }
     }
     s.push(' ');
     s.push(match position.get_turn() {
-        Color::Red => 'r',
-        Color::Blue => 'b',
+        GameColor::Player1 => 'r',
+        GameColor::Player2 => 'b',
     });
 }
 
@@ -292,8 +296,8 @@ fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
         }
         board[i / BOARD_SIZE][i % BOARD_SIZE] = match tile {
             'e' => Hexagon::Empty,
-            'r' => Hexagon::Full(Color::Red),
-            'b' => Hexagon::Full(Color::Blue),
+            'r' => Hexagon::Full(GameColor::Player1),
+            'b' => Hexagon::Full(GameColor::Player2),
             unknown_tile => {
                 eprintln!("Unknown tile: {}", unknown_tile);
                 return None;
@@ -306,8 +310,8 @@ fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
         return None;
     }
     let player = match color_str {
-        "r" => Color::Red,
-        "b" => Color::Blue,
+        "r" => GameColor::Player1,
+        "b" => GameColor::Player2,
         unknown_player => {
             eprintln!("Unknown player: {}", unknown_player);
             return None;

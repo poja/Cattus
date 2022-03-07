@@ -1,18 +1,14 @@
 #[cfg(test)]
 mod tests {
+    use crate::game::{GameColor, GamePosition};
     use crate::hex_game::HexPosition;
     use crate::hex_game::Hexagon;
-    use crate::simple_players::HexPlayerRand;
-    use crate::Color::{Blue, Red};
-    use crate::HexGame;
 
     #[test]
     fn short_diagonal_wins() {
         let e = Hexagon::Empty;
-        let r = Hexagon::Full(Red);
-        let b = Hexagon::Full(Blue);
-        let mut player1 = HexPlayerRand::new();
-        let mut player2 = HexPlayerRand::new();
+        let r = Hexagon::Full(GameColor::Player1);
+        let b = Hexagon::Full(GameColor::Player2);
 
         let pos = HexPosition::from_board(
             [
@@ -28,10 +24,9 @@ mod tests {
                 [e, e, e, e, e, e, e, e, e, r, e],
                 [e, e, e, e, e, e, e, e, e, e, r],
             ],
-            Blue,
+            GameColor::Player2,
         );
-        let mut s = HexGame::from_position(&pos, &mut player1, &mut player2);
-        assert!(s.position.get_winner() == Some(Red));
+        assert!(pos.get_winner() == Some(GameColor::Player1));
 
         let pos = HexPosition::from_board(
             [
@@ -47,19 +42,16 @@ mod tests {
                 [e, e, e, e, e, e, e, e, e, b, e],
                 [e, e, e, e, e, e, e, e, e, e, b],
             ],
-            Red,
+            GameColor::Player1,
         );
-        s = HexGame::from_position(&pos, &mut player1, &mut player2);
-        assert!(s.position.get_winner() == Some(Blue));
+        assert!(pos.get_winner() == Some(GameColor::Player2));
     }
 
     #[test]
     fn almost_short_diagonal_doesnt_win() {
         let e = Hexagon::Empty;
-        let r = Hexagon::Full(Red);
-        let b = Hexagon::Full(Blue);
-        let mut player1 = HexPlayerRand::new();
-        let mut player2 = HexPlayerRand::new();
+        let r = Hexagon::Full(GameColor::Player1);
+        let b = Hexagon::Full(GameColor::Player2);
 
         let pos = HexPosition::from_board(
             [
@@ -75,10 +67,9 @@ mod tests {
                 [e, e, e, e, e, e, e, e, e, r, e],
                 [e, e, e, e, e, e, e, e, e, e, r],
             ],
-            Blue,
+            GameColor::Player2,
         );
-        let mut s = HexGame::from_position(&pos, &mut player1, &mut player2);
-        assert!(!s.position.is_over());
+        assert!(!pos.is_over());
 
         let pos = HexPosition::from_board(
             [
@@ -94,19 +85,16 @@ mod tests {
                 [e, e, e, e, e, e, e, e, e, b, e],
                 [e, e, e, e, e, e, e, e, e, e, e],
             ],
-            Red,
+            GameColor::Player1,
         );
-        s = HexGame::from_position(&pos, &mut player1, &mut player2);
-        assert!(!s.position.is_over());
+        assert!(!pos.is_over());
     }
 
     #[test]
     fn long_diagonal_doesnt_win() {
         let e = Hexagon::Empty;
-        let r = Hexagon::Full(Red);
-        let b = Hexagon::Full(Blue);
-        let mut player1 = HexPlayerRand::new();
-        let mut player2 = HexPlayerRand::new();
+        let r = Hexagon::Full(GameColor::Player1);
+        let b = Hexagon::Full(GameColor::Player2);
 
         let pos = HexPosition::from_board(
             [
@@ -122,10 +110,9 @@ mod tests {
                 [e, r, e, e, e, e, e, e, e, e, e],
                 [r, e, e, e, e, e, e, e, e, e, e],
             ],
-            Blue,
+            GameColor::Player2,
         );
-        let mut s = HexGame::from_position(&pos, &mut player1, &mut player2);
-        assert!(!s.position.is_over());
+        assert!(!pos.is_over());
 
         let pos = HexPosition::from_board(
             [
@@ -141,9 +128,8 @@ mod tests {
                 [e, b, e, e, e, e, e, e, e, e, e],
                 [b, e, e, e, e, e, e, e, e, e, e],
             ],
-            Red,
+            GameColor::Player1,
         );
-        s = HexGame::from_position(&pos, &mut player1, &mut player2);
-        assert!(!s.position.is_over());
+        assert!(!pos.is_over());
     }
 }

@@ -3,15 +3,13 @@ use petgraph::visit::EdgeRef;
 use rand::prelude::IteratorRandom;
 use std::collections::HashMap;
 
-use crate::hex_game::{self, Color};
-use crate::simple_players::HexPlayerRand;
-use hex_game::{HexGame, HexPlayer, HexPosition, Location};
+use crate::game::{GameColor, GamePlayer, GamePosition, IGame};
+use crate::simple_players::PlayerRand;
 
 /// Monte Carlo Tree Search (MCTS) implementation
-/// TODO make this general and not Hex-specific
 
-struct MCTSNode {
-    position: HexPosition,
+struct MCTSNode<Position: GamePosition> {
+    position: Position,
 
     /// This is the variable n from UCT formula
     simulations_n: u32,
@@ -21,10 +19,10 @@ struct MCTSNode {
     score_w: f32,
 }
 
-impl MCTSNode {
-    pub fn from_position(pos: HexPosition) -> Self {
+impl<Position: GamePosition> MCTSNode<Position> {
+    pub fn from_position(pos: &Position) -> Self {
         Self {
-            position: pos,
+            position: *pos,
             simulations_n: 0,
             score_w: 0.0,
         }
@@ -36,14 +34,14 @@ impl MCTSNode {
     }
 }
 
-pub struct MCTSPlayer {
-    search_tree: DiGraph<MCTSNode, Location>,
+pub struct MCTSPlayer<Game: IGame> {
+    search_tree: DiGraph<MCTSNode<Game::Position>, Game::Move>,
 
     exploration_param_c: f32,
     simulations_per_move: u32,
 }
 
-impl MCTSPlayer {
+impl<Game: IGame> MCTSPlayer<Game> {
     pub fn new() -> Self {
         MCTSPlayer::new_custom(100, (2 as f32).sqrt())
     }
@@ -80,7 +78,7 @@ impl MCTSPlayer {
             Some(m) => {
                 let parent = self.search_tree.node_weight(leaf_parent).unwrap();
                 let leaf_pos = parent.position.get_moved_position(m);
-                let leaf = MCTSNode::from_position(leaf_pos);
+                let leaf = MCTSNode::from_position(&leaf_pos);
                 let leaf_id = self.search_tree.add_node(leaf);
                 self.search_tree.add_edge(leaf_parent, leaf_id, m);
                 path.push(leaf_id);
@@ -94,7 +92,7 @@ impl MCTSPlayer {
     fn select_node0(
         &self,
         parent_id: NodeIndex<u32>,
-    ) -> (NodeIndex<u32>, Option<Location>, Vec<NodeIndex<u32>>) {
+    ) -> (NodeIndex<u32>, Option<Game::Move>, Vec<NodeIndex<u32>>) {
         let parent = self.search_tree.node_weight(parent_id).unwrap();
         if parent.position.is_over() {
             // Node has no children that can be explored
@@ -102,7 +100,7 @@ impl MCTSPlayer {
         }
 
         // TODO: This is slow
-        let mut existing_children: HashMap<Location, NodeIndex<u32>> = HashMap::new();
+        let mut existing_children: HashMap<Game::Move, NodeIndex<u32>> = HashMap::new();
         for edge in self.search_tree.edges(parent_id) {
             let child_id = edge.target();
             let m = edge.weight();
@@ -115,14 +113,13 @@ impl MCTSPlayer {
         // TODO need to expand ALL unexplored nodes, currently not possible with number of simulations.
         // First expand unexplored nodes
         for m in &legal_moves {
-            if !existing_children.contains_key(&m) {
+            if !existing_children.contains_key(m) {
                 return (parent_id, Some(*m), vec![parent_id]);
             }
         }
 
         let mut m_best: Option<(NodeIndex<u32>, f32)> = None;
         for m in &legal_moves {
-            assert!(parent.position.is_valid_move(*m));
             let child_id = *existing_children.get(m).unwrap();
             let child = self.search_tree.node_weight(child_id).unwrap();
             let val = self.calc_selection_heuristic(parent, child);
@@ -141,22 +138,25 @@ impl MCTSPlayer {
         return res;
     }
 
-    fn calc_selection_heuristic(&self, parent: &MCTSNode, child: &MCTSNode) -> f32 {
+    fn calc_selection_heuristic(
+        &self,
+        parent: &MCTSNode<Game::Position>,
+        child: &MCTSNode<Game::Position>,
+    ) -> f32 {
         let exploit = (child.score_w as f32) / (child.simulations_n as f32);
         let explore = self.exploration_param_c
             * ((parent.simulations_n as f32).ln() / (child.simulations_n as f32)).sqrt();
         return exploit + explore;
     }
 
-    fn simulate_playout(&self, pos: &HexPosition) -> Option<Color> {
+    fn simulate_playout(&self, pos: &Game::Position) -> Option<GameColor> {
         // Play randomly and return the simulation game result
-        let mut player1 = HexPlayerRand::new();
-        let mut player2 = HexPlayerRand::new();
-        let mut sim_game = HexGame::from_position(pos, &mut player1, &mut player2);
-        sim_game.play_until_over()
+        let mut player1 = PlayerRand::new();
+        let mut player2 = PlayerRand::new();
+        Game::play_until_over(pos, &mut player1, &mut player2).1
     }
 
-    fn backpropagate(&mut self, path: Vec<NodeIndex<u32>>, winner: Option<Color>) {
+    fn backpropagate(&mut self, path: Vec<NodeIndex<u32>>, winner: Option<GameColor>) {
         for node_id in path {
             let mut node = self.search_tree.node_weight_mut(node_id).unwrap();
             node.simulations_n += 1;
@@ -174,7 +174,7 @@ impl MCTSPlayer {
         }
     }
 
-    fn get_best_child_move(&self, node_id: NodeIndex<u32>) -> Option<Location> {
+    fn get_best_child_move(&self, node_id: NodeIndex<u32>) -> Option<Game::Move> {
         let edges = self.search_tree.edges(node_id);
         let edges_with_rewards: Vec<_> = edges
             .into_iter()
@@ -203,11 +203,11 @@ impl MCTSPlayer {
     }
 }
 
-impl HexPlayer for MCTSPlayer {
-    fn next_move(&mut self, pos: &HexPosition) -> Option<Location> {
+impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
+    fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
         // Init search tree with one root node
         assert!(self.search_tree.node_count() == 0);
-        let root = MCTSNode::from_position(pos.clone());
+        let root = MCTSNode::from_position(position);
         let root_id = self.search_tree.add_node(root);
 
         // Develop tree

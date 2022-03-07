@@ -1,24 +1,29 @@
+mod game;
 mod hex_game;
 mod hex_test;
 mod mcts;
 mod simple_players;
-use hex_game::{Color, HexGame};
+use game::{GameColor, IGame};
+use hex_game::{HexGame, HexPosition};
 use std::time::Instant;
 
 fn main() {
-    // let mut player1 = HexPlayerRand::new();
+    // let mut player1 = PlayerRand::new();
     let mut player1 = mcts::MCTSPlayer::new_custom(50, (2 as f32).sqrt());
-    // let mut player2 = HexPlayerRand::new();
+    // let mut player2 = PlayerRand::new();
     let mut player2 = mcts::MCTSPlayer::new_custom(100, (2 as f32).sqrt());
 
-    let mut game = HexGame::new(Color::Red, &mut player1, &mut player2);
     let start = Instant::now();
-    let winner = game.play_until_over();
+    let (final_pos, winner) = HexGame::play_until_over(
+        &HexPosition::new(GameColor::Player1),
+        &mut player1,
+        &mut player2,
+    );
     let duration = start.elapsed();
     println!("Game duration was: {:?}", duration);
 
     println!("This is the board:");
-    game.position.print();
+    final_pos.print();
     match winner {
         Some(color) => {
             println!("The winner is: {:?}", color)

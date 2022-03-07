@@ -1,36 +1,27 @@
+use crate::game::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Hexagon {
     Empty,
-    Full(Color),
+    Full(GameColor),
 }
 
 impl Hexagon {
     fn char(&self) -> char {
         match self {
             Hexagon::Empty => '.',
-            Hexagon::Full(Color::Red) => 'R',
-            Hexagon::Full(Color::Blue) => 'B',
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Color {
-    Red,
-    Blue,
-}
-
-impl Color {
-    fn opposite(&self) -> Color {
-        match self {
-            Color::Red => Color::Blue,
-            Color::Blue => Color::Red,
+            Hexagon::Full(GameColor::Player1) => 'R',
+            Hexagon::Full(GameColor::Player2) => 'B',
         }
     }
 }
 
 pub const BOARD_SIZE: usize = 11;
 pub type Location = (usize, usize);
+
+impl GameMove for Location {
+    type Game = HexGame;
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct HexPosition {
@@ -39,18 +30,18 @@ pub struct HexPosition {
     /// also called the "top end" of the board, and board[BOARD_SIZE - 1][0] is the "bottom end".
     /// Red tries to move left-right and blue tries to move top-bottom.
     board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE],
-    turn: Color,
+    turn: GameColor,
 
     /* bitmap of all the tiles one can reach from the left side of the board stepping only on tiles with red pieces */
     left_red_reach: [[bool; BOARD_SIZE]; BOARD_SIZE],
     /* bitmap of all the tiles one can reach from the top side of the board stepping only on tiles with blue pieces */
     top_blue_reach: [[bool; BOARD_SIZE]; BOARD_SIZE],
     number_of_empty_tiles: u8,
-    winner: Option<Color>,
+    winner: Option<GameColor>,
 }
 
 impl HexPosition {
-    pub fn new(starting_color: Color) -> Self {
+    pub fn new(starting_color: GameColor) -> Self {
         Self {
             board: [[Hexagon::Empty; BOARD_SIZE]; BOARD_SIZE],
             turn: starting_color,
@@ -60,7 +51,7 @@ impl HexPosition {
             winner: None,
         }
     }
-    pub fn from_board(board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE], turn: Color) -> Self {
+    pub fn from_board(board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE], turn: GameColor) -> Self {
         let mut s = Self {
             board: board,
             turn: turn,
@@ -70,9 +61,9 @@ impl HexPosition {
             winner: None,
         };
 
-        let is_reach_begin = |r: usize, c: usize, player: Color| match player {
-            Color::Red => c == 0,
-            Color::Blue => r == 0,
+        let is_reach_begin = |r: usize, c: usize, player: GameColor| match player {
+            GameColor::Player1 => c == 0,
+            GameColor::Player2 => r == 0,
         };
         for r in 0..BOARD_SIZE {
             for c in 0..BOARD_SIZE {
@@ -88,10 +79,6 @@ impl HexPosition {
             }
         }
         return s;
-    }
-
-    pub fn get_turn(&self) -> Color {
-        self.turn
     }
 
     pub fn contains(loc: Location) -> bool {
@@ -119,18 +106,18 @@ impl HexPosition {
         }
     }
 
-    fn update_reach(&mut self, r: usize, c: usize, player: Color) {
+    fn update_reach(&mut self, r: usize, c: usize, player: GameColor) {
         let reach_map = match player {
-            Color::Red => &mut self.left_red_reach,
-            Color::Blue => &mut self.top_blue_reach,
+            GameColor::Player1 => &mut self.left_red_reach,
+            GameColor::Player2 => &mut self.top_blue_reach,
         };
         let is_reach_begin = match player {
-            Color::Red => |_: usize, c: usize| c == 0,
-            Color::Blue => |r: usize, _: usize| r == 0,
+            GameColor::Player1 => |_: usize, c: usize| c == 0,
+            GameColor::Player2 => |r: usize, _: usize| r == 0,
         };
         let is_reach_end = match player {
-            Color::Red => |_: usize, c: usize| c == BOARD_SIZE - 1,
-            Color::Blue => |r: usize, _: usize| r == BOARD_SIZE - 1,
+            GameColor::Player1 => |_: usize, c: usize| c == BOARD_SIZE - 1,
+            GameColor::Player2 => |r: usize, _: usize| r == BOARD_SIZE - 1,
         };
 
         let mut bfs_rqueue: [u8; BOARD_SIZE * BOARD_SIZE] = [0; BOARD_SIZE * BOARD_SIZE];
@@ -179,34 +166,6 @@ impl HexPosition {
         self.turn = self.turn.opposite();
     }
 
-    pub fn get_moved_position(&self, loc: Location) -> HexPosition {
-        assert!(self.is_valid_move(loc));
-        let mut res = self.clone();
-        res.make_move(loc.0, loc.1);
-        return res;
-    }
-
-    pub fn get_legal_moves(&self) -> Vec<Location> {
-        let mut moves = Vec::new();
-        for x in 0..BOARD_SIZE {
-            for y in 0..BOARD_SIZE {
-                if self.board[x][y] == Hexagon::Empty {
-                    moves.push((x, y));
-                }
-            }
-        }
-        return moves;
-    }
-
-    pub fn is_over(&self) -> bool {
-        self.winner != None || self.number_of_empty_tiles == 0
-    }
-
-    pub fn get_winner(&self) -> Option<Color> {
-        assert!(self.is_over());
-        self.winner
-    }
-
     pub fn print(&self) -> () {
         // TODO there's a RUST way to print
         for row_i in 0..BOARD_SIZE {
@@ -220,64 +179,77 @@ impl HexPosition {
     }
 }
 
-pub trait HexPlayer {
-    fn next_move(&mut self, position: &HexPosition) -> Option<Location>;
-}
-
-pub struct HexGame<'a> {
-    pub position: HexPosition,
-
-    player_red: &'a mut dyn HexPlayer,
-    player_blue: &'a mut dyn HexPlayer,
-}
-
-impl<'a> HexGame<'a> {
-    pub fn new(
-        starting_color: Color,
-        player_red: &'a mut dyn HexPlayer,
-        player_blue: &'a mut dyn HexPlayer,
-    ) -> Self {
-        HexGame::from_position(&HexPosition::new(starting_color), player_red, player_blue)
+impl GamePosition for HexPosition {
+    type Game = HexGame;
+    fn get_turn(&self) -> GameColor {
+        self.turn
     }
 
-    pub fn from_position(
-        starting_position: &HexPosition,
-        player_red: &'a mut dyn HexPlayer,
-        player_blue: &'a mut dyn HexPlayer,
-    ) -> Self {
-        Self {
-            position: starting_position.clone(),
-            player_red: player_red,
-            player_blue: player_blue,
-        }
-    }
-
-    /// Returns if turn succeeded
-    pub fn play_next_move(&mut self) -> bool {
-        if self.position.is_over() {
-            return false;
-        }
-        let m = match self.position.get_turn() {
-            Color::Red => self.player_red.next_move(&self.position),
-            Color::Blue => self.player_blue.next_move(&self.position),
-        };
-        match m {
-            None => return false,
-            Some(next_move) => {
-                if !self.position.is_valid_move(next_move) {
-                    return false;
+    fn get_legal_moves(&self) -> Vec<<Self::Game as IGame>::Move> {
+        let mut moves = Vec::new();
+        for x in 0..BOARD_SIZE {
+            for y in 0..BOARD_SIZE {
+                if self.board[x][y] == Hexagon::Empty {
+                    moves.push((x, y));
                 }
-                self.position.make_move(next_move.0, next_move.1);
-                return true;
             }
         }
+        return moves;
     }
 
-    pub fn play_until_over(&mut self) -> Option<Color> {
-        while !self.position.is_over() {
-            self.play_next_move();
+    fn get_moved_position(
+        &self,
+        m: <Self::Game as IGame>::Move,
+    ) -> <Self::Game as IGame>::Position {
+        assert!(self.is_valid_move(m));
+        let mut res = self.clone();
+        res.make_move(m.0, m.1);
+        return res;
+    }
+
+    fn is_over(&self) -> bool {
+        self.winner != None || self.number_of_empty_tiles == 0
+    }
+
+    fn get_winner(&self) -> Option<GameColor> {
+        assert!(self.is_over());
+        self.winner
+    }
+}
+
+pub struct HexGame {}
+
+impl IGame for HexGame {
+    type Position = HexPosition;
+    type Move = Location;
+
+    fn play_until_over(
+        pos: &Self::Position,
+        player1: &mut dyn GamePlayer<Self>,
+        player2: &mut dyn GamePlayer<Self>,
+    ) -> (Self::Position, Option<GameColor>) {
+        let mut position = pos.clone();
+
+        while !position.is_over() {
+            let m = match position.get_turn() {
+                GameColor::Player1 => player1.next_move(&position),
+                GameColor::Player2 => player2.next_move(&position),
+            };
+            match m {
+                None => {
+                    if position.is_over() {
+                        break;
+                    }
+                    eprintln!("player failed to choose a move");
+                    return (position, Some(position.get_turn().opposite()));
+                }
+                Some(next_move) => {
+                    assert!(position.is_valid_move(next_move));
+                    position.make_move(next_move.0, next_move.1);
+                }
+            }
         }
-        return self.position.get_winner();
+        return (position, position.get_winner());
     }
 }
 

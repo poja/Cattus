@@ -1,5 +1,6 @@
 use clap::Parser;
-use hex_backend::hex_game::{Color, HexGame, HexPlayer};
+use hex_backend::game::{IGame, GameColor, GamePlayer};
+use hex_backend::hex_game::{HexGame, HexPosition};
 use hex_backend::uxi::HexPlayerUXI;
 use rand::Rng;
 use std::path::Path;
@@ -46,8 +47,8 @@ fn comapre_engines(
 }
 
 fn compare_players(
-    player1: &mut dyn HexPlayer,
-    player2: &mut dyn HexPlayer,
+    player1: &mut dyn GamePlayer<HexGame>,
+    player2: &mut dyn GamePlayer<HexGame>,
     number_of_games: usize,
     player1_display_name: &String,
     player2_display_name: &String,
@@ -65,15 +66,14 @@ fn compare_players(
     let mut player2_wins = 0;
     for _ in 0..number_of_games {
         let starting_player = match rng.gen::<bool>() {
-            true => Color::Red,
-            false => Color::Blue,
+            true => GameColor::Player1,
+            false => GameColor::Player2,
         };
-        let mut game = HexGame::new(starting_player, player1, player2);
-        match game.play_until_over() {
+        match HexGame::play_until_over(&HexPosition::new(starting_player), player1, player2).1 {
             None => {}
             Some(winner) => match winner {
-                Color::Red => player1_wins += 1,
-                Color::Blue => player2_wins += 1,
+                GameColor::Player1 => player1_wins += 1,
+                GameColor::Player2 => player2_wins += 1,
             },
         };
     }
