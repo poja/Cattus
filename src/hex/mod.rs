@@ -1,5 +1,5 @@
-pub mod game;
 pub mod hex_game;
-pub mod mcts;
 pub mod simple_players;
 pub mod uxi;
+
+mod hex_test;

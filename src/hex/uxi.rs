@@ -1,5 +1,5 @@
-use crate::game::{GameColor, GamePlayer, GamePosition, IGame};
-use crate::hex_game::{HexGame, HexPosition, Hexagon, BOARD_SIZE};
+use crate::game_utils::game::{GameColor, GamePlayer, GamePosition, IGame};
+use crate::hex::hex_game::{HexGame, HexPosition, Hexagon, BOARD_SIZE};
 use std::io::{BufRead, BufReader, Write};
 use std::string::String;
 use std::{io, process, thread, time};

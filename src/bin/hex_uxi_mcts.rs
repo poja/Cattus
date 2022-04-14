@@ -1,6 +1,6 @@
 use clap::Parser;
-use hex_backend::mcts;
-use hex_backend::uxi;
+use rl::game_utils::mcts;
+use rl::hex::uxi;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]

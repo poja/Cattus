@@ -1,5 +1,5 @@
-use crate::game::{GamePlayer, GamePosition, IGame};
-use crate::hex_game::{HexGame, HexPosition, Location};
+use crate::game_utils::game::{GamePlayer, GamePosition, IGame};
+use crate::hex::hex_game::{HexGame, HexPosition, Location};
 use rand::Rng;
 use std::io;
 

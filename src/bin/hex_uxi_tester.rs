@@ -1,7 +1,7 @@
 use clap::Parser;
-use hex_backend::game::{GameColor, GamePlayer, IGame};
-use hex_backend::hex_game::{HexGame, HexPosition};
-use hex_backend::uxi::HexPlayerUXI;
+use rl::game_utils::game::{GameColor, GamePlayer, IGame};
+use rl::hex::hex_game::{HexGame, HexPosition};
+use rl::hex::uxi::HexPlayerUXI;
 use rand::Rng;
 use std::path::Path;
 use std::time::Instant;

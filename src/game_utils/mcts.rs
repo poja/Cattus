@@ -2,8 +2,8 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use rand::prelude::IteratorRandom;
 
-use crate::game::{GameColor, GamePlayer, GamePosition, IGame};
-use crate::simple_players::PlayerRand;
+use crate::game_utils::game::{GameColor, GamePlayer, GamePosition, IGame};
+use crate::hex::simple_players::PlayerRand;
 
 /// Monte Carlo Tree Search (MCTS) implementation
 

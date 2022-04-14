@@ -14,6 +14,7 @@ fn main() {
     // let mut player2 = HexPlayerCmd::new();
     let mut player2 = mcts::MCTSPlayer::new_custom(100, (2 as f32).sqrt());
 
+    println!("Launching game...");
     let start = Instant::now();
     let (final_pos, winner) = HexGame::play_until_over(
         &HexPosition::new(GameColor::Player1),

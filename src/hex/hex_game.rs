@@ -1,4 +1,4 @@
-use crate::game::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
+use crate::game_utils::game::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Hexagon {

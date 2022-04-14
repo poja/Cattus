@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use crate::game::{GameColor, GamePosition};
-    use crate::hex_game::HexPosition;
-    use crate::hex_game::Hexagon;
+    use crate::game_utils::game::{GameColor, GamePosition};
+    use crate::hex::hex_game::HexPosition;
+    use crate::hex::hex_game::Hexagon;
 
     #[test]
     fn short_diagonal_wins() {

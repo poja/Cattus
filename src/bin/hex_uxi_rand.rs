@@ -1,5 +1,5 @@
-use hex_backend::simple_players;
-use hex_backend::uxi;
+use rl::hex::simple_players;
+use rl::hex::uxi;
 
 fn main() {
     let mut player = simple_players::PlayerRand::new();
