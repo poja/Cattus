@@ -41,7 +41,7 @@ pub struct HexPosition {
 }
 
 impl HexPosition {
-    pub fn new(starting_color: GameColor) -> Self {
+    pub fn new_with_starting_color(starting_color: GameColor) -> Self {
         Self {
             board: [[Hexagon::Empty; BOARD_SIZE]; BOARD_SIZE],
             turn: starting_color,
@@ -51,7 +51,7 @@ impl HexPosition {
             winner: None,
         }
     }
-    pub fn from_board(board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE], turn: GameColor) -> Self {
+    pub fn new_from_board(board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE], turn: GameColor) -> Self {
         let mut s = Self {
             board: board,
             turn: turn,
@@ -181,6 +181,9 @@ impl HexPosition {
 
 impl GamePosition for HexPosition {
     type Game = HexGame;
+    fn new() -> Self {
+        HexPosition::new_with_starting_color(GameColor::Player1)
+    }
     fn get_turn(&self) -> GameColor {
         self.turn
     }

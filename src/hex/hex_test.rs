@@ -10,7 +10,7 @@ mod tests {
         let r = Hexagon::Full(GameColor::Player1);
         let b = Hexagon::Full(GameColor::Player2);
 
-        let pos = HexPosition::from_board(
+        let pos = HexPosition::new_from_board(
             [
                 [r, e, e, e, e, e, e, e, e, e, e],
                 [e, r, e, e, e, e, e, e, e, e, e],
@@ -28,7 +28,7 @@ mod tests {
         );
         assert!(pos.get_winner() == Some(GameColor::Player1));
 
-        let pos = HexPosition::from_board(
+        let pos = HexPosition::new_from_board(
             [
                 [b, e, e, e, e, e, e, e, e, e, e],
                 [e, b, e, e, e, e, e, e, e, e, e],
@@ -53,7 +53,7 @@ mod tests {
         let r = Hexagon::Full(GameColor::Player1);
         let b = Hexagon::Full(GameColor::Player2);
 
-        let pos = HexPosition::from_board(
+        let pos = HexPosition::new_from_board(
             [
                 [e, e, e, e, e, e, e, e, e, e, e],
                 [e, r, e, e, e, e, e, e, e, e, e],
@@ -71,7 +71,7 @@ mod tests {
         );
         assert!(!pos.is_over());
 
-        let pos = HexPosition::from_board(
+        let pos = HexPosition::new_from_board(
             [
                 [b, e, e, e, e, e, e, e, e, e, e],
                 [e, b, e, e, e, e, e, e, e, e, e],
@@ -96,7 +96,7 @@ mod tests {
         let r = Hexagon::Full(GameColor::Player1);
         let b = Hexagon::Full(GameColor::Player2);
 
-        let pos = HexPosition::from_board(
+        let pos = HexPosition::new_from_board(
             [
                 [e, e, e, e, e, e, e, e, e, e, r],
                 [e, e, e, e, e, e, e, e, e, r, e],
@@ -114,7 +114,7 @@ mod tests {
         );
         assert!(!pos.is_over());
 
-        let pos = HexPosition::from_board(
+        let pos = HexPosition::new_from_board(
             [
                 [e, e, e, e, e, e, e, e, e, e, b],
                 [e, e, e, e, e, e, e, e, e, b, e],

@@ -1,8 +1,8 @@
 use clap::Parser;
+use rand::Rng;
 use rl::game_utils::game::{GameColor, GamePlayer, IGame};
 use rl::hex::hex_game::{HexGame, HexPosition};
 use rl::hex::uxi::HexPlayerUXI;
-use rand::Rng;
 use std::path::Path;
 use std::time::Instant;
 
@@ -69,7 +69,13 @@ fn compare_players(
             true => GameColor::Player1,
             false => GameColor::Player2,
         };
-        match HexGame::play_until_over(&HexPosition::new(starting_player), player1, player2).1 {
+        match HexGame::play_until_over(
+            &HexPosition::new_with_starting_color(starting_player),
+            player1,
+            player2,
+        )
+        .1
+        {
             None => {}
             Some(winner) => match winner {
                 GameColor::Player1 => player1_wins += 1,

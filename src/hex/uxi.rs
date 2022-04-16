@@ -317,5 +317,5 @@ fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
             return None;
         }
     };
-    return Some(HexPosition::from_board(board, player));
+    return Some(HexPosition::new_from_board(board, player));
 }

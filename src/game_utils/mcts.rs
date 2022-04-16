@@ -173,37 +173,10 @@ impl<Game: IGame> MCTSPlayer<Game> {
         }
     }
 
-    fn get_best_child_move(&self, node_id: NodeIndex<u32>) -> Option<Game::Move> {
-        let edges = self.search_tree.edges(node_id);
-        let edges_with_rewards: Vec<_> = edges
-            .into_iter()
-            .map(|edge| {
-                let child = self.search_tree.node_weight(edge.target()).unwrap();
-                (edge, child.get_expected_reward())
-            })
-            .collect();
-        if edges_with_rewards.len() == 0 {
-            return None;
-        }
-        let best_reward = edges_with_rewards
-            .iter()
-            .max_by(|&x, &y| x.1.partial_cmp(&y.1).unwrap())
-            .unwrap()
-            .1;
-        let edges_with_best_reward = edges_with_rewards.iter().filter_map(|&(edge, reward)| {
-            if reward == best_reward {
-                Some(edge)
-            } else {
-                None
-            }
-        });
-        let chosen_edge = edges_with_best_reward.choose(&mut rand::thread_rng());
-        return Some(chosen_edge.unwrap().weight().clone());
-    }
-}
-
-impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
-    fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
+    pub fn calc_moves_probabilities(
+        &mut self,
+        position: &Game::Position,
+    ) -> Vec<(Game::Move, f32)> {
         // Init search tree with one root node
         assert!(self.search_tree.node_count() == 0);
         let root = MCTSNode::from_position(position);
@@ -211,10 +184,56 @@ impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
 
         // Develop tree
         self.develop_tree(root_id);
-        let m = self.get_best_child_move(root_id);
 
+        let moves_w_exp_reward = self
+            .search_tree
+            .edges(root_id)
+            .into_iter()
+            .map(|edge| {
+                let child = self.search_tree.node_weight(edge.target()).unwrap();
+                (edge.weight(), child.get_expected_reward().exp())
+            })
+            .collect::<Vec<_>>();
+
+        let exp_sum: f32 = moves_w_exp_reward.iter().map(|&(_, exp_r)| exp_r).sum();
+
+        let moves_w_probs = moves_w_exp_reward
+            .iter()
+            .map(|&(m, exp_r)| (*m, exp_r / exp_sum));
+        return moves_w_probs.collect::<Vec<_>>();
+    }
+
+    pub fn choose_move_from_probabilities(
+        &self,
+        moves_probs: &Vec<(Game::Move, f32)>,
+    ) -> Option<Game::Move> {
+        if moves_probs.len() == 0 {
+            return None;
+        }
+
+        let highest_prob = moves_probs
+            .iter()
+            .max_by(|&x, &y| x.1.partial_cmp(&y.1).unwrap())
+            .unwrap()
+            .1;
+        let moves_w_highest_prob =
+            moves_probs.iter().filter_map(
+                |&(m, prob)| {
+                    if prob >= highest_prob {
+                        Some(m)
+                    } else {
+                        None
+                    }
+                },
+            );
+        return moves_w_highest_prob.choose(&mut rand::thread_rng());
+    }
+}
+
+impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
+    fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
+        let moves = self.calc_moves_probabilities(position);
         self.search_tree.clear();
-
-        return m;
+        return self.choose_move_from_probabilities(&moves);
     }
 }
