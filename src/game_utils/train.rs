@@ -35,13 +35,16 @@ impl<'a, Game: IGame> Trainer<'a, Game> {
         Self { encoder: encoder }
     }
 
-    fn generate_data(
+    pub fn generate_data(
         &self,
         player: &mut MCTSPlayer<Game>,
         games_num: u32,
         output_dir: &String,
     ) -> std::io::Result<()> {
-        fs::create_dir(output_dir)?;
+        /* Create output dir if doesn't exists */
+        if !path::Path::new(output_dir).is_dir() {
+            fs::create_dir(output_dir)?;
+        }
         let is_empty = path::PathBuf::from(output_dir).read_dir()?.next().is_none();
         if !is_empty {
             return Err(std::io::Error::new(
@@ -52,6 +55,7 @@ impl<'a, Game: IGame> Trainer<'a, Game> {
         let mut data_idx: u64 = 0;
 
         for _ in 0..games_num {
+            println!("hello there!");
             let mut pos = Game::Position::new();
             let mut pos_move_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> =
                 Vec::new();
@@ -59,12 +63,14 @@ impl<'a, Game: IGame> Trainer<'a, Game> {
             while !pos.is_over() {
                 /* Generate probabilities from MCTS player */
                 let moves = player.calc_moves_probabilities(&pos);
+                player.clear();
                 let m = player.choose_move_from_probabilities(&moves);
 
                 /* Store probabilities */
                 pos_move_probs_pairs.push((pos.clone(), moves));
 
                 /* Advance game position */
+                println!("advancing another step in game");
                 pos = match m {
                     None => {
                         eprintln!("player failed to choose a move");
@@ -88,7 +94,8 @@ impl<'a, Game: IGame> Trainer<'a, Game> {
                     },
                 );
 
-                let filename = format!("d{:#016x}", data_idx);
+                let filename = format!("{}/d{:#016x}.json", output_dir, data_idx);
+                println!("Writing game pos to dick: {}", filename);
                 self.write_data_to_file(data, filename)?;
                 data_idx += 1;
             }
@@ -104,6 +111,7 @@ impl<'a, Game: IGame> Trainer<'a, Game> {
             winner: data.winner
         };
         let json_str = json_obj.dump();
+        println!("hello there!");
         fs::write(filename, json_str)?;
         return Ok(());
     }

@@ -203,6 +203,10 @@ impl<Game: IGame> MCTSPlayer<Game> {
         return moves_w_probs.collect::<Vec<_>>();
     }
 
+    pub fn clear(&mut self) {
+        self.search_tree.clear();
+    }
+
     pub fn choose_move_from_probabilities(
         &self,
         moves_probs: &Vec<(Game::Move, f32)>,
@@ -233,7 +237,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
 impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
         let moves = self.calc_moves_probabilities(position);
-        self.search_tree.clear();
+        self.clear();
         return self.choose_move_from_probabilities(&moves);
     }
 }
