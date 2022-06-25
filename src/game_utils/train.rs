@@ -55,7 +55,6 @@ impl<'a, Game: IGame> Trainer<'a, Game> {
         let mut data_idx: u64 = 0;
 
         for _ in 0..games_num {
-            println!("hello there!");
             let mut pos = Game::Position::new();
             let mut pos_move_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> =
                 Vec::new();
@@ -111,7 +110,6 @@ impl<'a, Game: IGame> Trainer<'a, Game> {
             winner: data.winner
         };
         let json_str = json_obj.dump();
-        println!("hello there!");
         fs::write(filename, json_str)?;
         return Ok(());
     }
