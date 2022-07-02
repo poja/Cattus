@@ -255,25 +255,3 @@ impl IGame for HexGame {
         return (position, position.get_winner());
     }
 }
-
-fn location_neighbors(loc: Location) -> Vec<Location> {
-    // same as neighbors in a 2d space but without (+1, -1) and (-1, +1)
-    let mut candidates: Vec<Location> = vec![
-        (loc.0, loc.1 + 1),
-        (loc.0 + 1, loc.1),
-        (loc.0 + 1, loc.1 + 1),
-    ];
-    if loc.0 > 0 {
-        candidates.push((loc.0 - 1, loc.1));
-    }
-    if loc.1 > 0 {
-        candidates.push((loc.0, loc.1 - 1));
-    }
-    if loc.0 > 0 && loc.1 > 0 {
-        candidates.push((loc.0 - 1, loc.1 - 1));
-    }
-    candidates
-        .into_iter()
-        .filter(|&neighbor| HexPosition::contains(neighbor))
-        .collect()
-}
