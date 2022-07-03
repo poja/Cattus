@@ -12,10 +12,10 @@ impl SimpleEncoder {
 }
 
 impl train::Encoder<hex_game::HexGame> for SimpleEncoder {
-    fn encode_moves(&self, moves: &Vec<(hex_game::Location, f32)>) -> Vec<f32> {
+    fn encode_moves(&self, _moves: &Vec<(hex_game::Location, f32)>) -> Vec<f32> {
         return vec![];
     }
-    fn decode_moves(&self, moves: &Vec<f32>) -> Vec<(hex_game::Location, f32)> {
+    fn decode_moves(&self, _moves: &Vec<f32>) -> Vec<(hex_game::Location, f32)> {
         return vec![];
     }
     fn encode_position(&self, position: &hex_game::HexPosition) -> Vec<f32> {
@@ -36,11 +36,15 @@ impl train::Encoder<hex_game::HexGame> for SimpleEncoder {
     }
 }
 
-pub struct SimpleNetwork {}
+pub struct SimpleNetwork {
+    model_path: String,
+}
 
 impl SimpleNetwork {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(model_path: String) -> Self {
+        Self {
+            model_path: model_path,
+        }
     }
 
     pub fn make_game_prediction(&self, position: &hex_game::HexPosition) -> f32 {
@@ -56,14 +60,15 @@ impl SimpleNetwork {
         let signature_input_parameter_name = "test_in_input";
         let signature_output_parameter_name = "test_out";
 
-        // Initialize save_dir, input tensor, and an empty graph
-        let save_dir = "C:/code/rl/model/m1";
-        let mut graph = Graph::new();
-
         // Load saved model bundle (session state + meta_graph data)
-        let bundle =
-            SavedModelBundle::load(&SessionOptions::new(), &["serve"], &mut graph, save_dir)
-                .expect("Can't load saved model");
+        let mut graph = Graph::new();
+        let bundle = SavedModelBundle::load(
+            &SessionOptions::new(),
+            &["serve"],
+            &mut graph,
+            &self.model_path,
+        )
+        .expect("Can't load saved model");
 
         // Get the session from the loaded model bundle
         let session = &bundle.session;
