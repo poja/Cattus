@@ -1,3 +1,3 @@
 pub mod game;
 pub mod mcts;
-pub mod train;
+pub mod self_play;

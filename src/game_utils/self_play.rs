@@ -26,11 +26,11 @@ impl TrainData {
     }
 }
 
-pub struct Trainer<'a, Game: IGame> {
+pub struct SelfPlayRunner<'a, Game: IGame> {
     encoder: &'a dyn Encoder<Game>,
 }
 
-impl<'a, Game: IGame> Trainer<'a, Game> {
+impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
     pub fn new(encoder: &'a dyn Encoder<Game>) -> Self {
         Self { encoder: encoder }
     }
@@ -43,7 +43,7 @@ impl<'a, Game: IGame> Trainer<'a, Game> {
     ) -> std::io::Result<()> {
         /* Create output dir if doesn't exists */
         if !path::Path::new(output_dir).is_dir() {
-            fs::create_dir(output_dir)?;
+            fs::create_dir_all(output_dir)?;
         }
         let is_empty = path::PathBuf::from(output_dir).read_dir()?.next().is_none();
         if !is_empty {
@@ -113,9 +113,4 @@ impl<'a, Game: IGame> Trainer<'a, Game> {
         fs::write(filename, json_str)?;
         return Ok(());
     }
-
-    fn train_on_data_from_dir(&self, data_dirname: String) -> std::io::Result<()> {
-        return Ok(());
-    }
-
 }

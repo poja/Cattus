@@ -1,5 +1,5 @@
-use crate::game_utils::train::Encoder;
-use crate::game_utils::{game, train};
+use crate::game_utils::self_play::Encoder;
+use crate::game_utils::{game, self_play};
 use crate::hex::hex_game;
 use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
@@ -11,7 +11,7 @@ impl SimpleEncoder {
     }
 }
 
-impl train::Encoder<hex_game::HexGame> for SimpleEncoder {
+impl self_play::Encoder<hex_game::HexGame> for SimpleEncoder {
     fn encode_moves(&self, _moves: &Vec<(hex_game::Location, f32)>) -> Vec<f32> {
         return vec![];
     }

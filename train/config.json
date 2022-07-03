@@ -1,0 +1,11 @@
+{
+    "iterations": 5,
+    "base_model": "C:\\code\\rl\\model\\m2",
+    "mcts_cfg": {
+        "sim_count": 100,
+        "explore_factor": 1.41421
+    },
+    "self_play_games_num": 10,
+    "data_dir": "C:\\code\\rl\\train\\data",
+    "self_play_exec": "C:\\code\\rl\\target\\release\\self_play_runner.exe"
+}
