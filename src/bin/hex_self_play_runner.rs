@@ -1,6 +1,6 @@
 use clap::Parser;
 use rl::game_utils::{mcts, self_play};
-use rl::network::simple_network;
+use rl::hex::network::simple;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -20,7 +20,7 @@ struct Args {
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
     // TODO add arg for network type
-    let mut encoder = simple_network::SimpleEncoder::new();
+    let mut encoder = simple::SimpleEncoder::new();
     let trainer = self_play::SelfPlayRunner::new(&mut encoder);
     // TODO pass model into mcts player
     let mut value_func = mcts::ValueFunctionRand::new();
