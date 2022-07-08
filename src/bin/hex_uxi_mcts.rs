@@ -13,7 +13,9 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let mut player = mcts::MCTSPlayer::new_custom(args.sim_count, args.explore_param_c);
+    let mut value_func = mcts::ValueFunctionRand::new();
+    let mut player =
+        mcts::MCTSPlayer::new_custom(args.sim_count, args.explore_param_c, &mut value_func);
     let mut engine = uxi::UXIEngine::new(&mut player);
     engine.run();
 }

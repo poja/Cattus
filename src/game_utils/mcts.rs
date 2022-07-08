@@ -35,22 +35,28 @@ impl<Position: GamePosition> MCTSNode<Position> {
     }
 }
 
-pub struct MCTSPlayer<Game: IGame> {
+pub struct MCTSPlayer<'a, Game: IGame> {
     search_tree: DiGraph<MCTSNode<Game::Position>, Game::Move>,
 
     exploration_param_c: f32,
     simulations_per_move: u32,
+    value_func: &'a mut dyn ValueFunction<Game>,
 }
 
-impl<Game: IGame> MCTSPlayer<Game> {
-    pub fn new() -> Self {
-        MCTSPlayer::new_custom(100, (2 as f32).sqrt())
+impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
+    pub fn new(value_func: &'a mut dyn ValueFunction<Game>) -> Self {
+        MCTSPlayer::new_custom(100, (2 as f32).sqrt(), value_func)
     }
-    pub fn new_custom(simulations_per_move: u32, exploration_param_c: f32) -> Self {
+    pub fn new_custom(
+        simulations_per_move: u32,
+        exploration_param_c: f32,
+        value_func: &'a mut dyn ValueFunction<Game>,
+    ) -> Self {
         Self {
             search_tree: DiGraph::new(),
             exploration_param_c: exploration_param_c,
             simulations_per_move: simulations_per_move,
+            value_func: value_func,
         }
     }
 
@@ -123,18 +129,16 @@ impl<Game: IGame> MCTSPlayer<Game> {
         let parent_pos = parent.position;
         for m in parent.position.get_legal_moves() {
             let leaf_pos = parent_pos.get_moved_position(m);
-            let leaf_id = self
-                .search_tree
-                .add_node(MCTSNode::from_position(leaf_pos));
+            let leaf_id = self.search_tree.add_node(MCTSNode::from_position(leaf_pos));
             self.search_tree.add_edge(parent_id, leaf_id, m);
         }
     }
 
-    fn simulate(&self, path_to_selection: &Vec<NodeIndex<u32>>) -> f32 {
+    fn simulate(&mut self, path_to_selection: &Vec<NodeIndex<u32>>) -> f32 {
         let node_id: NodeIndex = *path_to_selection.last().unwrap();
         let node = self.search_tree.node_weight(node_id).unwrap();
 
-        let score = MCTSPlayer::<Game>::simulate_playout(&node.position);
+        let score = self.value_func.evaluate(&node.position);
 
         let root_id: NodeIndex = *path_to_selection.last().unwrap();
         let root = self.search_tree.node_weight(root_id).unwrap();
@@ -143,28 +147,6 @@ impl<Game: IGame> MCTSPlayer<Game> {
         } else {
             return 1.0 - score;
         }
-    }
-
-    fn simulate_playout(pos: &Game::Position) -> f32 {
-        let winner;
-        if pos.is_over() {
-            winner = pos.get_winner();
-        } else {
-            // Play randomly and return the simulation game result
-            let mut player1 = PlayerRand::new();
-            let mut player2 = PlayerRand::new();
-            winner = Game::play_until_over(pos, &mut player1, &mut player2).1
-        }
-        return match winner {
-            Some(color) => {
-                if color == pos.get_turn() {
-                    1.0
-                } else {
-                    0.0
-                }
-            }
-            None => 0.5,
-        };
     }
 
     fn backpropagate(&mut self, path: &Vec<NodeIndex<u32>>, score: f32) {
@@ -238,10 +220,44 @@ impl<Game: IGame> MCTSPlayer<Game> {
     }
 }
 
-impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
+impl<'a, Game: IGame> GamePlayer<Game> for MCTSPlayer<'a, Game> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
         let moves = self.calc_moves_probabilities(position);
         self.clear();
         return self.choose_move_from_probabilities(&moves);
+    }
+}
+
+pub trait ValueFunction<Game: IGame> {
+    fn evaluate(&mut self, position: &Game::Position) -> f32;
+}
+
+pub struct ValueFunctionRand {}
+impl ValueFunctionRand {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
+    fn evaluate(&mut self, position: &Game::Position) -> f32 {
+        let winner = if position.is_over() {
+            position.get_winner()
+        } else {
+            // Play randomly and return the simulation game result
+            let mut player1 = PlayerRand::new();
+            let mut player2 = PlayerRand::new();
+            Game::play_until_over(position, &mut player1, &mut player2).1
+        };
+        return match winner {
+            Some(color) => {
+                if color == position.get_turn() {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            None => 0.5,
+        };
     }
 }

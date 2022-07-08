@@ -23,6 +23,8 @@ fn main() -> std::io::Result<()> {
     let mut encoder = simple_network::SimpleEncoder::new();
     let trainer = self_play::SelfPlayRunner::new(&mut encoder);
     // TODO pass model into mcts player
-    let mut player = mcts::MCTSPlayer::new_custom(args.sim_count, args.explore_factor);
+    let mut value_func = mcts::ValueFunctionRand::new();
+    let mut player =
+        mcts::MCTSPlayer::new_custom(args.sim_count, args.explore_factor, &mut value_func);
     return trainer.generate_data(&mut player, args.games_num, &args.out_dir);
 }
