@@ -1,7 +1,8 @@
+use crate::game_utils::mcts::ValueFunction;
 use crate::game_utils::self_play::Encoder;
 use crate::game_utils::{game, self_play};
-use crate::hex::hex_game;
-use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
+use crate::hex::hex_game::{self, HexGame, HexPosition};
+use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
 pub struct SimpleEncoder {}
 
@@ -37,23 +38,14 @@ impl self_play::Encoder<hex_game::HexGame> for SimpleEncoder {
 }
 
 pub struct SimpleNetwork {
-    model_path: String,
+    bundle: SavedModelBundle,
+    encoder: SimpleEncoder,
+    input_op: Operation,
+    output_op: Operation,
 }
 
 impl SimpleNetwork {
     pub fn new(model_path: String) -> Self {
-        Self {
-            model_path: model_path,
-        }
-    }
-
-    pub fn make_game_prediction(&self, position: &hex_game::HexPosition) -> f32 {
-        let encoder = SimpleEncoder::new();
-        let encoded_position = encoder.encode_position(position);
-        let tensor: Tensor<f32> = Tensor::new(&[1, 121])
-            .with_values(&encoded_position)
-            .expect("Can't create tensor");
-
         // In this file test_in_input is being used while in the python script,
         // that generates the saved model from Keras model it has a name "test_in".
         // For multiple inputs _input is not being appended to signature input parameter name.
@@ -62,16 +54,9 @@ impl SimpleNetwork {
 
         // Load saved model bundle (session state + meta_graph data)
         let mut graph = Graph::new();
-        let bundle = SavedModelBundle::load(
-            &SessionOptions::new(),
-            &["serve"],
-            &mut graph,
-            &self.model_path,
-        )
-        .expect("Can't load saved model");
-
-        // Get the session from the loaded model bundle
-        let session = &bundle.session;
+        let bundle =
+            SavedModelBundle::load(&SessionOptions::new(), &["serve"], &mut graph, &model_path)
+                .expect("Can't load saved model");
 
         // Get signature metadata from the model bundle
         let signature = bundle
@@ -93,20 +78,35 @@ impl SimpleNetwork {
             .operation_by_name_required(&output_info.name().name)
             .unwrap();
 
-        // Manages inputs and outputs for the execution of the graph
+        Self {
+            bundle: bundle,
+            encoder: SimpleEncoder::new(),
+            input_op: input_op,
+            output_op: output_op,
+        }
+    }
+
+    pub fn evaluate_position(&self, position: &hex_game::HexPosition) -> f32 {
+        let encoded_position = self.encoder.encode_position(position);
+        let input: Tensor<f32> = Tensor::new(&[1, 121])
+            .with_values(&encoded_position)
+            .expect("Can't create input tensor");
+
         let mut args = SessionRunArgs::new();
-        args.add_feed(&input_op, 0, &tensor); // Add any inputs
+        args.add_feed(&self.input_op, 0, &input);
+        let output = args.request_fetch(&self.output_op, 0);
 
-        let out = args.request_fetch(&output_op, 0); // Request outputs
-
-        // Run model
-        session
-            .run(&mut args) // Pass to session to run
+        self.bundle
+            .session
+            .run(&mut args)
             .expect("Error occurred during calculations");
 
-        // Fetch outputs after graph execution
-        let out_res: f32 = args.fetch(out).unwrap()[0];
-        println!("Results: {:?}", out_res);
-        return out_res;
+        return args.fetch(output).unwrap()[0];
+    }
+}
+
+impl ValueFunction<HexGame> for SimpleNetwork {
+    fn evaluate(&mut self, position: &HexPosition) -> f32 {
+        return self.evaluate_position(position);
     }
 }

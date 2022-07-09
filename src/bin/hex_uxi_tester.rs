@@ -116,8 +116,8 @@ struct Args {
  * Running example:
  *
  * .\target\debug\uxi_tester.exe
- *      --engine1 .\target\debug\uxi_mcts.exe
  *      --engine2 .\target\debug\uxi_rand.exe
+ *      --engine1 .\target\debug\uxi_mcts.exe --engine1-params " --sim-count 600 --explore-param-c 10 --network .\model\m1"
  *
  * Another example:
  * ./target/release/uxi_tester
