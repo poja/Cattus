@@ -130,26 +130,27 @@ fn main() {
     if args.workdir == "_CURRENT_DIR_" {
         args.workdir = String::from(std::env::current_dir().unwrap().to_str().unwrap());
     }
-    let parse_engine_args = |engine_args_str: &String| -> Option<Vec<String>> {
+    let parse_engine_args = |engine_args_str0: String| -> Option<Vec<String>> {
+        let mut engine_args_str = engine_args_str0;
         if engine_args_str.len() == 0 {
             return Some(vec![]);
         }
-        if !(engine_args_str.len() >= 2
-            && engine_args_str.starts_with("\"")
-            && engine_args_str.ends_with("\""))
-        {
-            eprintln!("Engine args must be wrapper with \"_args_\"");
-            return None;
+        if engine_args_str.starts_with("\"") {
+            engine_args_str = engine_args_str[1..engine_args_str.len()].to_string();
+        }
+        if engine_args_str.ends_with("\"") {
+            engine_args_str = engine_args_str[0..engine_args_str.len() - 1].to_string();
         }
         Some(
-            engine_args_str[1..engine_args_str.len() - 1]
+            engine_args_str
                 .split(" ")
+                .filter(|s| -> bool { s.len() > 0 })
                 .map(|s| -> String { String::from(s) })
                 .collect(),
         )
     };
-    let engine1_params = parse_engine_args(&args.engine1_params).unwrap();
-    let engine2_params = parse_engine_args(&args.engine2_params).unwrap();
+    let engine1_params = parse_engine_args(args.engine1_params).unwrap();
+    let engine2_params = parse_engine_args(args.engine2_params).unwrap();
 
     comapre_engines(
         &args.engine1,

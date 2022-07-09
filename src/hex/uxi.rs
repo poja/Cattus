@@ -43,9 +43,14 @@ impl HexPlayerUXI {
 
     pub fn start(&mut self, engine_params: &Vec<String>) -> bool {
         if self.process.is_some() {
-            println!("Process is already launched");
+            println!("[UXIPlayer] Process is already launched");
             return false;
         }
+
+        println!(
+            "[UXIPlayer] launching engine: {} {:?}",
+            self.exe_filename, engine_params
+        );
 
         // assert!(self.err_file.is_none());
         // match File::create(self.err_filename) {
@@ -67,7 +72,7 @@ impl HexPlayerUXI {
             .spawn()
         {
             Err(error) => {
-                eprintln!("Failed to launch process: {}", error);
+                eprintln!("[UXIPlayer] Failed to launch process: {}", error);
                 None
             }
             Ok(process) => Some(process),
@@ -75,6 +80,7 @@ impl HexPlayerUXI {
         if self.process.is_none() {
             return false;
         }
+
         let r = self.receive_command();
         if r.is_none() {
             return false;
@@ -86,8 +92,8 @@ impl HexPlayerUXI {
         }
         match response[0] {
             "ready" => return true,
-            unknown_cmd => {
-                eprintln!("Unknown command: {}", unknown_cmd);
+            _ => {
+                eprintln!("[UXIPlayer] Unknown command: {:?}", response);
                 return false;
             }
         };
@@ -102,12 +108,12 @@ impl HexPlayerUXI {
             let mut kill_needed = false;
             match self.process.as_mut().unwrap().try_wait() {
                 Err(error) => {
-                    eprintln!("Failed to get engine process status: {}", error);
+                    eprintln!("[UXIPlayer] Failed to get engine process status: {}", error);
                     kill_needed = true;
                 }
                 Ok(status) => match status {
                     None => {
-                        eprintln!("Engine process ignored 'quit' command");
+                        eprintln!("[UXIPlayer] Engine process ignored 'quit' command");
                         kill_needed = true;
                     }
                     Some(_) => { /* engine quit by it's own */ }
@@ -116,7 +122,7 @@ impl HexPlayerUXI {
             if kill_needed {
                 /* don't be nice */
                 match self.process.as_mut().unwrap().kill() {
-                    Err(error) => eprintln!("Failed to kill process: {}", error),
+                    Err(error) => eprintln!("[UXIPlayer] Failed to kill process: {}", error),
                     Ok(_) => {}
                 }
             }
@@ -126,15 +132,13 @@ impl HexPlayerUXI {
 
     fn send_command(&mut self, cmd: String) {
         if self.process.is_none() {
-            eprintln!("Engine was not started.");
+            eprintln!("[UXIPlayer] Engine was not started.");
             return;
         }
         let process = self.process.as_mut().unwrap();
         let engine_stdin = process.stdin.as_mut().unwrap();
         match engine_stdin.write((String::from(cmd.trim()) + "\n").as_bytes()) {
-            Err(error) => {
-                eprintln!("Failed to pass command: {}", error);
-            }
+            Err(error) => eprintln!("[UXIPlayer] Failed to pass command: {}", error),
             Ok(_) => {}
         }
         drop(engine_stdin);
@@ -142,7 +146,7 @@ impl HexPlayerUXI {
 
     fn receive_command(&mut self) -> Option<String> {
         if self.process.is_none() {
-            eprintln!("Engine was not started.");
+            eprintln!("[UXIPlayer] Engine was not started.");
             return None;
         }
         let process = self.process.as_mut().unwrap();
@@ -151,7 +155,7 @@ impl HexPlayerUXI {
 
         match engine_stdout.read_line(&mut output_line) {
             Err(error) => {
-                eprintln!("Failed to read output from engine: {}", error);
+                eprintln!("[UXIPlayer] Failed to read output from engine: {}", error);
                 return None;
             }
             Ok(_) => {
@@ -182,24 +186,24 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
         match response[0] {
             "move" => {
                 if response.len() != 2 {
-                    eprintln!("Expected \"move r,c\" format: \"{}\"", resp);
+                    eprintln!("[UXIPlayer] Expected \"move r,c\" format: \"{}\"", resp);
                     return None;
                 }
                 let m_str: Vec<_> = response[1].split(",").collect();
                 if m_str.len() != 2 {
-                    eprintln!("Expected \"move r,c\" format: \"{}\"", resp);
+                    eprintln!("[UXIPlayer] Expected \"move r,c\" format: \"{}\"", resp);
                     return None;
                 }
                 let r = match m_str[0].parse::<usize>() {
                     Err(error) => {
-                        eprintln!("Failed to parse row index: {}", error);
+                        eprintln!("[UXIPlayer] Failed to parse row index: {}", error);
                         return None;
                     }
                     Ok(row) => row,
                 };
                 let c = match m_str[1].parse::<usize>() {
                     Err(error) => {
-                        eprintln!("Failed to parse column index: {}", error);
+                        eprintln!("[UXIPlayer] Failed to parse column index: {}", error);
                         return None;
                     }
                     Ok(column) => column,
@@ -207,7 +211,7 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
                 return Some((r, c));
             }
             unknown_cmd => {
-                eprintln!("Unknown command: {}", unknown_cmd);
+                eprintln!("[UXIPlayer] Unknown command: {}", unknown_cmd);
                 return None;
             }
         };
@@ -229,7 +233,7 @@ impl<'a> UXIEngine<'a> {
             let mut line = String::new();
             io::stdin()
                 .read_line(&mut line)
-                .expect("failed to read input");
+                .expect("[UXIEngine] failed to read input");
             let args: Vec<_> = line.split_whitespace().collect();
 
             if args.is_empty() {
@@ -238,14 +242,14 @@ impl<'a> UXIEngine<'a> {
             match args[0] {
                 "next_move" => {
                     if args.len() != 3 {
-                        eprintln!("Expected position and color for next_move command.");
+                        eprintln!("[UXIEngine] Expected position and color for next_move command.");
                         continue;
                     }
                     let pos_str = args[1];
                     let color_str = args[2];
                     match uxi_to_position(pos_str, color_str) {
                         None => {
-                            eprintln!("Failed to parse position.");
+                            eprintln!("[UXIEngine] Failed to parse position.");
                             continue;
                         }
                         Some(pos) => {
@@ -260,7 +264,7 @@ impl<'a> UXIEngine<'a> {
                     break;
                 }
                 unknown_cmd => {
-                    eprintln!("Unknown command: {}", unknown_cmd);
+                    eprintln!("[UXIEngine] Unknown command: {}", unknown_cmd);
                 }
             }
         }
