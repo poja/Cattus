@@ -93,7 +93,7 @@ impl HexPlayerUXI {
         match response[0] {
             "ready" => return true,
             _ => {
-                eprintln!("[UXIPlayer] Unknown command: {:?}", response);
+                eprintln!("[UXIPlayer] Unexpected command: {:?} (expected ready)", response);
                 return false;
             }
         };

@@ -115,14 +115,14 @@ struct Args {
 /**
  * Running example:
  *
- * .\target\debug\uxi_tester.exe
- *      --engine2 .\target\debug\uxi_rand.exe
- *      --engine1 .\target\debug\uxi_mcts.exe --engine1-params " --sim-count 600 --explore-param-c 10 --network .\model\m1"
+ * .\target\debug\hex_uxi_tester.exe
+ *      --engine2 .\target\debug\hex_uxi_rand.exe
+ *      --engine1 .\target\debug\hex_uxi_mcts.exe --engine1-params " --sim-count 600 --explore-param-c 10 --network .\model\m1"
  *
  * Another example:
- * ./target/release/uxi_tester
- *      --engine1 ./target/release/uxi_mcts --engine1-params \"--sim-count\ 600\ --explore-param-c\ 10\"
- *      --engine2 ./target/release/uxi_mcts --engine2-params \"--sim-count\ 1500\"
+ * ./target/release/hex_uxi_tester
+ *      --engine1 ./target/release/hex_uxi_mcts --engine1-params \"--sim-count\ 600\ --explore-param-c\ 10\"
+ *      --engine2 ./target/release/hex_uxi_mcts --engine2-params \"--sim-count\ 1500\"
  */
 
 fn main() {

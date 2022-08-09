@@ -1,6 +1,8 @@
+use itertools::Itertools;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
-use rand::prelude::IteratorRandom;
+use rand::distributions::WeightedIndex;
+use rand::prelude::*;
 
 use crate::game_utils::game::{GamePlayer, GamePosition, IGame};
 use crate::hex::simple_players::PlayerRand;
@@ -201,22 +203,29 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
             return None;
         }
 
-        let highest_prob = moves_probs
+        let temperature = 2.0; /* TODO adjustable param */
+        let probabilities = moves_probs.iter().map(|&x| x.1 * temperature).collect_vec();
+        let highest_prob = *probabilities
             .iter()
-            .max_by(|&x, &y| x.1.partial_cmp(&y.1).unwrap())
-            .unwrap()
-            .1;
-        let moves_w_highest_prob =
-            moves_probs.iter().filter_map(
-                |&(m, prob)| {
-                    if prob >= highest_prob {
-                        Some(m)
-                    } else {
-                        None
-                    }
-                },
-            );
-        return moves_w_highest_prob.choose(&mut rand::thread_rng());
+            .max_by(|&p1, &p2| p1.partial_cmp(p2).unwrap())
+            .unwrap();
+
+        /* Avoid exponent overflow */
+        let val_shift = if highest_prob < 15.0 {
+            0.0
+        } else {
+            highest_prob - 10.0
+        };
+        let probabilities = probabilities
+            .iter()
+            .map(|x| (x - val_shift).exp())
+            .collect_vec();
+
+        /* Actual softmax */
+        let probs_sum: f32 = probabilities.iter().sum();
+        let probabilities = probabilities.iter().map(|p| p / probs_sum).collect_vec();
+        let distribution = WeightedIndex::new(&probabilities).unwrap();
+        return Some(moves_probs[distribution.sample(&mut rand::thread_rng())].0);
     }
 }
 
