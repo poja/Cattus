@@ -81,6 +81,31 @@ impl HexPosition {
         return s;
     }
 
+    pub fn flip_of(pos: &HexPosition) -> Self {
+        let mut flipped_pos = Self {
+            board: [[Hexagon::Empty; BOARD_SIZE]; BOARD_SIZE],
+            turn: pos.turn.opposite(),
+            left_red_reach: [[false; BOARD_SIZE]; BOARD_SIZE],
+            top_blue_reach: [[false; BOARD_SIZE]; BOARD_SIZE],
+            number_of_empty_tiles: pos.number_of_empty_tiles,
+            winner: match pos.winner {
+                Some(w) => Some(w.opposite()),
+                None => None
+            },
+        };
+        for r in 0..BOARD_SIZE {
+            for c in 0..BOARD_SIZE {
+                flipped_pos.board[r][c] = match pos.board[c][r] {
+                    Hexagon::Full(p) => Hexagon::Full(p.opposite()),
+                    Hexagon::Empty => Hexagon::Empty,
+                };
+                flipped_pos.left_red_reach[r][c] = pos.top_blue_reach[c][r];
+                flipped_pos.top_blue_reach[r][c] = pos.left_red_reach[c][r];
+            }
+        }
+        return flipped_pos;
+    }
+
     pub fn contains(loc: Location) -> bool {
         loc.0 < BOARD_SIZE && loc.1 < BOARD_SIZE
     }

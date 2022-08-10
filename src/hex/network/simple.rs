@@ -1,3 +1,4 @@
+use crate::game_utils::game::GamePosition;
 use crate::game_utils::mcts::ValueFunction;
 use crate::game_utils::self_play::Encoder;
 use crate::game_utils::{game, self_play};
@@ -87,6 +88,15 @@ impl SimpleNetwork {
     }
 
     pub fn evaluate_position(&self, position: &hex_game::HexPosition) -> f32 {
+        if position.get_turn() == game::GameColor::Player1 {
+            return self.evaluate_position_impl(position);
+        } else {
+            let flipped_pos = hex_game::HexPosition::flip_of(position);
+            return -self.evaluate_position_impl(&flipped_pos);
+        }
+    }
+
+    fn evaluate_position_impl(&self, position: &hex_game::HexPosition) -> f32 {
         let encoded_position = self.encoder.encode_position(position);
         let input: Tensor<f32> = Tensor::new(&[1, 121])
             .with_values(&encoded_position)
