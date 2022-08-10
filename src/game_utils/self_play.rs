@@ -12,14 +12,16 @@ pub trait Encoder<Game: IGame> {
 
 pub struct TrainData {
     pos: Vec<f32>,
+    turn: i8,
     moves_probabilities: Vec<f32>,
     winner: i8,
 }
 
 impl TrainData {
-    pub fn new(pos: Vec<f32>, moves_probabilities: Vec<f32>, winner: i8) -> Self {
+    pub fn new(pos: Vec<f32>, turn: i8, moves_probabilities: Vec<f32>, winner: i8) -> Self {
         Self {
             pos: pos,
+            turn: turn,
             moves_probabilities: moves_probabilities,
             winner: winner,
         }
@@ -83,6 +85,10 @@ impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
             for pos_move_probs_pair in pos_move_probs_pairs {
                 let data = TrainData::new(
                     self.encoder.encode_position(&pos_move_probs_pair.0),
+                    match pos_move_probs_pair.0.get_turn() {
+                        GameColor::Player1 => 1,
+                        GameColor::Player2 => -1,
+                    },
                     self.encoder.encode_moves(&pos_move_probs_pair.1),
                     match winner {
                         None => 0,
@@ -106,6 +112,7 @@ impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
     fn write_data_to_file(&self, data: TrainData, filename: String) -> std::io::Result<()> {
         let json_obj = json::object! {
             position: data.pos,
+            turn: data.turn,
             moves_probabilities: data.moves_probabilities,
             winner: data.winner
         };

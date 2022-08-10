@@ -33,7 +33,6 @@ impl self_play::Encoder<hex_game::HexGame> for SimpleEncoder {
                 });
             }
         }
-
         return vec;
     }
 }
