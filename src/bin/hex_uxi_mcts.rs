@@ -1,7 +1,7 @@
 use clap::Parser;
 use rl::game_utils::mcts::{self, ValueFunction};
 use rl::hex::hex_game::HexGame;
-use rl::hex::network::simple::SimpleNetwork;
+use rl::hex::net::scalar_value_net::SimpleNetwork;
 use rl::hex::uxi;
 
 #[derive(Parser, Debug)]
