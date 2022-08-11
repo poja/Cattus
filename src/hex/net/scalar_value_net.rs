@@ -1,9 +1,10 @@
-use crate::game_utils::game::GamePosition;
+use crate::game_utils::game::{IGame, GamePosition};
 use crate::game_utils::mcts::ValueFunction;
 use crate::game_utils::self_play::Encoder;
 use crate::game_utils::{game, self_play};
 use crate::hex::hex_game::{self, HexGame, HexPosition};
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
+use itertools::Itertools;
 
 pub struct SimpleEncoder {}
 
@@ -37,20 +38,20 @@ impl self_play::Encoder<hex_game::HexGame> for SimpleEncoder {
     }
 }
 
-pub struct SimpleNetwork {
+pub struct ScalarValNet {
     bundle: SavedModelBundle,
     encoder: SimpleEncoder,
     input_op: Operation,
     output_op: Operation,
 }
 
-impl SimpleNetwork {
+impl ScalarValNet {
     pub fn new(model_path: String) -> Self {
-        // In this file test_in_input is being used while in the python script,
-        // that generates the saved model from Keras model it has a name "test_in".
+        // In this file in_position_input is being used while in the python script,
+        // that generates the saved model from Keras model it has a name "in_position".
         // For multiple inputs _input is not being appended to signature input parameter name.
-        let signature_input_parameter_name = "test_in_input";
-        let signature_output_parameter_name = "test_out";
+        let signature_input_parameter_name = "in_position_input";
+        let signature_output_parameter_name = "out_value";
 
         // Load saved model bundle (session state + meta_graph data)
         let mut graph = Graph::new();
@@ -86,16 +87,18 @@ impl SimpleNetwork {
         }
     }
 
-    pub fn evaluate_position(&self, position: &hex_game::HexPosition) -> f32 {
+    pub fn evaluate_position(&self, position: &hex_game::HexPosition) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
         if position.get_turn() == game::GameColor::Player1 {
             return self.evaluate_position_impl(position);
         } else {
             let flipped_pos = hex_game::HexPosition::flip_of(position);
-            return -self.evaluate_position_impl(&flipped_pos);
+            let res = self.evaluate_position_impl(&flipped_pos);
+            /* Flip scalar value */
+            return (-res.0, res.1);
         }
     }
 
-    fn evaluate_position_impl(&self, position: &hex_game::HexPosition) -> f32 {
+    fn evaluate_position_impl(&self, position: &hex_game::HexPosition) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
         let encoded_position = self.encoder.encode_position(position);
         let input: Tensor<f32> = Tensor::new(&[1, 121])
             .with_values(&encoded_position)
@@ -110,12 +113,20 @@ impl SimpleNetwork {
             .run(&mut args)
             .expect("Error occurred during calculations");
 
-        return args.fetch(output).unwrap()[0];
+        let val = args.fetch(output).unwrap()[0];
+
+        /* We don't have anything smart to say per move */
+        /* Assign uniform probabilities to all legal moves */
+        let moves = position.get_legal_moves();
+        let move_prob = 1.0 / moves.len() as f32;
+        let moves_probs = moves.iter().map(|m| (*m, move_prob)).collect_vec();
+
+        return (val, moves_probs);
     }
 }
 
-impl ValueFunction<HexGame> for SimpleNetwork {
-    fn evaluate(&mut self, position: &HexPosition) -> f32 {
+impl ValueFunction<HexGame> for ScalarValNet {
+    fn evaluate(&mut self, position: &HexPosition) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
         return self.evaluate_position(position);
     }
 }

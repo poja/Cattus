@@ -1,7 +1,7 @@
 use clap::Parser;
 use rl::game_utils::mcts::{self, ValueFunction};
 use rl::hex::hex_game::HexGame;
-use rl::hex::net::scalar_value_net::SimpleNetwork;
+use rl::hex::net::scalar_value_net::ScalarValNet;
 use rl::hex::uxi;
 
 #[derive(Parser, Debug)]
@@ -25,7 +25,7 @@ fn main() {
         value_func_rand = mcts::ValueFunctionRand::new();
         value_func = &mut value_func_rand;
     } else {
-        value_func_net = SimpleNetwork::new(args.network);
+        value_func_net = ScalarValNet::new(args.network);
         value_func = &mut value_func_net;
     }
 

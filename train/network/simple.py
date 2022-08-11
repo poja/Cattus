@@ -18,9 +18,9 @@ import random
 
 def create_model():
     model = Sequential()
-    model.add(Dense(121, activation='relu', name="test_in",
+    model.add(Dense(121, activation='relu', name="in_position",
               input_dim=121))
-    model.add(Dense(1, activation='tanh', name="test_out"))
+    model.add(Dense(1, activation='tanh', name="out_value"))
 
     opt = optimizers.Adam()
     model.compile(optimizer=opt, loss='mean_squared_error',

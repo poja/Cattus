@@ -12,6 +12,10 @@ use crate::hex::simple_players::PlayerRand;
 struct MCTSNode<Position: GamePosition> {
     position: Position,
 
+    /// The initial score calculated for this node.
+    /// In range [0, 1], "probability"
+    init_score: f32,
+
     /// This is the variable n from UCT formula
     simulations_n: u32,
 
@@ -21,9 +25,10 @@ struct MCTSNode<Position: GamePosition> {
 }
 
 impl<Position: GamePosition> MCTSNode<Position> {
-    pub fn from_position(pos: Position) -> Self {
+    pub fn from_position(pos: Position, init_score: f32) -> Self {
         Self {
             position: pos,
+            init_score: init_score,
             simulations_n: 0,
             score_w: 0.0,
         }
@@ -67,15 +72,15 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
             /* Select a leaf node */
             let path_to_selection = self.select(root_id);
 
-            /* Expand leaf */
+            /* Run value function once to obtain "simulation" value and initial children scores (probabilities) */
             let leaf_id: NodeIndex = *path_to_selection.last().unwrap();
-            self.create_children(leaf_id);
+            let eval = self.simulate(leaf_id);
 
-            /* Simulate a single time from leaf */
-            let score = self.simulate(&path_to_selection);
+            /* Expand leaf */
+            self.create_children(leaf_id, eval.1);
 
             /* back propagate the score to the parents */
-            self.backpropagate(&path_to_selection, score)
+            self.backpropagate(&path_to_selection, eval.0)
         }
     }
 
@@ -115,7 +120,7 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
         child: &MCTSNode<Game::Position>,
     ) -> f32 {
         if child.simulations_n == 0 {
-            return f32::MAX;
+            return f32::MAX; // TODO
         }
         let exploit = (child.score_w as f32) / (child.simulations_n as f32);
         let explore = self.exploration_param_c
@@ -123,32 +128,23 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
         return exploit + explore;
     }
 
-    fn create_children(&mut self, parent_id: NodeIndex<u32>) {
+    fn create_children(&mut self, parent_id: NodeIndex<u32>, per_move_init_score: Vec<(Game::Move, f32)>) {
         let parent = self.search_tree.node_weight(parent_id).unwrap();
         if parent.position.is_over() {
             return;
         }
         let parent_pos = parent.position;
-        for m in parent.position.get_legal_moves() {
+        assert!(parent.position.get_legal_moves() == per_move_init_score.iter().map(|(m, p)| *m).collect_vec());
+        for (m, p) in per_move_init_score {
             let leaf_pos = parent_pos.get_moved_position(m);
-            let leaf_id = self.search_tree.add_node(MCTSNode::from_position(leaf_pos));
+            let leaf_id = self.search_tree.add_node(MCTSNode::from_position(leaf_pos, p));
             self.search_tree.add_edge(parent_id, leaf_id, m);
         }
     }
 
-    fn simulate(&mut self, path_to_selection: &Vec<NodeIndex<u32>>) -> f32 {
-        let node_id: NodeIndex = *path_to_selection.last().unwrap();
-        let node = self.search_tree.node_weight(node_id).unwrap();
-
-        let score = self.value_func.evaluate(&node.position);
-
-        let root_id: NodeIndex = *path_to_selection.last().unwrap();
-        let root = self.search_tree.node_weight(root_id).unwrap();
-        if root.position.get_turn() == node.position.get_turn() {
-            return score;
-        } else {
-            return 1.0 - score;
-        }
+    fn simulate(&mut self, leaf_id: NodeIndex) -> (f32, Vec<(Game::Move, f32)>) {
+        let leaf = self.search_tree.node_weight(leaf_id).unwrap();
+        return self.value_func.evaluate(&leaf.position);
     }
 
     fn backpropagate(&mut self, path: &Vec<NodeIndex<u32>>, score: f32) {
@@ -167,7 +163,7 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
     ) -> Vec<(Game::Move, f32)> {
         // Init search tree with one root node
         assert!(self.search_tree.node_count() == 0);
-        let root = MCTSNode::from_position(*position);
+        let root = MCTSNode::from_position(*position, 1.0);
         let root_id = self.search_tree.add_node(root);
 
         // Develop tree
@@ -238,7 +234,7 @@ impl<'a, Game: IGame> GamePlayer<Game> for MCTSPlayer<'a, Game> {
 }
 
 pub trait ValueFunction<Game: IGame> {
-    fn evaluate(&mut self, position: &Game::Position) -> f32;
+    fn evaluate(&mut self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>);
 }
 
 pub struct ValueFunctionRand {}
@@ -249,7 +245,7 @@ impl ValueFunctionRand {
 }
 
 impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
-    fn evaluate(&mut self, position: &Game::Position) -> f32 {
+    fn evaluate(&mut self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>) {
         let winner = if position.is_over() {
             position.get_winner()
         } else {
@@ -258,7 +254,7 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
             let mut player2 = PlayerRand::new();
             Game::play_until_over(position, &mut player1, &mut player2).1
         };
-        return match winner {
+        let val = match winner {
             Some(color) => {
                 if color == position.get_turn() {
                     1.0
@@ -268,5 +264,13 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
             }
             None => 0.5,
         };
+
+        /* We don't have anything smart to say per move */
+        /* Assign uniform probabilities to all legal moves */
+        let moves = position.get_legal_moves();
+        let move_prob = 1.0 / moves.len() as f32;
+        let moves_probs = moves.iter().map(|m| (*m, move_prob)).collect_vec();
+
+        return (val, moves_probs);
     }
 }

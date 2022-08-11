@@ -13,7 +13,7 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let net = scalar_value_net::SimpleNetwork::new(args.model);
+    let net = scalar_value_net::ScalarValNet::new(args.model);
     let pos = hex_game::HexPosition::new_with_starting_color(game::GameColor::Player1);
     let score = net.evaluate_position(&pos);
     println!("score: {:?}", score);
