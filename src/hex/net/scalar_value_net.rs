@@ -1,42 +1,10 @@
-use crate::game_utils::game::{IGame, GamePosition};
+use crate::game_utils::game::{self, GamePosition, IGame};
 use crate::game_utils::mcts::ValueFunction;
 use crate::game_utils::self_play::Encoder;
-use crate::game_utils::{game, self_play};
 use crate::hex::hex_game::{self, HexGame, HexPosition};
-use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
+use crate::hex::net::encoder::SimpleEncoder;
 use itertools::Itertools;
-
-pub struct SimpleEncoder {}
-
-impl SimpleEncoder {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl self_play::Encoder<hex_game::HexGame> for SimpleEncoder {
-    fn encode_moves(&self, _moves: &Vec<(hex_game::Location, f32)>) -> Vec<f32> {
-        return vec![];
-    }
-    fn decode_moves(&self, _moves: &Vec<f32>) -> Vec<(hex_game::Location, f32)> {
-        return vec![];
-    }
-    fn encode_position(&self, position: &hex_game::HexPosition) -> Vec<f32> {
-        let mut vec = Vec::new();
-        for r in 0..hex_game::BOARD_SIZE {
-            for c in 0..hex_game::BOARD_SIZE {
-                vec.push(match position.get_tile(r, c) {
-                    hex_game::Hexagon::Full(color) => match color {
-                        game::GameColor::Player1 => 1.0,
-                        game::GameColor::Player2 => -1.0,
-                    },
-                    hex_game::Hexagon::Empty => 0.0,
-                });
-            }
-        }
-        return vec;
-    }
-}
+use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
 pub struct ScalarValNet {
     bundle: SavedModelBundle,
@@ -87,7 +55,10 @@ impl ScalarValNet {
         }
     }
 
-    pub fn evaluate_position(&self, position: &hex_game::HexPosition) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
+    pub fn evaluate_position(
+        &self,
+        position: &hex_game::HexPosition,
+    ) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
         if position.get_turn() == game::GameColor::Player1 {
             return self.evaluate_position_impl(position);
         } else {
@@ -98,7 +69,10 @@ impl ScalarValNet {
         }
     }
 
-    fn evaluate_position_impl(&self, position: &hex_game::HexPosition) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
+    fn evaluate_position_impl(
+        &self,
+        position: &hex_game::HexPosition,
+    ) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
         let encoded_position = self.encoder.encode_position(position);
         let input: Tensor<f32> = Tensor::new(&[1, 121])
             .with_values(&encoded_position)
