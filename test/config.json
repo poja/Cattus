@@ -1,0 +1,8 @@
+{
+    "tests": [
+        {
+            "name": "Cargo tests",
+            "executable": "cargo_tests.py"
+        }
+    ]
+}
