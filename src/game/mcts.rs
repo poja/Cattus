@@ -76,10 +76,10 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
             let leaf_id: NodeIndex = *path_to_selection.last().unwrap();
             let eval = self.simulate(leaf_id);
 
-            /* Expand leaf */
+            /* Expand leaf and assign initial scores */
             self.create_children(leaf_id, eval.1);
 
-            /* back propagate the score to the parents */
+            /* back propagate the position score to the parents */
             self.backpropagate(&path_to_selection, eval.0)
         }
     }
@@ -122,7 +122,7 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
         let exploit = if child.simulations_n == 0 {
             0.0
         } else {
-            (child.score_w as f32) / (child.simulations_n as f32)
+            child.score_w / child.simulations_n as f32
         };
 
         let explore = self.exploration_param_c
@@ -142,10 +142,12 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
             return;
         }
         let parent_pos = parent.position;
+
         assert!(
             parent.position.get_legal_moves()
                 == per_move_init_score.iter().map(|(m, _p)| *m).collect_vec()
         );
+
         for (m, p) in per_move_init_score {
             let leaf_pos = parent_pos.get_moved_position(m);
             let leaf_id = self
@@ -165,8 +167,8 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
         for node_id in path {
             let mut node = self.search_tree.node_weight_mut(*node_id).unwrap();
             node.simulations_n += 1;
-            node.score_w += applied_score as f32;
-            applied_score = 1.0 - applied_score;
+            node.score_w += applied_score;
+            applied_score = -applied_score;
         }
     }
 
@@ -247,6 +249,13 @@ impl<'a, Game: IGame> GamePlayer<Game> for MCTSPlayer<'a, Game> {
 }
 
 pub trait ValueFunction<Game: IGame> {
+    /// Evaluate a position
+    ///
+    /// position - The position to evaluate
+    ///
+    /// Returns a tuple of a scalar value score of the position and per-move scores/probabilities.
+    /// The scalar is the current position value in range [-1,1]. 1 if player1 is winning and -1 if player2 is winning
+    /// The per-move probabilities should have a sum of 1, greater value is a better move
     fn evaluate(&mut self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>);
 }
 
@@ -272,10 +281,10 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
                 if color == position.get_turn() {
                     1.0
                 } else {
-                    0.0
+                    -1.0
                 }
             }
-            None => 0.5,
+            None => 0.0,
         };
 
         /* We don't have anything smart to say per move */
