@@ -119,25 +119,38 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
         parent: &MCTSNode<Game::Position>,
         child: &MCTSNode<Game::Position>,
     ) -> f32 {
-        if child.simulations_n == 0 {
-            return f32::MAX; // TODO
-        }
-        let exploit = (child.score_w as f32) / (child.simulations_n as f32);
+        let exploit = if child.simulations_n == 0 {
+            0.0
+        } else {
+            (child.score_w as f32) / (child.simulations_n as f32)
+        };
+
         let explore = self.exploration_param_c
-            * ((parent.simulations_n as f32).ln() / (child.simulations_n as f32)).sqrt();
+            * child.init_score
+            * ((parent.simulations_n as f32).sqrt() / (1 + child.simulations_n) as f32);
+
         return exploit + explore;
     }
 
-    fn create_children(&mut self, parent_id: NodeIndex<u32>, per_move_init_score: Vec<(Game::Move, f32)>) {
+    fn create_children(
+        &mut self,
+        parent_id: NodeIndex<u32>,
+        per_move_init_score: Vec<(Game::Move, f32)>,
+    ) {
         let parent = self.search_tree.node_weight(parent_id).unwrap();
         if parent.position.is_over() {
             return;
         }
         let parent_pos = parent.position;
-        assert!(parent.position.get_legal_moves() == per_move_init_score.iter().map(|(m, p)| *m).collect_vec());
+        assert!(
+            parent.position.get_legal_moves()
+                == per_move_init_score.iter().map(|(m, _p)| *m).collect_vec()
+        );
         for (m, p) in per_move_init_score {
             let leaf_pos = parent_pos.get_moved_position(m);
-            let leaf_id = self.search_tree.add_node(MCTSNode::from_position(leaf_pos, p));
+            let leaf_id = self
+                .search_tree
+                .add_node(MCTSNode::from_position(leaf_pos, p));
             self.search_tree.add_edge(parent_id, leaf_id, m);
         }
     }
