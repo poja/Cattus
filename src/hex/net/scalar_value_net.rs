@@ -1,6 +1,6 @@
-use crate::game_utils::game::{self, GamePosition, IGame};
-use crate::game_utils::mcts::ValueFunction;
-use crate::game_utils::self_play::Encoder;
+use crate::game::common::{GameColor, GamePosition, IGame};
+use crate::game::mcts::ValueFunction;
+use crate::game::self_play::Encoder;
 use crate::hex::hex_game::{self, HexGame, HexPosition};
 use crate::hex::net::encoder::SimpleEncoder;
 use itertools::Itertools;
@@ -59,7 +59,7 @@ impl ScalarValNet {
         &self,
         position: &hex_game::HexPosition,
     ) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
-        if position.get_turn() == game::GameColor::Player1 {
+        if position.get_turn() == GameColor::Player1 {
             return self.evaluate_position_impl(position);
         } else {
             let flipped_pos = hex_game::HexPosition::flip_of(position);

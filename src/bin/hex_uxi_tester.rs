@@ -1,6 +1,6 @@
 use clap::Parser;
 use rand::Rng;
-use rl::game_utils::game::{GameColor, GamePlayer, IGame};
+use rl::game::common::{GameColor, GamePlayer, IGame};
 use rl::hex::hex_game::{HexGame, HexPosition};
 use rl::hex::uxi::HexPlayerUXI;
 use std::path::Path;

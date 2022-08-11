@@ -1,4 +1,5 @@
-use crate::game_utils::{game, self_play};
+use crate::game::common::GameColor;
+use crate::game::self_play;
 use crate::hex::hex_game::{self, HexGame, HexPosition};
 
 pub struct SimpleEncoder {}
@@ -22,8 +23,8 @@ impl self_play::Encoder<HexGame> for SimpleEncoder {
             for c in 0..hex_game::BOARD_SIZE {
                 vec.push(match position.get_tile(r, c) {
                     hex_game::Hexagon::Full(color) => match color {
-                        game::GameColor::Player1 => 1.0,
-                        game::GameColor::Player2 => -1.0,
+                        GameColor::Player1 => 1.0,
+                        GameColor::Player2 => -1.0,
                     },
                     hex_game::Hexagon::Empty => 0.0,
                 });

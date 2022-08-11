@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::game_utils::game::{GameColor, GamePosition};
+    use crate::game::common::{GameColor, GamePosition};
     use crate::hex::hex_game::HexPosition;
     use crate::hex::hex_game::Hexagon;
 

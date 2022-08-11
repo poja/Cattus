@@ -1,5 +1,5 @@
 use clap::Parser;
-use rl::game_utils::mcts::{self, ValueFunction};
+use rl::game::mcts::{self, ValueFunction};
 use rl::hex::hex_game::HexGame;
 use rl::hex::net::scalar_value_net::ScalarValNet;
 use rl::hex::uxi;

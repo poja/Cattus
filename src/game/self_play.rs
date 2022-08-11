@@ -1,5 +1,5 @@
-use crate::game_utils::game::{GameColor, GamePosition, IGame};
-use crate::game_utils::mcts::MCTSPlayer;
+use crate::game::common::{GameColor, GamePosition, IGame};
+use crate::game::mcts::MCTSPlayer;
 use json;
 use std::fs;
 use std::path;

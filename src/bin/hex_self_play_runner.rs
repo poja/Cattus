@@ -1,5 +1,5 @@
 use clap::Parser;
-use rl::game_utils::{mcts, self_play};
+use rl::game::{mcts, self_play};
 use rl::hex::net::encoder::SimpleEncoder;
 
 #[derive(Parser, Debug)]

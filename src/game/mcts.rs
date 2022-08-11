@@ -4,7 +4,7 @@ use petgraph::visit::EdgeRef;
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
 
-use crate::game_utils::game::{GamePlayer, GamePosition, IGame};
+use crate::game::common::{GamePlayer, GamePosition, IGame};
 use crate::hex::simple_players::PlayerRand;
 
 /// Monte Carlo Tree Search (MCTS) implementation

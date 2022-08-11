@@ -1,4 +1,4 @@
-use crate::game_utils::game::{GameColor, GamePlayer, GamePosition, IGame};
+use crate::game::common::{GameColor, GamePlayer, GamePosition, IGame};
 use crate::hex::hex_game::{HexGame, HexPosition, Hexagon, BOARD_SIZE};
 use std::io::{BufRead, BufReader, Write};
 use std::string::String;
