@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 
 import os
+from pathlib import Path
 import tensorflow as tf
 import datetime
 import json
-import time
 import argparse
 import subprocess
 import numpy as np
 import struct
 import sys
+import random
+import logging
 
 
 def load_model(path):
@@ -48,27 +50,75 @@ def self_play(model_path, out_dir, config):
                    stderr=sys.stderr, stdout=sys.stdout, check=True)
 
 
-def train(model_path, data_dir, config):
-    pass  # TODO
+def train(model_path, _, config):
+    # TODO change
+    data_dir = Path(config["data_dir"])
+
+    def reverse_position(pos, winner):
+        return [-x for x in pos], -winner
+
+    positions = []
+    winners = []
+
+    logging.debug('a')
+
+    # Load all games made by the current model
+    for training_iteration_dir in data_dir.iterdir():
+        if str(model_id(model_path)) not in str(training_iteration_dir):
+            continue
+        for data_file in training_iteration_dir.iterdir():
+            with open(os.path.join(data_dir, data_file), "rb") as f:
+                data_obj = json.load(f)
+            pos, win = data_obj["position"], data_obj["winner"]
+            if random.choice([True, False]):
+                pos, win = reverse_position(pos, win)
+            positions.append(pos)
+            winners.append(win)
+
+    logging.debug('b')
+        
+    
+    # Fit model
+    model = load_model(model_path)
+    model.fit(positions, winners, batch_size=4, epochs=16)
+
+    logging.debug('c')
+
+
+    # Check some bad measure of model fitness
+    preds = [x[0] for x in model.predict(positions)]
+    preds = [1 if x >= 0 else -1 for x in preds]
+    wins = [1 if x >= 0 else -1 for x in winners]
+    acc = [preds[i] == wins[i] for i in range(len(preds))]
+    print(sum(acc) / len(acc))
+    return model
+
 
 
 def main(config):
     run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
     best_model_path = config["base_model"]
+    model_path = best_model_path
 
     for iter_num in range(config["iterations"]):
         print(f"Iteration {iter_num}")  # TODO remove
-
-        model_path = best_model_path
         data_dir = os.path.join(
             config["data_dir"], f"{run_id}_{iter_num}_{model_id(model_path)}")
-        self_play(model_path, data_dir, config)
-        train(model_path, data_dir, config)
+        # self_play(model_path, data_dir, config)
+        new_model = train(model_path, data_dir, config)
+        model_time = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+        model_path = os.path.join(config["models_dir"], f'model_{model_time}')
+        new_model.save(model_path, save_format='tf')
 
         # TODO compare trained model with best model and switch if better
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
     parser = argparse.ArgumentParser(description="Trainer")
     parser.add_argument("--config", type=str, required=True,
                         help="configuration file")

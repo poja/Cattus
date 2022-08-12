@@ -1,11 +1,12 @@
 {
     "iterations": 5,
-    "base_model": "C:\\code\\rl\\model\\m2",
+    "models_dir": "C:\\Data\\Projects\\ReinforcementLearning\\output\\models\\",
+    "base_model": "C:\\Data\\Projects\\ReinforcementLearning\\output\\models\\m1",
     "mcts_cfg": {
         "sim_count": 100,
         "explore_factor": 1.41421
     },
     "self_play_games_num": 10,
-    "data_dir": "C:\\code\\rl\\train\\data",
-    "self_play_exec": "C:\\code\\rl\\target\\release\\self_play_runner.exe"
+    "data_dir": "C:\\Data\\Projects\\ReinforcementLearning\\output\\data",
+    "self_play_exec": "C:\\Data\\Projects\\ReinforcementLearning\\target\\release\\deps\\hex_self_play_runner.exe"
 }
