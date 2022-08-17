@@ -60,9 +60,8 @@ def train(model_path, _, config):
     positions = []
     winners = []
 
-    logging.debug('a')
+    logging.debug('Loading all games made by the current model')
 
-    # Load all games made by the current model
     for training_iteration_dir in data_dir.iterdir():
         if str(model_id(model_path)) not in str(training_iteration_dir):
             continue
@@ -75,22 +74,17 @@ def train(model_path, _, config):
             positions.append(pos)
             winners.append(win)
 
-    logging.debug('b')
+    logging.debug('Fitting model to newly generated games')
         
-    
-    # Fit model
     model = load_model(model_path)
     model.fit(positions, winners, batch_size=4, epochs=16)
 
-    logging.debug('c')
-
-
-    # Check some bad measure of model fitness
+    logging.debug('Crude sanity check of model fitness')
     preds = [x[0] for x in model.predict(positions)]
     preds = [1 if x >= 0 else -1 for x in preds]
     wins = [1 if x >= 0 else -1 for x in winners]
     acc = [preds[i] == wins[i] for i in range(len(preds))]
-    print(sum(acc) / len(acc))
+    logging.info(f'Model trained. Model accuracy for training set: {sum(acc) / len(acc)}')
     return model
 
 
@@ -101,10 +95,10 @@ def main(config):
     model_path = best_model_path
 
     for iter_num in range(config["iterations"]):
-        print(f"Iteration {iter_num}")  # TODO remove
+        logging.info(f"Training iteration {iter_num}")
         data_dir = os.path.join(
             config["data_dir"], f"{run_id}_{iter_num}_{model_id(model_path)}")
-        # self_play(model_path, data_dir, config)
+        self_play(model_path, data_dir, config)
         new_model = train(model_path, data_dir, config)
         model_time = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
         model_path = os.path.join(config["models_dir"], f'model_{model_time}')
