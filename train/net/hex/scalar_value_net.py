@@ -10,11 +10,12 @@ from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import Concatenate
 from tensorflow.keras import Model
 from keras import optimizers
-import numpy as np
 import json
 import os
-import random
+import hex_utils
 
+BATCH_SIZE = 4
+EPOCHS = 16
 
 def create_model():
     model = Sequential()
@@ -28,24 +29,16 @@ def create_model():
     return model
 
 
-def reverse_position(pos, winner):
-    return [-x for x in pos], -winner
-
-
 def train_model(model_path, data_dir, output_dir):
     model = tf.keras.models.load_model(model_path)
-    positions = []
-    winners = []
+    positions, winners = [], []
 
     for data_file in os.listdir(data_dir):
-        with open(os.path.join(data_dir, data_file), "rb") as f:
-            data_obj = json.load(f)
-        pos, win = data_obj["position"], data_obj["winner"]
-        if random.choice([True, False]):
-            pos, win = reverse_position(pos, win)
-        positions.append(pos)
-        winners.append(win)
-    model.fit(positions, winners, batch_size=4, epochs=16)
+        data_entry = hex_utils.load_data_entry(os.path.join(data_dir, data_file))
+        positions.append(data_entry["position"])
+        winners.append(data_entry["winner"])
+
+    model.fit(positions, winners, batch_size=BATCH_SIZE, epochs=EPOCHS)
 
     preds = [x[0] for x in model.predict(positions)]
     preds = [1 if x >= 0 else -1 for x in preds]
