@@ -63,9 +63,18 @@ impl ScalarValNet {
             return self.evaluate_position_impl(position);
         } else {
             let flipped_pos = hex_game::HexPosition::flip_of(position);
-            let res = self.evaluate_position_impl(&flipped_pos);
+            let (val, moves_probs) = self.evaluate_position_impl(&flipped_pos);
+
             /* Flip scalar value */
-            return (-res.0, res.1);
+            let val = -val;
+
+            /* Flip moves */
+            let moves_probs = moves_probs
+                .iter()
+                .map(|((r, c), p)| ((*c, *r), *p))
+                .collect_vec();
+
+            return (val, moves_probs);
         }
     }
 

@@ -56,7 +56,8 @@ impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
         }
         let mut data_idx: u64 = 0;
 
-        for _ in 0..games_num {
+        for game_idx in 0..games_num {
+            println!("Playing game {}/{}", game_idx, games_num);
             let mut pos = Game::Position::new();
             let mut pos_move_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> =
                 Vec::new();
@@ -71,7 +72,7 @@ impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
                 pos_move_probs_pairs.push((pos.clone(), moves));
 
                 /* Advance game position */
-                println!("advancing another step in game");
+                // println!("advancing another step in game");
                 pos = match m {
                     None => {
                         eprintln!("player failed to choose a move");
@@ -100,7 +101,7 @@ impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
                 );
 
                 let filename = format!("{}/d{:#016x}.json", output_dir, data_idx);
-                println!("Writing game pos to dick: {}", filename);
+                // println!("Writing game pos to dick: {}", filename);
                 self.write_data_to_file(data, filename)?;
                 data_idx += 1;
             }

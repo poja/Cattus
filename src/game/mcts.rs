@@ -3,6 +3,8 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 use crate::game::common::{GamePlayer, GamePosition, IGame};
 use crate::hex::simple_players::PlayerRand;
@@ -143,10 +145,9 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
         }
         let parent_pos = parent.position;
 
-        assert!(
-            parent.position.get_legal_moves()
-                == per_move_init_score.iter().map(|(m, _p)| *m).collect_vec()
-        );
+        let moves_actual: HashSet<Game::Move> = HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| *m));
+        let moves_expected: HashSet<Game::Move> = HashSet::from_iter(parent_pos.get_legal_moves().iter().map(|x| *x));
+        assert!(moves_actual == moves_expected);
 
         for (m, p) in per_move_init_score {
             let leaf_pos = parent_pos.get_moved_position(m);

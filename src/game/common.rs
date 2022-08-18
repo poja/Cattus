@@ -34,7 +34,7 @@ pub trait GamePosition: Clone + Copy + Eq {
     fn get_winner(&self) -> Option<GameColor>;
 }
 
-pub trait GameMove: Clone + Copy + Eq + std::cmp::Eq + std::hash::Hash {
+pub trait GameMove: Clone + Copy + Eq + std::cmp::Eq + std::hash::Hash + std::fmt::Debug {
     type Game: IGame<Move = Self>;
 }
 

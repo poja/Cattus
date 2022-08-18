@@ -24,7 +24,6 @@ fn main() -> std::io::Result<()> {
     // TODO add arg for network type
     let mut encoder = SimpleEncoder::new();
     let trainer = SelfPlayRunner::new(&mut encoder);
-
     let mut value_func = ScalarValNet::new(args.model);
     let mut player = MCTSPlayer::new_custom(args.sim_count, args.explore_factor, &mut value_func);
     return trainer.generate_data(&mut player, args.games_num, &args.out_dir);
