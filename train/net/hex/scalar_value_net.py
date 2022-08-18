@@ -32,7 +32,8 @@ def reverse_position(pos, winner):
     return [-x for x in pos], -winner
 
 
-def train_model(model, data_dir):
+def train_model(model_path, data_dir, output_dir):
+    model = tf.keras.models.load_model(model_path)
     positions = []
     winners = []
 
@@ -50,21 +51,31 @@ def train_model(model, data_dir):
     preds = [1 if x >= 0 else -1 for x in preds]
     wins = [1 if x >= 0 else -1 for x in winners]
     acc = [preds[i] == wins[i] for i in range(len(preds))]
-    print(sum(acc) / len(acc))
+    print("Accuracy:", sum(acc) / len(acc))
 
-
-def make_train_and_save_model(output_dir, data_dir):
-    model = create_model()
-    train_model(model, data_dir)
     model.save(output_dir, save_format='tf')
 
 
 if __name__ == "__main__":
+    # If --create is provided, a new model will be created and saved to --out
+    # If --train is provided, an existing model will be loaded from --model, trained on --data and saved to --out
+    # If both --create and --train are provided, a new model will be created, trained on --data and saved to --out
     parser = argparse.ArgumentParser(description="Model creator")
-    parser.add_argument("--out", dest="output_dir", type=str,
-                        required=True, help="output directory")
+    parser.add_argument("--create", action='store_true', help="Create a model")
+    parser.add_argument("--out", dest="output_dir", required=True,
+                        type=str, help="output directory for the model")
+    parser.add_argument("--train", action='store_true', help="Trains a model")
     parser.add_argument("--data", dest="data_dir", type=str,
-                        required=True, help="data directory")
+                        help="data directory to train on")
+    parser.add_argument("--model", dest="model_path",
+                        type=str, help="path to existing model")
     args = parser.parse_args()
 
-    make_train_and_save_model(args.output_dir, args.data_dir)
+    if args.create:
+        create_model().save(args.output_dir, save_format='tf')
+        model_path = args.output_dir
+    else:
+        model_path = args.model_path
+
+    if args.train:
+        train_model(model_path, args.data_dir, args.output_dir)

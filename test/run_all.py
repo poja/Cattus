@@ -9,10 +9,12 @@ CONFIG_FILENAME = os.path.join(TESTS_DIR, "config.json")
 
 def main(config):
     for test in config["tests"]:
+        print()
         executable = os.path.join(TESTS_DIR, test["executable"])
+        print("Executing '" + test["name"] + "' using ", executable)
         args = test["args"] if "args" in test else []
-        print(executable)
         subprocess.check_call(["python", executable] + args)
+        print()
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser(description="Trainer")

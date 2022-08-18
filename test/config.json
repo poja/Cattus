@@ -3,6 +3,10 @@
         {
             "name": "Cargo tests",
             "executable": "cargo_tests.py"
+        },
+        {
+            "name": "Hex Scalar Net Test",
+            "executable": "hex_scalar_net_test.py"
         }
     ]
 }
