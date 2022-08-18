@@ -21,7 +21,7 @@ SELF_PLAY_RUNNER = "hex_self_play_runner"
 def run_test():
     logging.basicConfig(
         level=logging.DEBUG,
-        format='[Hex Scalar Net Test]: %(message)s')
+        format='[Hex Two Headed Net Test]: %(message)s')
 
     if os.path.exists(TMP_DIR):
         shutil.rmtree(TMP_DIR)
@@ -35,7 +35,7 @@ def run_test():
         logging.info("creating a new model at %s", model_path1)
         subprocess.check_call([
             "python", MODEL_SCRIPT,
-            "--type", "simple_scalar",
+            "--type", "simple_two_headed",
             "--create",
             "--out-dir", model_path1],
             stderr=subprocess.STDOUT)
@@ -44,7 +44,7 @@ def run_test():
         subprocess.check_call([
             "cargo", "run", "--bin",
             SELF_PLAY_RUNNER, "--",
-            "--net-type", "scalar_net",
+            "--net-type", "two_headed_net",
             "--model-path", model_path1,
             "--games-num", "10",
             "--out-dir", self_play_dir1,
@@ -55,7 +55,7 @@ def run_test():
             "training model on self play data and saving new model at %s", model_path2)
         subprocess.check_call([
             "python", MODEL_SCRIPT,
-            "--type", "simple_scalar",
+            "--type", "simple_two_headed",
             "--train",
             "--model-path", model_path1,
             "--data-dir", self_play_dir1,
@@ -66,7 +66,7 @@ def run_test():
         subprocess.check_call([
             "cargo", "run", "--bin",
             SELF_PLAY_RUNNER, "--",
-            "--net-type", "scalar_net",
+            "--net-type", "two_headed_net",
             "--model-path", model_path2,
             "--games-num", "10",
             "--out-dir", self_play_dir2,
