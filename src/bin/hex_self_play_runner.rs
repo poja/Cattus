@@ -1,14 +1,18 @@
 use clap::Parser;
-use rl::game::mcts::MCTSPlayer;
+use rl::game::mcts::{MCTSPlayer, ValueFunction};
 use rl::game::self_play::SelfPlayRunner;
 use rl::hex::net::encoder::SimpleEncoder;
 use rl::hex::net::scalar_value_net::ScalarValNet;
+use rl::hex::net::two_headed_net::TwoHeadedNet;
+use rl::hex::hex_game::HexGame;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
 struct Args {
     #[clap(long)]
-    model: String,
+    net_type: String,
+    #[clap(long)]
+    model_path: String,
     #[clap(long, default_value = "10")]
     games_num: u32,
     #[clap(long)]
@@ -21,10 +25,23 @@ struct Args {
 
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
-    // TODO add arg for network type
+
+    let mut value_func_net_scalar;
+    let mut value_func_net_two_headed;
+    let value_func: &mut dyn ValueFunction<HexGame>;
+    if args.net_type == "scalar_net" {
+        value_func_net_scalar = ScalarValNet::new(args.model_path);
+        value_func = &mut value_func_net_scalar;
+    } else if args.net_type == "two_headed_net" {
+        value_func_net_two_headed = TwoHeadedNet::new(args.model_path);
+        value_func = &mut value_func_net_two_headed;
+    } else {
+        panic!("unsupported net type: {}", args.net_type);
+    }
+    let mut player = MCTSPlayer::new_custom(args.sim_count, args.explore_factor, value_func);
+
     let mut encoder = SimpleEncoder::new();
     let trainer = SelfPlayRunner::new(&mut encoder);
-    let mut value_func = ScalarValNet::new(args.model);
-    let mut player = MCTSPlayer::new_custom(args.sim_count, args.explore_factor, &mut value_func);
+
     return trainer.generate_data(&mut player, args.games_num, &args.out_dir);
 }
