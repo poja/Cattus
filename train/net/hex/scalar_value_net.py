@@ -18,10 +18,11 @@ BATCH_SIZE = 4
 EPOCHS = 16
 
 def create_model():
-    model = Sequential()
-    model.add(Dense(121, activation='relu', name="in_position",
-              input_dim=121))
-    model.add(Dense(1, activation='tanh', name="out_value"))
+    input_layer = Input(shape=(121), name="in_position")
+    x = Dense(units="121", activation="relu")(input_layer)
+    output_layer = Dense(units="1", activation="tanh", name="out_value")(x)
+
+    model = Model(inputs=input_layer, outputs=[output_layer])
 
     opt = optimizers.Adam()
     model.compile(optimizer=opt, loss='mean_squared_error',

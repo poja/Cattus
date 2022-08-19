@@ -22,7 +22,8 @@ def test_print(*args):
 
 
 def run_test():
-    shutil.rmtree(TMP_DIR)
+    if os.path.exists(TMP_DIR):
+        shutil.rmtree(TMP_DIR)
 
     model_path1 = os.path.join(TMP_DIR, "model1")
     model_path2 = os.path.join(TMP_DIR, "model2")
