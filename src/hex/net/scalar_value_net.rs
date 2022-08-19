@@ -15,10 +15,7 @@ pub struct ScalarValNet {
 
 impl ScalarValNet {
     pub fn new(model_path: String) -> Self {
-        // In this file in_position_input is being used while in the python script,
-        // that generates the saved model from Keras model it has a name "in_position".
-        // For multiple inputs _input is not being appended to signature input parameter name.
-        let signature_input_parameter_name = "in_position_input";
+        let signature_input_parameter_name = "in_position";
         let signature_output_parameter_name = "out_value";
 
         // Load saved model bundle (session state + meta_graph data)
