@@ -1,7 +1,8 @@
-use crate::game::common::{GameColor, GamePosition, IGame};
+use crate::game::common::{GamePosition, IGame};
 use crate::game::mcts::ValueFunction;
 use crate::game::self_play::Encoder;
 use crate::hex::hex_game::{self, HexGame, HexPosition};
+use crate::hex::net::common;
 use crate::hex::net::encoder::SimpleEncoder;
 use itertools::Itertools;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
@@ -56,23 +57,9 @@ impl ScalarValNet {
         &self,
         position: &hex_game::HexPosition,
     ) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
-        if position.get_turn() == GameColor::Player1 {
-            return self.evaluate_position_impl(position);
-        } else {
-            let flipped_pos = hex_game::HexPosition::flip_of(position);
-            let (val, moves_probs) = self.evaluate_position_impl(&flipped_pos);
-
-            /* Flip scalar value */
-            let val = -val;
-
-            /* Flip moves */
-            let moves_probs = moves_probs
-                .iter()
-                .map(|((r, c), p)| ((*c, *r), *p))
-                .collect_vec();
-
-            return (val, moves_probs);
-        }
+        let (flipped_pos, is_flipped) = common::flip_pos_if_needed(*position);
+        let eval = self.evaluate_position_impl(&flipped_pos);
+        return common::flip_score_if_needed(eval, is_flipped);
     }
 
     fn evaluate_position_impl(
