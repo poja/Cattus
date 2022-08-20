@@ -50,18 +50,16 @@ def self_play(model_path, out_dir, config):
                    stderr=sys.stderr, stdout=sys.stdout, check=True)
 
 
-def train(model_path, _, config):
-    # TODO change
-    data_dir = Path(config["data_dir"])
+def train(model_path, config):
 
     def reverse_position(pos, winner):
         return [-x for x in pos], -winner
 
-    positions = []
-    winners = []
-
     logging.debug('Loading all games made by the current model')
 
+    data_dir = Path(config["data_dir"])
+    positions = []
+    winners = []
     for training_iteration_dir in data_dir.iterdir():
         if str(model_id(model_path)) not in str(training_iteration_dir):
             continue
@@ -85,6 +83,7 @@ def train(model_path, _, config):
     wins = [1 if x >= 0 else -1 for x in winners]
     acc = [preds[i] == wins[i] for i in range(len(preds))]
     logging.info(f'Model trained. Model accuracy for training set: {sum(acc) / len(acc)}')
+    
     return model
 
 
@@ -99,7 +98,7 @@ def main(config):
         data_dir = os.path.join(
             config["data_dir"], f"{run_id}_{iter_num}_{model_id(model_path)}")
         self_play(model_path, data_dir, config)
-        new_model = train(model_path, data_dir, config)
+        new_model = train(model_path, config)
         model_time = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
         model_path = os.path.join(config["models_dir"], f'model_{model_time}')
         new_model.save(model_path, save_format='tf')
