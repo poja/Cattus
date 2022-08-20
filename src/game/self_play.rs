@@ -1,32 +1,9 @@
 use crate::game::common::{GameColor, GamePosition, IGame};
+use crate::game::encoder::Encoder;
 use crate::game::mcts::MCTSPlayer;
 use json;
 use std::fs;
 use std::path;
-
-pub trait Encoder<Game: IGame> {
-    fn encode_moves(&self, moves: &Vec<(Game::Move, f32)>) -> Vec<f32>;
-    fn decode_moves(&self, moves: &Vec<f32>) -> Vec<(Game::Move, f32)>;
-    fn encode_position(&self, position: &Game::Position) -> Vec<f32>;
-}
-
-pub struct TrainData {
-    pos: Vec<f32>,
-    turn: i8,
-    moves_probabilities: Vec<f32>,
-    winner: i8,
-}
-
-impl TrainData {
-    pub fn new(pos: Vec<f32>, turn: i8, moves_probabilities: Vec<f32>, winner: i8) -> Self {
-        Self {
-            pos: pos,
-            turn: turn,
-            moves_probabilities: moves_probabilities,
-            winner: winner,
-        }
-    }
-}
 
 pub struct SelfPlayRunner<'a, Game: IGame> {
     encoder: &'a dyn Encoder<Game>,
@@ -83,26 +60,13 @@ impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
             }
             let winner = pos.get_winner();
 
-            for pos_move_probs_pair in pos_move_probs_pairs {
-                let data = TrainData::new(
-                    self.encoder.encode_position(&pos_move_probs_pair.0),
-                    match pos_move_probs_pair.0.get_turn() {
-                        GameColor::Player1 => 1,
-                        GameColor::Player2 => -1,
-                    },
-                    self.encoder.encode_moves(&pos_move_probs_pair.1),
-                    match winner {
-                        None => 0,
-                        Some(winning_player) => match winning_player {
-                            GameColor::Player1 => 1,
-                            GameColor::Player2 => -1,
-                        },
-                    },
-                );
-
-                let filename = format!("{}/d{:#016x}.json", output_dir, data_idx);
-                // println!("Writing game pos to dick: {}", filename);
-                self.write_data_to_file(data, filename)?;
+            for (pos, per_move_prob) in pos_move_probs_pairs {
+                self.write_data_to_file(
+                    pos,
+                    per_move_prob,
+                    winner,
+                    format!("{}/d{:#016x}.json", output_dir, data_idx),
+                )?;
                 data_idx += 1;
             }
         }
@@ -110,15 +74,40 @@ impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
         return Ok(());
     }
 
-    fn write_data_to_file(&self, data: TrainData, filename: String) -> std::io::Result<()> {
-        let json_obj = json::object! {
-            position: data.pos,
-            turn: data.turn,
-            moves_probabilities: data.moves_probabilities,
-            winner: data.winner
+    fn write_data_to_file(
+        &self,
+        pos: Game::Position,
+        per_move_prob: Vec<(Game::Move, f32)>,
+        winner: Option<GameColor>,
+        filename: String,
+    ) -> std::io::Result<()> {
+        let pos_vec = self.encoder.encode_position(&pos);
+
+        let turn = match pos.get_turn() {
+            GameColor::Player1 => 1,
+            GameColor::Player2 => -1,
         };
+
+        let per_move_prob_vec = self.encoder.encode_per_move_probs(&per_move_prob);
+
+        let winner_int = match winner {
+            None => 0,
+            Some(winning_player) => match winning_player {
+                GameColor::Player1 => 1,
+                GameColor::Player2 => -1,
+            },
+        };
+
+        let json_obj = json::object! {
+            position: pos_vec,
+            turn: turn,
+            moves_probabilities: per_move_prob_vec,
+            winner: winner_int
+        };
+
         let json_str = json_obj.dump();
         fs::write(filename, json_str)?;
+
         return Ok(());
     }
 }

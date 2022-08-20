@@ -1,6 +1,6 @@
 use crate::game::common::{GamePosition, IGame};
+use crate::game::encoder::Encoder;
 use crate::game::mcts::ValueFunction;
-use crate::game::self_play::Encoder;
 use crate::hex::hex_game::{self, HexGame, HexPosition};
 use crate::hex::net::common;
 use crate::hex::net::encoder::SimpleEncoder;
@@ -67,7 +67,8 @@ impl ScalarValNet {
         position: &hex_game::HexPosition,
     ) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
         let encoded_position = self.encoder.encode_position(position);
-        let input: Tensor<f32> = Tensor::new(&[1, 121])
+        let input_dim = hex_game::BOARD_SIZE * hex_game::BOARD_SIZE;
+        let input: Tensor<f32> = Tensor::new(&[1, input_dim as u64])
             .with_values(&encoded_position)
             .expect("Can't create input tensor");
 
