@@ -32,6 +32,7 @@ pub trait GamePosition: Clone + Copy + Eq {
     type Game: IGame<Position = Self>;
     fn new() -> Self;
     fn get_turn(&self) -> GameColor;
+    // TODO change get_legal_moves to return iterator
     fn get_legal_moves(&self) -> Vec<<Self::Game as IGame>::Move>;
     fn get_moved_position(&self, m: <Self::Game as IGame>::Move)
         -> <Self::Game as IGame>::Position;
