@@ -4,20 +4,18 @@ pub fn color_to_str(c: Option<GameColor>) -> String {
     match c {
         None => String::from("None"),
         Some(GameColor::Player1) => String::from("X"),
-        Some(GameColor::Player2) => String::from("O")
+        Some(GameColor::Player2) => String::from("O"),
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TicTacToeMove {
-    pub cell: (usize, usize)
+    pub cell: (usize, usize),
 }
 
 impl TicTacToeMove {
     pub fn new(x: usize, y: usize) -> Self {
-        Self {
-            cell: (x, y)
-        }
+        Self { cell: (x, y) }
     }
 }
 
@@ -27,19 +25,22 @@ impl GameMove for TicTacToeMove {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TicTacToePosition {
-    board:[[usize; 3]; 3], // 0 is empty, 1 is player1, 2 is player2
+    board: [[usize; 3]; 3], // 0 is empty, 1 is player1, 2 is player2
     turn: GameColor,
     winner: Option<GameColor>,
-    num_empty_tiles: usize
+    num_empty_tiles: usize,
 }
 
 impl TicTacToePosition {
-
     pub fn make_move(&mut self, r: usize, c: usize) {
         assert!(r <= 2 && c <= 2);
         assert!(!self.is_over());
-        
-        self.board[r][c] = if self.turn == GameColor::Player1 {1} else {2};
+
+        self.board[r][c] = if self.turn == GameColor::Player1 {
+            1
+        } else {
+            2
+        };
         self.num_empty_tiles -= 1;
         self.turn = self.turn.opposite();
 
@@ -52,7 +53,13 @@ impl TicTacToePosition {
 
     pub fn check_winner(&mut self) {
         let is_sequence = |x, y, z| x != 0 && x == y && y == z;
-        let num_to_some_player = |n| if n == 1 {Some(GameColor::Player1)} else {Some(GameColor::Player2)};
+        let num_to_some_player = |n| {
+            if n == 1 {
+                Some(GameColor::Player1)
+            } else {
+                Some(GameColor::Player2)
+            }
+        };
         for row_i in 0..=2 {
             let r = self.board[row_i];
             if is_sequence(r[0], r[1], r[2]) {
@@ -82,7 +89,7 @@ impl TicTacToePosition {
                     0 => String::from("_"),
                     1 => String::from("X"),
                     2 => String::from("O"),
-                    _ => panic!("Board is corrupt.")
+                    _ => panic!("Board is corrupt."),
                 })
                 .collect();
             println!("{}", row_characters.join(" "));
@@ -98,10 +105,10 @@ impl GamePosition for TicTacToePosition {
             board: [[0; 3]; 3],
             turn: GameColor::Player1,
             winner: None,
-            num_empty_tiles: 9
+            num_empty_tiles: 9,
         }
     }
-    
+
     fn get_turn(&self) -> GameColor {
         self.turn
     }
@@ -118,8 +125,10 @@ impl GamePosition for TicTacToePosition {
         return moves;
     }
 
-    fn get_moved_position(&self, m: <Self::Game as IGame>::Move)
-        -> <Self::Game as IGame>::Position {
+    fn get_moved_position(
+        &self,
+        m: <Self::Game as IGame>::Move,
+    ) -> <Self::Game as IGame>::Position {
         // TODO this is duplicated fro hex_game
         assert!(self.is_valid_move(m));
         let mut res = self.clone();
@@ -130,7 +139,7 @@ impl GamePosition for TicTacToePosition {
     fn is_over(&self) -> bool {
         self.winner != None || self.num_empty_tiles == 0
     }
-    
+
     fn get_winner(&self) -> Option<GameColor> {
         assert!(self.is_over());
         self.winner
@@ -141,7 +150,7 @@ pub struct TicTacToeGame {}
 
 impl TicTacToeGame {
     pub fn new() -> Self {
-        TicTacToeGame{ }
+        TicTacToeGame {}
     }
 }
 
@@ -178,6 +187,4 @@ impl IGame for TicTacToeGame {
         }
         return (position, position.get_winner());
     }
-
-
 }
