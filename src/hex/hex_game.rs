@@ -106,12 +106,10 @@ impl HexPosition {
         return flipped_pos;
     }
 
-    pub fn contains(loc: Location) -> bool {
-        loc.0 < BOARD_SIZE && loc.1 < BOARD_SIZE
-    }
-
     pub fn is_valid_move(&self, loc: Location) -> bool {
-        return HexPosition::contains(loc) && self.board[loc.0][loc.1] == Hexagon::Empty;
+        return loc.0 < BOARD_SIZE
+            && loc.1 < BOARD_SIZE
+            && self.board[loc.0][loc.1] == Hexagon::Empty;
     }
 
     pub fn get_tile(&self, r: usize, c: usize) -> Hexagon {
@@ -275,6 +273,7 @@ impl IGame for HexGame {
         assert!(self.pos.is_valid_move(next_move));
         self.pos.make_move(next_move.0, next_move.1);
     }
+
     fn play_until_over(
         &mut self,
         player1: &mut dyn GamePlayer<Self>,
