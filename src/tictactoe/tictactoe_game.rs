@@ -1,5 +1,7 @@
 use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
 
+pub const BOARD_SIZE: usize = 3;
+
 pub fn color_to_str(c: Option<GameColor>) -> String {
     match c {
         None => String::from("None"),
@@ -25,13 +27,23 @@ impl GameMove for TicTacToeMove {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TicTacToePosition {
-    board: [[usize; 3]; 3], // 0 is empty, 1 is player1, 2 is player2
+    board: [[usize; BOARD_SIZE]; BOARD_SIZE], // 0 is empty, 1 is player1, 2 is player2
     turn: GameColor,
     winner: Option<GameColor>,
     num_empty_tiles: usize,
 }
 
 impl TicTacToePosition {
+    pub fn get_tile(&self, r: usize, c: usize) -> Option<GameColor> {
+        assert!(r < BOARD_SIZE && c < BOARD_SIZE);
+        return match self.board[r][c] {
+            0 => None,
+            1 => Some(GameColor::Player1),
+            2 => Some(GameColor::Player2),
+            _ => panic!("unexpected value"),
+        };
+    }
+
     pub fn make_move(&mut self, r: usize, c: usize) {
         assert!(r <= 2 && c <= 2);
         assert!(!self.is_over());
