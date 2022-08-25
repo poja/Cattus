@@ -90,7 +90,7 @@ impl HexPosition {
             number_of_empty_tiles: pos.number_of_empty_tiles,
             winner: match pos.winner {
                 Some(w) => Some(w.opposite()),
-                None => None
+                None => None,
             },
         };
         for r in 0..BOARD_SIZE {
@@ -245,38 +245,47 @@ impl GamePosition for HexPosition {
     }
 }
 
-pub struct HexGame {}
+pub struct HexGame {
+    pos: HexPosition,
+}
 
 impl IGame for HexGame {
     type Position = HexPosition;
     type Move = Location;
 
+    fn new() -> Self {
+        Self {
+            pos: HexPosition::new(),
+        }
+    }
+
+    fn new_from_pos(pos: Self::Position) -> Self {
+        Self { pos: pos }
+    }
+
+    fn get_position(&self) -> Self::Position {
+        return self.pos;
+    }
+
+    fn play_single_turn(&mut self, player: &mut dyn GamePlayer<Self>) {
+        if self.pos.is_over() {
+            panic!("game is already over");
+        }
+        let next_move = player.next_move(&self.pos).unwrap();
+        assert!(self.pos.is_valid_move(next_move));
+        self.pos.make_move(next_move.0, next_move.1);
+    }
     fn play_until_over(
-        pos: &Self::Position,
+        &mut self,
         player1: &mut dyn GamePlayer<Self>,
         player2: &mut dyn GamePlayer<Self>,
     ) -> (Self::Position, Option<GameColor>) {
-        let mut position = pos.clone();
-
-        while !position.is_over() {
-            let m = match position.get_turn() {
-                GameColor::Player1 => player1.next_move(&position),
-                GameColor::Player2 => player2.next_move(&position),
-            };
-            match m {
-                None => {
-                    if position.is_over() {
-                        break;
-                    }
-                    eprintln!("player failed to choose a move");
-                    return (position, Some(position.get_turn().opposite()));
-                }
-                Some(next_move) => {
-                    assert!(position.is_valid_move(next_move));
-                    position.make_move(next_move.0, next_move.1);
-                }
-            }
+        while !self.pos.is_over() {
+            self.play_single_turn(match self.pos.get_turn() {
+                GameColor::Player1 => player1,
+                GameColor::Player2 => player2,
+            });
         }
-        return (position, position.get_winner());
+        return (self.pos, self.pos.get_winner());
     }
 }

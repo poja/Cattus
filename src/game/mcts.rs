@@ -275,7 +275,10 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
             // Play randomly and return the simulation game result
             let mut player1 = PlayerRand::new();
             let mut player2 = PlayerRand::new();
-            Game::play_until_over(position, &mut player1, &mut player2).1
+            let mut game = Game::new_from_pos(*position);
+
+            let (_final_pos, winner) = game.play_until_over(&mut player1, &mut player2);
+            winner
         };
         let val = match winner {
             Some(color) => {

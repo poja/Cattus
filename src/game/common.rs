@@ -16,8 +16,13 @@ impl GameColor {
 pub trait IGame {
     type Position: GamePosition<Game = Self>;
     type Move: GameMove<Game = Self>;
+
+    fn new() -> Self;
+    fn new_from_pos(pos: Self::Position) -> Self;
+    fn get_position(&self) -> Self::Position;
+    fn play_single_turn(&mut self, player: &mut dyn GamePlayer<Self>);
     fn play_until_over(
-        pos: &Self::Position,
+        &mut self,
         player1: &mut dyn GamePlayer<Self>,
         player2: &mut dyn GamePlayer<Self>,
     ) -> (Self::Position, Option<GameColor>);
