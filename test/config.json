@@ -7,6 +7,10 @@
         {
             "name": "Hex Scalar Net Test",
             "executable": "hex_scalar_net_test.py"
+        },
+        {
+            "name": "Hex Two Headed Net Test",
+            "executable": "hex_two_headed_net_test.py"
         }
     ]
 }
