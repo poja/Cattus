@@ -69,13 +69,9 @@ fn compare_players(
             true => GameColor::Player1,
             false => GameColor::Player2,
         };
-        match HexGame::play_until_over(
-            &HexPosition::new_with_starting_color(starting_player),
-            player1,
-            player2,
-        )
-        .1
-        {
+        let mut game = HexGame::new_from_pos(HexPosition::new_with_starting_color(starting_player));
+        let (_final_pos, winner) = game.play_until_over(player1, player2);
+        match winner {
             None => {}
             Some(winner) => match winner {
                 GameColor::Player1 => player1_wins += 1,
