@@ -8,6 +8,7 @@ import os
 import struct
 import subprocess
 import sys
+from pathlib import Path
 
 import numpy as np
 import tensorflow as tf
@@ -22,29 +23,37 @@ LEARNING_RATE = 0.001
 
 
 def main(config):
+    config["games_dir"] = Path(config["working_area"]) / "games"
+    config["models_dir"] = Path(config["working_area"]) / "models"
     run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
     base_model_path = config["base_model"]
-    if base_model_path is None:
+    if base_model_path == "[none]":
         model = create_model_simple_two_headed()
-        base_model_path = _save_model(model, config['models_dir'])
+        base_model_path = _save_model(model, config["models_dir"])
+    elif base_model_path == "[latest]":
+        logging.warning("Choosing latest model based on directory name format")
+        all_models = list(config["models_dir"].iterdir())
+        if len(all_models) == 0:
+            raise ValueError("Modlel [latest] was requested, but no existing models were found.")
+        base_model_path = sorted(all_models)[-1]
 
+    # In each interation there will be a new model_path
     model_path = base_model_path
-
     for iter_num in range(config["iterations"]):
         logging.info(f"Training iteration {iter_num}")
-        data_dir = os.path.join(
-            config["data_dir"], f"{run_id}_{iter_num}_{_model_id(model_path)}")
+        training_games_dir = os.path.join(
+            config["games_dir"], f"{run_id}_{iter_num}_{_model_id(model_path)}")
 
-        self_play(model_path, data_dir, config)
-        new_model = train(model_path, data_dir)
+        self_play(model_path, training_games_dir, config)
+        new_model = train(model_path, training_games_dir)
 
-        new_model_path = _save_model(new_model, config['models_dir'])
+        new_model_path = _save_model(new_model, config["models_dir"])
         compare_models(model_path, new_model_path)
         model_path = new_model_path
 
 
 def self_play(model_path, out_dir, config):
-    subprocess.run([config["self_play_exec"],
+    subprocess.run([config["self_play_exec"].format(config["game"]),
                     "--model-path", model_path,
                     "--net-type", "two_headed_net",
                     "--games-num", str(config["self_play_games_num"]),
@@ -54,17 +63,17 @@ def self_play(model_path, out_dir, config):
                    stderr=sys.stderr, stdout=sys.stdout, check=True)
 
 
-def train(model_path, data_dir):
-    logging.debug('Loading current model')
+def train(model_path, training_games_dir):
+    logging.debug("Loading current model")
 
     model = tf.keras.models.load_model(model_path)
     xs, ys = [], []
 
-    logging.debug('Loading games by current model')
+    logging.debug("Loading games by current model")
 
     nettype = NetType.SimpleTwoHeaded
-    for data_file in os.listdir(data_dir):
-        data_filename = os.path.join(data_dir, data_file)
+    for game_file in os.listdir(training_games_dir):
+        data_filename = os.path.join(training_games_dir, game_file)
         data_entry = ttt_utils.load_data_entry(data_filename)
         xs.append(data_entry["position"])
         if nettype == NetType.SimpleScalar:
@@ -80,10 +89,10 @@ def train(model_path, data_dir):
         ys = np.array(ys)
     elif nettype == NetType.SimpleTwoHeaded:
         ys_raw = ys
-        ys = {'out_value': np.array([y[0] for y in ys_raw]),
-              'out_probs': np.array([y[1] for y in ys_raw])}
+        ys = {"out_value": np.array([y[0] for y in ys_raw]),
+              "out_probs": np.array([y[1] for y in ys_raw])}
 
-    logging.info('Fitting new model...')
+    logging.info("Fitting new model...")
     model.fit(x=xs, y=ys, batch_size=BATCH_SIZE, epochs=EPOCHS)
 
     return model
@@ -95,7 +104,7 @@ def compare_models(model1_path, model2_path):
 
 def _save_model(model, models_dir):
     model_time = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-    model_path = os.path.join(models_dir, f'model_{model_time}')
+    model_path = os.path.join(models_dir, f"model_{model_time}")
     model.save(model_path, save_format='tf')
     return model_path
 
@@ -129,8 +138,8 @@ def _model_id(model_path):
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
+        format="%(asctime)s.%(msecs)03d %(levelname)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     parser = argparse.ArgumentParser(description="Trainer")
     parser.add_argument("--config", type=str, required=True,
