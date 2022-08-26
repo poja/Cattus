@@ -92,6 +92,29 @@ impl TicTacToePosition {
         };
     }
 
+    pub fn flip_of(pos: &TicTacToePosition) -> Self {
+        let mut flipped_pos = Self {
+            board: [[0; BOARD_SIZE]; BOARD_SIZE],
+            turn: pos.turn.opposite(),
+            num_empty_tiles: pos.num_empty_tiles,
+            winner: match pos.winner {
+                Some(w) => Some(w.opposite()),
+                None => None
+            },
+        };
+        for r in 0..BOARD_SIZE {
+            for c in 0..BOARD_SIZE {
+                flipped_pos.board[r][c] = match pos.board[r][c] {
+                    0 => 0,
+                    1 => 2,
+                    2 => 1,
+                    _ => panic!("Board is corrupt.")
+                };
+            }
+        }
+        return flipped_pos;
+    }    
+
     pub fn print(&self) -> () {
         // TODO there's a RUST way to print
         for row_i in 0..=2 {

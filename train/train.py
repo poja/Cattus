@@ -12,8 +12,9 @@ import sys
 import numpy as np
 import tensorflow as tf
 
-from hex import hex_utils
-from hex.create_net import NetType, create_model_simple_two_headed
+from tictactoe import ttt_utils
+from tictactoe.create_net import create_model_simple_two_headed
+from trainable_game import NetType
 
 BATCH_SIZE = 4
 EPOCHS = 16
@@ -56,7 +57,7 @@ def self_play(model_path, out_dir, config):
 def train(model_path, data_dir):
     logging.debug('Loading current model')
 
-    model = tf.keras.models._load_model(model_path)
+    model = tf.keras.models.load_model(model_path)
     xs, ys = [], []
 
     logging.debug('Loading games by current model')
@@ -64,7 +65,7 @@ def train(model_path, data_dir):
     nettype = NetType.SimpleTwoHeaded
     for data_file in os.listdir(data_dir):
         data_filename = os.path.join(data_dir, data_file)
-        data_entry = hex_utils.load_data_entry(data_filename)
+        data_entry = ttt_utils.load_data_entry(data_filename)
         xs.append(data_entry["position"])
         if nettype == NetType.SimpleScalar:
             ys.append(data_entry["winner"])
