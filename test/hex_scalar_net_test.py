@@ -13,7 +13,7 @@ TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 RL_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "hex_scalar_net_test")
 MODEL_SCRIPT = os.path.join(
-    RL_TOP, "train", "net", "hex", "create_and_train.py")
+    RL_TOP, "train", "net", "hex", "create_net.py")
 BIN_DIR = os.path.join(RL_TOP, "target", "debug" if DEBUG else "release")
 SELF_PLAY_RUNNER = "hex_self_play_runner"
 

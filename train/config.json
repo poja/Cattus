@@ -1,11 +1,12 @@
 {
     "iterations": 5,
-    "base_model": "C:\\code\\rl\\model\\m2",
+    "base_model": null,
     "mcts_cfg": {
         "sim_count": 100,
         "explore_factor": 1.41421
     },
     "self_play_games_num": 10,
-    "data_dir": "C:\\code\\rl\\train\\data",
-    "self_play_exec": "C:\\code\\rl\\target\\release\\self_play_runner.exe"
+    "data_dir": "/Users/yishai/work/RL/output/games",
+    "models_dir": "/Users/yishai/work/RL/output/models",
+    "self_play_exec": "/Users/yishai/work/RL/target/release/hex_self_play_runner"
 }

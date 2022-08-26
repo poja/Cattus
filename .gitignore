@@ -4,3 +4,5 @@ model/
 old/
 .idea
 __pycache__/
+output/
+venv/
