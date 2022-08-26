@@ -1,12 +1,12 @@
 {
+    "game": "tictactoe",
     "iterations": 5,
-    "base_model": null,
     "mcts_cfg": {
         "sim_count": 100,
         "explore_factor": 1.41421
     },
     "self_play_games_num": 10,
-    "data_dir": "/Users/yishai/work/RL/output/games",
-    "models_dir": "/Users/yishai/work/RL/output/models",
-    "self_play_exec": "/Users/yishai/work/RL/target/release/tictactoe_self_play_runner"
+    "base_model": "[latest]",
+    "working_area": "/Users/yishai/work/RL/workarea/",
+    "self_play_exec": "/Users/yishai/work/RL/target/release/{}_self_play_runner"
 }
