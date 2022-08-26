@@ -10,8 +10,8 @@ LEARNING_RATE = 0.001
 
 
 def create_model_simple_scalar():
-    input_layer = Input(shape=121, name="in_position")
-    x = Dense(units="121", activation="relu")(input_layer)
+    input_layer = Input(shape=9, name="in_position")
+    x = Dense(units="9", activation="relu")(input_layer)
     output_layer = Dense(units="1", activation="tanh", name="out_value")(x)
 
     model = Model(inputs=input_layer, outputs=[output_layer])
@@ -23,12 +23,12 @@ def create_model_simple_scalar():
 
 
 def create_model_simple_two_headed():
-    input_layer = Input(shape=121, name="in_position")
-    x = Dense(units="121", activation="relu")(input_layer)
+    input_layer = Input(shape=9, name="in_position")
+    x = Dense(units="9", activation="relu")(input_layer)
     output_scalar_layer = Dense(
         units="1", activation="tanh", name="out_value")(x)
     output_probs_layer = Dense(
-        units="121", activation="sigmoid", name="out_probs")(x)
+        units="9", activation="sigmoid", name="out_probs")(x)
 
     model = Model(inputs=input_layer, outputs=[
                   output_scalar_layer, output_probs_layer])

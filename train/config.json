@@ -8,5 +8,5 @@
     "self_play_games_num": 10,
     "data_dir": "/Users/yishai/work/RL/output/games",
     "models_dir": "/Users/yishai/work/RL/output/models",
-    "self_play_exec": "/Users/yishai/work/RL/target/release/hex_self_play_runner"
+    "self_play_exec": "/Users/yishai/work/RL/target/release/tictactoe_self_play_runner"
 }
