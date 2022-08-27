@@ -13,22 +13,33 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 
-from tictactoe import ttt_utils
-from tictactoe.create_net import create_model_simple_two_headed
+from hex import Hex
+from tictactoe import TicTacToe
 from trainable_game import NetType
 
 BATCH_SIZE = 4
 EPOCHS = 16
-LEARNING_RATE = 0.001
 
 
 def main(config):
     config["games_dir"] = Path(config["working_area"]) / "games"
     config["models_dir"] = Path(config["working_area"]) / "models"
-    run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
     base_model_path = config["base_model"]
+    if config["game"] == "tictactoe":
+        game = TicTacToe()
+    elif config["game"] == "hex":
+        game = Hex()
+    else:
+        raise ValueError("Unknown game argument in config file.")
+
     if base_model_path == "[none]":
-        model = create_model_simple_two_headed()
+        model_type = config["model_type_if_new"]
+        if model_type == "two_headed":
+            model = game.create_model_simple_two_headed()
+        elif model_type == "scalar":
+            model = game.create_model_simple_scalar()
+        else:
+            raise ValueError(f"Unknown requested model type: {model_type}")
         base_model_path = _save_model(model, config["models_dir"])
     elif base_model_path == "[latest]":
         logging.warning("Choosing latest model based on directory name format")
@@ -36,6 +47,12 @@ def main(config):
         if len(all_models) == 0:
             raise ValueError("Modlel [latest] was requested, but no existing models were found.")
         base_model_path = sorted(all_models)[-1]
+    # TODO validate that if the model path matches the requested model type?
+    play_and_train_loop(game, base_model_path, config)
+
+
+def play_and_train_loop(game, base_model_path, config):
+    run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
 
     # In each interation there will be a new model_path
     model_path = base_model_path
@@ -45,7 +62,7 @@ def main(config):
             config["games_dir"], f"{run_id}_{iter_num}_{_model_id(model_path)}")
 
         self_play(model_path, training_games_dir, config)
-        new_model = train(model_path, training_games_dir)
+        new_model = train(game, model_path, training_games_dir)
 
         new_model_path = _save_model(new_model, config["models_dir"])
         compare_models(model_path, new_model_path)
@@ -63,7 +80,7 @@ def self_play(model_path, out_dir, config):
                    stderr=sys.stderr, stdout=sys.stdout, check=True)
 
 
-def train(model_path, training_games_dir):
+def train(game, model_path, training_games_dir):
     logging.debug("Loading current model")
 
     model = tf.keras.models.load_model(model_path)
@@ -74,7 +91,7 @@ def train(model_path, training_games_dir):
     nettype = NetType.SimpleTwoHeaded
     for game_file in os.listdir(training_games_dir):
         data_filename = os.path.join(training_games_dir, game_file)
-        data_entry = ttt_utils.load_data_entry(data_filename)
+        data_entry = game.load_data_entry(data_filename)
         xs.append(data_entry["position"])
         if nettype == NetType.SimpleScalar:
             ys.append(data_entry["winner"])
@@ -126,8 +143,8 @@ def _model_id(model_path):
         return h
 
     h = 0
-    for vars in _load_model(model_path).trainable_variables:
-        h = h * 31 + np_array_hash(vars.numpy())
+    for vars_ in _load_model(model_path).trainable_variables:
+        h = h * 31 + np_array_hash(vars_.numpy())
         h = h & 0xffffffffffffffff
 
     assert type(h) is int
