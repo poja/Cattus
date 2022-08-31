@@ -35,13 +35,6 @@ impl<Position: GamePosition> MCTSNode<Position> {
             score_w: 0.0,
         }
     }
-
-    pub fn get_expected_reward(&self) -> f32 {
-        if self.simulations_n == 0 {
-            return self.score_w;
-        }
-        return (self.score_w as f32) / (self.simulations_n as f32);
-    }
 }
 
 pub struct MCTSPlayer<'a, Game: IGame> {
@@ -206,22 +199,26 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
         // Develop tree
         self.develop_tree(root_id);
 
-        let moves_w_exp_reward = self
+        // create moves vector (move, sim_count)
+        let moves_and_simcounts = self
             .search_tree
             .edges(root_id)
             .into_iter()
             .map(|edge| {
                 let child = self.search_tree.node_weight(edge.target()).unwrap();
-                (edge.weight(), child.get_expected_reward().exp())
+                (edge.weight(), child.simulations_n)
             })
-            .collect::<Vec<_>>();
+            .collect_vec();
 
-        let exp_sum: f32 = moves_w_exp_reward.iter().map(|&(_, exp_r)| exp_r).sum();
-
-        let moves_w_probs = moves_w_exp_reward
+        // normalize sim counts to create a valid distribution -> (move, simcount / simcount_total)
+        let simcount_total: u64 = moves_and_simcounts
             .iter()
-            .map(|&(m, exp_r)| (*m, exp_r / exp_sum));
-        return moves_w_probs.collect::<Vec<_>>();
+            .map(|&(_, simcount)| simcount as u64)
+            .sum();
+        return moves_and_simcounts
+            .iter()
+            .map(|&(m, simcount)| (*m, (simcount as f64 / simcount_total as f64) as f32))
+            .collect_vec();
     }
 
     pub fn clear(&mut self) {
@@ -236,26 +233,15 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
             return None;
         }
 
-        let temperature = 2.0; /* TODO adjustable param */
-        let probabilities = moves_probs.iter().map(|&x| x.1 * temperature).collect_vec();
-        let highest_prob = *probabilities
+        /* prob -> prob^temperature */
+        let temperature = 1.0; /* TODO adjustable param */
+        let probabilities = moves_probs
             .iter()
-            .max_by(|&p1, &p2| p1.partial_cmp(p2).unwrap())
-            .unwrap();
-
-        /* Avoid exponent overflow */
-        let val_shift = if highest_prob < 15.0 {
-            0.0
-        } else {
-            highest_prob - 10.0
-        };
-        let probabilities = probabilities
-            .iter()
-            .map(|x| (x - val_shift).exp())
+            .map(|(_m, p)| (*p as f64).powf(1.0 / temperature))
             .collect_vec();
 
-        /* Actual softmax */
-        let probs_sum: f32 = probabilities.iter().sum();
+        /* normalize, prob -> prob / (probs sum) */
+        let probs_sum: f64 = probabilities.iter().sum();
         let probabilities = probabilities.iter().map(|p| p / probs_sum).collect_vec();
         let distribution = WeightedIndex::new(&probabilities).unwrap();
         return Some(moves_probs[distribution.sample(&mut rand::thread_rng())].0);
