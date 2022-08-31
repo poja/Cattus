@@ -6,7 +6,7 @@ use rand::prelude::*;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
-use crate::game::common::{GamePlayer, GamePosition, IGame};
+use crate::game::common::{GameColor, GamePlayer, GamePosition, IGame};
 use crate::hex::simple_players::PlayerRand;
 
 /// Monte Carlo Tree Search (MCTS) implementation
@@ -76,13 +76,13 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
 
             /* Run value function once to obtain "simulation" value and initial children scores (probabilities) */
             let leaf_id: NodeIndex = *path_to_selection.last().unwrap();
-            let eval = self.simulate(leaf_id);
+            let (eval, per_move_val) = self.simulate(leaf_id);
 
             /* Expand leaf and assign initial scores */
-            self.create_children(leaf_id, eval.1);
+            self.create_children(leaf_id, per_move_val);
 
             /* back propagate the position score to the parents */
-            self.backpropagate(&path_to_selection, eval.0)
+            self.backpropagate(&path_to_selection, eval)
         }
     }
 
@@ -145,8 +145,10 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
         }
         let parent_pos = parent.position;
 
-        let moves_actual: HashSet<Game::Move> = HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| *m));
-        let moves_expected: HashSet<Game::Move> = HashSet::from_iter(parent_pos.get_legal_moves().iter().map(|x| *x));
+        let moves_actual: HashSet<Game::Move> =
+            HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| *m));
+        let moves_expected: HashSet<Game::Move> =
+            HashSet::from_iter(parent_pos.get_legal_moves().iter().map(|x| *x));
         assert!(moves_actual == moves_expected);
 
         for (m, p) in per_move_init_score {
@@ -159,8 +161,18 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
     }
 
     fn simulate(&mut self, leaf_id: NodeIndex) -> (f32, Vec<(Game::Move, f32)>) {
-        let leaf = self.search_tree.node_weight(leaf_id).unwrap();
-        return self.value_func.evaluate(&leaf.position);
+        let position = &self.search_tree.node_weight(leaf_id).unwrap().position;
+        if position.is_over() {
+            let eval = match position.get_winner() {
+                Some(w) => match w {
+                    GameColor::Player1 => 1.0,
+                    GameColor::Player2 => -1.0,
+                },
+                None => 0.0,
+            };
+            return (eval, vec![]);
+        }
+        return self.value_func.evaluate(&position);
     }
 
     fn backpropagate(&mut self, path: &Vec<NodeIndex<u32>>, score: f32) {
