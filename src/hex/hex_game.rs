@@ -90,7 +90,7 @@ impl HexPosition {
             number_of_empty_tiles: pos.number_of_empty_tiles,
             winner: match pos.winner {
                 Some(w) => Some(w.opposite()),
-                None => None
+                None => None,
             },
         };
         for r in 0..BOARD_SIZE {
