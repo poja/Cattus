@@ -70,7 +70,7 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
     }
 
     fn develop_tree(&mut self, root_id: NodeIndex<u32>) -> () {
-        for _ in 1..self.simulations_per_move {
+        for _ in 0..self.simulations_per_move {
             /* Select a leaf node */
             let path_to_selection = self.select(root_id);
 
