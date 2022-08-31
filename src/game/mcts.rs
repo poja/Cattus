@@ -176,12 +176,21 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
     }
 
     fn backpropagate(&mut self, path: &Vec<NodeIndex<u32>>, score: f32) {
-        let mut applied_score = score;
         for node_id in path {
             let mut node = self.search_tree.node_weight_mut(*node_id).unwrap();
             node.simulations_n += 1;
-            node.score_w += applied_score;
-            applied_score = -applied_score;
+            node.score_w += match node.position.get_turn() {
+                /* This is confusing: the score is 1 if player1 wins and -1 if player2 wins,
+                 * nevertheless we apply -score if its player1 turn in the position.
+                 * The reason is, the score of the nodes should represent the evaluation of the PARENT node towards
+                 * the possible moves, leading to the children nodes.
+                 * If its player1 turn in the position, the evaluation should be relative to player2 turn in the parent position.
+                 *
+                 * TODO: better is to save the score on the edges, more intuitive
+                 */
+                GameColor::Player1 => -score,
+                GameColor::Player2 => score,
+            };
         }
     }
 
