@@ -22,8 +22,14 @@ EPOCHS = 16
 
 
 def main(config):
-    config["games_dir"] = Path(config["working_area"]) / "games"
-    config["models_dir"] = Path(config["working_area"]) / "models"
+    # Organize all arguments
+
+    working_area = Path(config["working_area"])
+    assert(working_area.exists())
+    config["games_dir"] = working_area / "games"
+    config["games_dir"].mkdir(exist_ok=True)
+    config["models_dir"] = working_area / "models"
+    config["models_dir"].mkdir(exist_ok=True)
     base_model_path = config["base_model"]
 
     if config["game"] == "tictactoe":
@@ -34,14 +40,17 @@ def main(config):
         raise ValueError("Unknown game argument in config file.")
     config["self_play_exec"] = config["self_play_exec"].format(config["game"])
 
+    model_type = config["model_type"]
+    if model_type == "two_headed":
+        model = game.create_model_simple_two_headed()
+        net_type = NetType.SimpleTwoHeaded
+    elif model_type == "scalar":
+        model = game.create_model_simple_scalar()
+        net_type = NetType.SimpleScalar
+    else:
+        raise ValueError(f"Unknown requested model type: {model_type}")
+
     if base_model_path == "[none]":
-        model_type = config["model_type_if_new"]
-        if model_type == "two_headed":
-            model = game.create_model_simple_two_headed()
-        elif model_type == "scalar":
-            model = game.create_model_simple_scalar()
-        else:
-            raise ValueError(f"Unknown requested model type: {model_type}")
         base_model_path = _save_model(model, config["models_dir"])
     elif base_model_path == "[latest]":
         logging.warning("Choosing latest model based on directory name format")
@@ -49,11 +58,13 @@ def main(config):
         if len(all_models) == 0:
             raise ValueError("Model [latest] was requested, but no existing models were found.")
         base_model_path = sorted(all_models)[-1]
-    # TODO validate that if the model path matches the requested model type?
-    play_and_train_loop(game, base_model_path, config)
+
+    # Run training loop
+    # TODO better organize the mode type parameter, and validate that the model path matches the requested model type
+    play_and_train_loop(game, base_model_path, net_type, config)
 
 
-def play_and_train_loop(game, base_model_path, config):
+def play_and_train_loop(game, base_model_path, net_type, config):
     run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
 
     # In each interation there will be a new model_path
@@ -64,7 +75,7 @@ def play_and_train_loop(game, base_model_path, config):
             config["games_dir"], f"{run_id}_{iter_num}_{_model_id(model_path)}")
 
         self_play(model_path, training_games_dir, config)
-        new_model = train(game, model_path, training_games_dir)
+        new_model = train(game, model_path, net_type, training_games_dir)
 
         new_model_path = _save_model(new_model, config["models_dir"])
         compare_models(model_path, new_model_path)
@@ -74,7 +85,7 @@ def play_and_train_loop(game, base_model_path, config):
 def self_play(model_path, out_dir, config):
     subprocess.run([config["self_play_exec"],
                     "--model-path", model_path,
-                    "--net-type", "two_headed_net",
+                    "--net-type", config["model_type"] + '_net',
                     "--games-num", str(config["self_play_games_num"]),
                     "--out-dir", out_dir,
                     "--sim-count", str(config["mcts_cfg"]["sim_count"]),
@@ -82,7 +93,7 @@ def self_play(model_path, out_dir, config):
                    stderr=sys.stderr, stdout=sys.stdout, check=True)
 
 
-def train(game, model_path, training_games_dir):
+def train(game, model_path, net_type, training_games_dir):
     logging.debug("Loading current model")
 
     model = tf.keras.models.load_model(model_path)
@@ -90,23 +101,22 @@ def train(game, model_path, training_games_dir):
 
     logging.debug("Loading games by current model")
 
-    nettype = NetType.SimpleTwoHeaded
     for game_file in os.listdir(training_games_dir):
         data_filename = os.path.join(training_games_dir, game_file)
         data_entry = game.load_data_entry(data_filename)
         xs.append(data_entry["position"])
-        if nettype == NetType.SimpleScalar:
+        if net_type == NetType.SimpleScalar:
             ys.append(data_entry["winner"])
-        elif nettype == NetType.SimpleTwoHeaded:
+        elif net_type == NetType.SimpleTwoHeaded:
             y = (data_entry["winner"], data_entry["moves_probabilities"])
             ys.append(y)
         else:
-            raise ValueError("Unknown model type: " + nettype)
+            raise ValueError("Unknown model type: " + net_type)
 
     xs = np.array(xs)
-    if nettype == NetType.SimpleScalar:
+    if net_type == NetType.SimpleScalar:
         ys = np.array(ys)
-    elif nettype == NetType.SimpleTwoHeaded:
+    elif net_type == NetType.SimpleTwoHeaded:
         ys_raw = ys
         ys = {"out_value": np.array([y[0] for y in ys_raw]),
               "out_probs": np.array([y[1] for y in ys_raw])}

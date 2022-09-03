@@ -29,7 +29,8 @@ fn main() -> std::io::Result<()> {
     }
 
     let mut value_func_net_two_headed = TwoHeadedNet::new(args.model_path);
-    let mut player = MCTSPlayer::new_custom(args.sim_count, args.explore_factor, value_func);
+    let mut player = MCTSPlayer::new_custom(args.sim_count, args.explore_factor, &mut 
+        value_func_net_two_headed);
 
     let mut encoder = SimpleEncoder::new();
     let trainer = SelfPlayRunner::new(&mut encoder);

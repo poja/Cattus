@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import json
 import os
 import sys
 import shutil
@@ -12,10 +12,10 @@ REMOVE_TMP_DIR_ON_FINISH = True
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 RL_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "hex_scalar_net_test")
-MODEL_SCRIPT = os.path.join(
-    RL_TOP, "train", "net", "hex", "create_net.py")
+CONFIG_FILE = os.path.join(TMP_DIR, "config.json")
 BIN_DIR = os.path.join(RL_TOP, "target", "debug" if DEBUG else "release")
-SELF_PLAY_RUNNER = "hex_self_play_runner"
+SELF_PLAY_RUNNER = os.path.join(RL_TOP, "target", "debug", "{}_self_play_runner")
+PYTHON_MAIN = os.path.join(RL_TOP, "train", "main.py")
 
 
 def run_test():
@@ -25,53 +25,30 @@ def run_test():
 
     if os.path.exists(TMP_DIR):
         shutil.rmtree(TMP_DIR)
-
-    model_path1 = os.path.join(TMP_DIR, "model1")
-    model_path2 = os.path.join(TMP_DIR, "model2")
-    self_play_dir1 = os.path.join(TMP_DIR, "self_play1")
-    self_play_dir2 = os.path.join(TMP_DIR, "self_play2")
+    os.makedirs(TMP_DIR)
 
     try:
-        logging.info("creating a new model at %s", model_path1)
+        with open(CONFIG_FILE, "w") as f:
+            json.dump({
+                "game": "hex",
+                "iterations": 2,
+                "mcts_cfg": {
+                    "sim_count": 100,
+                    "explore_factor": 1.41421
+                },
+                "self_play_games_num": 3,
+                "base_model": "[none]",
+                "model_type": "scalar",
+                "working_area": TMP_DIR,
+                "self_play_exec": SELF_PLAY_RUNNER
+            }, f)
+
+        logging.info("Running self play and generating new models...")
         subprocess.check_call([
-            "python", MODEL_SCRIPT,
-            "--type", "simple_scalar",
-            "--create",
-            "--out-dir", model_path1],
+            "python", PYTHON_MAIN,
+            "--config", CONFIG_FILE],
             stderr=subprocess.STDOUT)
 
-        logging.info("running self play using the model...")
-        subprocess.check_call([
-            "cargo", "run", "--bin",
-            SELF_PLAY_RUNNER, "--",
-            "--net-type", "scalar_net",
-            "--model-path", model_path1,
-            "--games-num", "10",
-            "--out-dir", self_play_dir1,
-            "--sim-count", "100"],
-            stderr=subprocess.STDOUT)
-
-        logging.info(
-            "training model on self play data and saving new model at %s", model_path2)
-        subprocess.check_call([
-            "python", MODEL_SCRIPT,
-            "--type", "simple_scalar",
-            "--train",
-            "--model-path", model_path1,
-            "--data-dir", self_play_dir1,
-            "--out-dir", model_path2],
-            stderr=subprocess.STDOUT)
-
-        logging.info("running self play using trained model...")
-        subprocess.check_call([
-            "cargo", "run", "--bin",
-            SELF_PLAY_RUNNER, "--",
-            "--net-type", "scalar_net",
-            "--model-path", model_path2,
-            "--games-num", "10",
-            "--out-dir", self_play_dir2,
-            "--sim-count", "100"],
-            stderr=subprocess.STDOUT)
     finally:
         if REMOVE_TMP_DIR_ON_FINISH:
             shutil.rmtree(TMP_DIR)
