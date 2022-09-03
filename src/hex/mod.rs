@@ -1,5 +1,5 @@
 pub mod hex_game;
-pub mod simple_players;
+pub mod cmd_player;
 pub mod uxi;
 pub mod net;
 

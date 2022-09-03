@@ -6,8 +6,7 @@ use rand::prelude::*;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
-use crate::game::common::{GameColor, GamePlayer, GamePosition, IGame};
-use crate::hex::simple_players::PlayerRand;
+use crate::game::common::{GameColor, GamePlayer, GamePosition, IGame, PlayerRand};
 
 /// Monte Carlo Tree Search (MCTS) implementation
 

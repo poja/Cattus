@@ -25,12 +25,14 @@ def main(config):
     config["games_dir"] = Path(config["working_area"]) / "games"
     config["models_dir"] = Path(config["working_area"]) / "models"
     base_model_path = config["base_model"]
+
     if config["game"] == "tictactoe":
         game = TicTacToe()
     elif config["game"] == "hex":
         game = Hex()
     else:
         raise ValueError("Unknown game argument in config file.")
+    config["self_play_exec"] = config["self_play_exec"].format(config["game"])
 
     if base_model_path == "[none]":
         model_type = config["model_type_if_new"]
@@ -45,7 +47,7 @@ def main(config):
         logging.warning("Choosing latest model based on directory name format")
         all_models = list(config["models_dir"].iterdir())
         if len(all_models) == 0:
-            raise ValueError("Modlel [latest] was requested, but no existing models were found.")
+            raise ValueError("Model [latest] was requested, but no existing models were found.")
         base_model_path = sorted(all_models)[-1]
     # TODO validate that if the model path matches the requested model type?
     play_and_train_loop(game, base_model_path, config)
@@ -70,7 +72,7 @@ def play_and_train_loop(game, base_model_path, config):
 
 
 def self_play(model_path, out_dir, config):
-    subprocess.run([config["self_play_exec"].format(config["game"]),
+    subprocess.run([config["self_play_exec"],
                     "--model-path", model_path,
                     "--net-type", "two_headed_net",
                     "--games-num", str(config["self_play_games_num"]),

@@ -1,9 +1,9 @@
 use clap::Parser;
-use rl::game::mcts::{MCTSPlayer, ValueFunction};
+use rl::game::mcts::MCTSPlayer;
 use rl::game::self_play::SelfPlayRunner;
 use rl::tictactoe::net::encoder::SimpleEncoder;
 use rl::tictactoe::net::two_headed_net::TwoHeadedNet;
-use rl::tictactoe::tictactoe_game::TicTacToeGame;
+
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -24,18 +24,11 @@ struct Args {
 
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
-
-    // let mut value_func_net_scalar;
-    let mut value_func_net_two_headed;
-    let value_func: &mut dyn ValueFunction<TicTacToeGame>;
-    if args.net_type == "scalar_net" {
-        panic!("Not implemented for TTT");
-    } else if args.net_type == "two_headed_net" {
-        value_func_net_two_headed = TwoHeadedNet::new(args.model_path);
-        value_func = &mut value_func_net_two_headed;
-    } else {
+    if args.net_type != "two_headed_net" {
         panic!("unsupported net type: {}", args.net_type);
     }
+
+    let mut value_func_net_two_headed = TwoHeadedNet::new(args.model_path);
     let mut player = MCTSPlayer::new_custom(args.sim_count, args.explore_factor, value_func);
 
     let mut encoder = SimpleEncoder::new();
