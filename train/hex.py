@@ -4,10 +4,16 @@ import tensorflow as tf
 from keras import optimizers, Input
 from keras.layers import Dense
 from keras.models import Model
+import keras
 
-from trainable_game import TrainableGame
+from trainable_game import TrainableGame, NetCategory
 
 _LEARNING_RATE = 0.001
+
+
+class NetType:
+    SimpleScalar = "simple_scalar"
+    SimpleTwoHeaded = "simple_two_headed"
 
 
 class Hex(TrainableGame):
@@ -23,7 +29,7 @@ class Hex(TrainableGame):
 
         return data_obj
 
-    def create_model_simple_scalar(self):
+    def _create_model_simple_scalar(self):
         input_layer = Input(shape=121, name="in_position")
         x = Dense(units="121", activation="relu")(input_layer)
         output_layer = Dense(units="1", activation="tanh", name="out_value")(x)
@@ -35,7 +41,7 @@ class Hex(TrainableGame):
                       metrics=['accuracy'])
         return model
 
-    def create_model_simple_two_headed(self):
+    def _create_model_simple_two_headed(self):
         input_layer = Input(shape=121, name="in_position")
         x = Dense(units="121", activation="relu")(input_layer)
         output_scalar_layer = Dense(
@@ -53,6 +59,25 @@ class Hex(TrainableGame):
             metrics={'out_value': tf.keras.metrics.RootMeanSquaredError(),
                      'out_probs': tf.keras.metrics.KLDivergence()})
         return model
+
+    def create_model(self, net_type: str) -> keras.Model:
+        if net_type == NetType.SimpleScalar:
+            return self._create_model_simple_scalar()
+        elif net_type == NetType.SimpleTwoHeaded:
+            return self._create_model_simple_two_headed()
+        else:
+            raise ValueError("Unknown model type: " + net_type)
+
+    def load_model(self, path: str, net_type: str) -> keras.Model:
+        return tf.keras.models.load_model(path)
+
+    def get_net_category(self, net_type: str) -> NetCategory:
+        if net_type == NetType.SimpleScalar:
+            return NetCategory.Scalar
+        elif net_type == NetType.SimpleTwoHeaded:
+            return NetCategory.TwoHeaded
+        else:
+            raise ValueError("Unknown model type: " + net_type)
 
     @staticmethod
     def _flip_position(data_obj):

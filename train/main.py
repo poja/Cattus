@@ -15,7 +15,7 @@ import tensorflow as tf
 
 from hex import Hex
 from tictactoe import TicTacToe
-from trainable_game import NetType
+from trainable_game import NetCategory
 
 BATCH_SIZE = 4
 EPOCHS = 16
@@ -30,7 +30,6 @@ def main(config):
     config["games_dir"].mkdir(exist_ok=True)
     config["models_dir"] = working_area / "models"
     config["models_dir"].mkdir(exist_ok=True)
-    base_model_path = config["base_model"]
 
     if config["game"] == "tictactoe":
         game = TicTacToe()
@@ -40,23 +39,17 @@ def main(config):
         raise ValueError("Unknown game argument in config file.")
     config["self_play_exec"] = config["self_play_exec"].format(config["game"])
 
-    model_type = config["model_type"]
-    if model_type == "two_headed":
-        model = game.create_model_simple_two_headed()
-        net_type = NetType.SimpleTwoHeaded
-    elif model_type == "scalar":
-        model = game.create_model_simple_scalar()
-        net_type = NetType.SimpleScalar
-    else:
-        raise ValueError(f"Unknown requested model type: {model_type}")
-
+    net_type = config["model_type"]
+    base_model_path = config["base_model"]
     if base_model_path == "[none]":
+        model = game.create_model(net_type)
         base_model_path = _save_model(model, config["models_dir"])
     elif base_model_path == "[latest]":
         logging.warning("Choosing latest model based on directory name format")
         all_models = list(config["models_dir"].iterdir())
         if len(all_models) == 0:
-            raise ValueError("Model [latest] was requested, but no existing models were found.")
+            raise ValueError(
+                "Model [latest] was requested, but no existing models were found.")
         base_model_path = sorted(all_models)[-1]
 
     # Run training loop
@@ -72,9 +65,9 @@ def play_and_train_loop(game, base_model_path, net_type, config):
     for iter_num in range(config["iterations"]):
         logging.info(f"Training iteration {iter_num}")
         training_games_dir = os.path.join(
-            config["games_dir"], f"{run_id}_{iter_num}_{_model_id(model_path)}")
+            config["games_dir"], f"{run_id}_{iter_num}_{_model_id(game.load_model(model_path, net_type))}")
 
-        self_play(model_path, training_games_dir, config)
+        self_play(game, model_path, training_games_dir, config)
         new_model = train(game, model_path, net_type, training_games_dir)
 
         new_model_path = _save_model(new_model, config["models_dir"])
@@ -82,13 +75,13 @@ def play_and_train_loop(game, base_model_path, net_type, config):
         model_path = new_model_path
 
 
-def self_play(model_path, out_dir, config):
+def self_play(game, model_path, out_dir, config):
     # TODO add option to alternate between DEBUG and RELEASE
     subprocess.run([
         "cargo", "run", "--bin",
         config["self_play_exec"], "--",
         "--model-path", model_path,
-        "--net-type", config["model_type"] + '_net',
+        "--net-type", game.get_net_category(config["model_type"]) + '_net',
         "--games-num", str(config["self_play_games_num"]),
         "--out-dir", out_dir,
         "--sim-count", str(config["mcts_cfg"]["sim_count"]),
@@ -99,7 +92,8 @@ def self_play(model_path, out_dir, config):
 def train(game, model_path, net_type, training_games_dir):
     logging.debug("Loading current model")
 
-    model = tf.keras.models.load_model(model_path)
+    model = game.load_model(model_path, net_type)
+    net_category = game.get_net_category(net_type)
     xs, ys = [], []
 
     logging.debug("Loading games by current model")
@@ -108,21 +102,23 @@ def train(game, model_path, net_type, training_games_dir):
         data_filename = os.path.join(training_games_dir, game_file)
         data_entry = game.load_data_entry(data_filename)
         xs.append(data_entry["position"])
-        if net_type == NetType.SimpleScalar:
+        if net_category == NetCategory.Scalar:
             ys.append(data_entry["winner"])
-        elif net_type == NetType.SimpleTwoHeaded:
+        elif net_category == NetCategory.TwoHeaded:
             y = (data_entry["winner"], data_entry["moves_probabilities"])
             ys.append(y)
         else:
-            raise ValueError("Unknown model type: " + net_type)
+            raise ValueError("Unknown model category: " + net_category)
 
     xs = np.array(xs)
-    if net_type == NetType.SimpleScalar:
+    if net_category == NetCategory.Scalar:
         ys = np.array(ys)
-    elif net_type == NetType.SimpleTwoHeaded:
+    elif net_category == NetCategory.TwoHeaded:
         ys_raw = ys
         ys = {"out_value": np.array([y[0] for y in ys_raw]),
               "out_probs": np.array([y[1] for y in ys_raw])}
+    else:
+        raise ValueError("Unknown model category: " + net_category)
 
     logging.info("Fitting new model...")
     model.fit(x=xs, y=ys, batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=0)
@@ -141,11 +137,7 @@ def _save_model(model, models_dir):
     return model_path
 
 
-def _load_model(path):
-    return tf.keras.models.load_model(path)
-
-
-def _model_id(model_path):
+def _model_id(model):
     def floatToBits(f):
         return struct.unpack('>l', struct.pack('>f', f))[0]
 
@@ -153,12 +145,12 @@ def _model_id(model_path):
         h = 0
         for a in arr:
             h = h * 31 + (np_array_hash(a) if type(a)
-                                              is np.ndarray else floatToBits(a))
+                          is np.ndarray else floatToBits(a))
             h = h & 0xffffffffffffffff
         return h
 
     h = 0
-    for vars_ in _load_model(model_path).trainable_variables:
+    for vars_ in model.trainable_variables:
         h = h * 31 + np_array_hash(vars_.numpy())
         h = h & 0xffffffffffffffff
 
