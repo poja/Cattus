@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import json
 
 import tensorflow as tf
@@ -7,6 +9,7 @@ from keras.models import Model
 import keras
 
 from trainable_game import TrainableGame, NetCategory
+import net_utils
 
 _LEARNING_RATE = 0.001
 
@@ -55,7 +58,10 @@ class Hex(TrainableGame):
         opt = optimizers.Adam(learning_rate=_LEARNING_RATE)
         model.compile(
             optimizer=opt,
-            loss={'out_value': 'mse', 'out_probs': 'kl_divergence'},
+            loss={
+                'out_value': tf.keras.losses.MeanSquaredError(),
+                'out_probs': net_utils.loss_cross_entropy
+            },
             metrics={'out_value': tf.keras.metrics.RootMeanSquaredError(),
                      'out_probs': tf.keras.metrics.KLDivergence()})
         return model
@@ -69,7 +75,16 @@ class Hex(TrainableGame):
             raise ValueError("Unknown model type: " + net_type)
 
     def load_model(self, path: str, net_type: str) -> keras.Model:
-        return tf.keras.models.load_model(path)
+        if net_type == NetType.SimpleScalar:
+            custom_objects = {}
+        elif net_type == NetType.SimpleTwoHeaded:
+            custom_objects = {
+                "loss_cross_entropy": net_utils.loss_cross_entropy
+            }
+        else:
+            raise ValueError("Unknown model type: " + net_type)
+
+        return tf.keras.models.load_model(path, custom_objects=custom_objects)
 
     def get_net_category(self, net_type: str) -> NetCategory:
         if net_type == NetType.SimpleScalar:

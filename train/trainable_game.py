@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from abc import ABC
 
 import keras
@@ -6,6 +8,7 @@ import keras
 class NetCategory:
     Scalar = "scalar"
     TwoHeaded = "two_headed"
+
 
 class TrainableGame(ABC):
 
