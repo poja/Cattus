@@ -3,17 +3,19 @@ from abc import ABC
 import keras
 
 
-class NetType:
-    SimpleScalar = "simple_scalar"
-    SimpleTwoHeaded = "simple_two_headed"
-
+class NetCategory:
+    Scalar = "scalar"
+    TwoHeaded = "two_headed"
 
 class TrainableGame(ABC):
 
-    def create_model_simple_scalar(self) -> keras.Model:
+    def create_model(self, net_type: str) -> keras.Model:
         pass
 
-    def create_model_simple_two_headed(self) -> keras.Model:
+    def load_model(self, path: str, net_type: str) -> keras.Model:
+        pass
+
+    def get_net_category(self, net_type: str) -> NetCategory:
         pass
 
     def load_data_entry(self, path: str) -> dict:
