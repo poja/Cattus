@@ -83,7 +83,7 @@ impl TwoHeadedNet {
 
         let mut args = SessionRunArgs::new();
         args.add_feed(&self.input_op, 0, &input);
-        let output_scalar = args.request_fetch(&self.output_scalar_op, 0);
+        let output_scalar = args.request_fetch(&self.output_scalar_op, 1);
         let output_probs = args.request_fetch(&self.output_probs_op, 0);
 
         self.bundle

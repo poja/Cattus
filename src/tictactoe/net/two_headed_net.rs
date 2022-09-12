@@ -1,9 +1,9 @@
 use crate::game::common::{GamePosition, IGame};
 use crate::game::encoder::Encoder;
 use crate::game::mcts::ValueFunction;
-use crate::tictactoe::tictactoe_game::{self, TicTacToeGame, TicTacToePosition};
 use crate::tictactoe::net::common;
 use crate::tictactoe::net::encoder::SimpleEncoder;
+use crate::tictactoe::tictactoe_game::{self, TicTacToeGame, TicTacToePosition};
 use itertools::Itertools;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
@@ -83,10 +83,8 @@ impl TwoHeadedNet {
 
         let mut args = SessionRunArgs::new();
         args.add_feed(&self.input_op, 0, &input);
-        let output_scalar = args.request_fetch(&self.output_scalar_op, 0);
+        let output_scalar = args.request_fetch(&self.output_scalar_op, 1);
         let output_probs = args.request_fetch(&self.output_probs_op, 0);
-
-
 
         self.bundle
             .session
@@ -94,7 +92,6 @@ impl TwoHeadedNet {
             .expect("Error occurred during calculations");
 
         let val: f32 = args.fetch(output_scalar).unwrap()[0];
-
         let probs: Tensor<f32> = args.fetch(output_probs).unwrap();
         for idx in 0..input_dim {
             assert!(probs[idx] >= 0.0);
@@ -102,7 +99,12 @@ impl TwoHeadedNet {
         let moves = position.get_legal_moves();
         let moves_probs = moves
             .iter()
-            .map(|move_| ((*move_), probs[move_.cell.0 * tictactoe_game::BOARD_SIZE + move_.cell.1]))
+            .map(|move_| {
+                (
+                    (*move_),
+                    probs[move_.cell.0 * tictactoe_game::BOARD_SIZE + move_.cell.1],
+                )
+            })
             .collect_vec();
 
         return (val, moves_probs);
@@ -110,7 +112,10 @@ impl TwoHeadedNet {
 }
 
 impl ValueFunction<TicTacToeGame> for TwoHeadedNet {
-    fn evaluate(&mut self, position: &TicTacToePosition) -> (f32, Vec<(<TicTacToeGame as IGame>::Move, f32)>) {
+    fn evaluate(
+        &mut self,
+        position: &TicTacToePosition,
+    ) -> (f32, Vec<(<TicTacToeGame as IGame>::Move, f32)>) {
         return self.evaluate_position(position);
     }
 }
