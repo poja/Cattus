@@ -67,7 +67,7 @@ def main(config):
 def play_and_train_loop(game, base_model_path, net_type, config):
     run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
 
-    # In each interation there will be a new model_path
+    # In each iteration there will be a new model_path
     model_path = base_model_path
     for iter_num in range(config["iterations"]):
         logging.info(f"Training iteration {iter_num}")
@@ -83,14 +83,17 @@ def play_and_train_loop(game, base_model_path, net_type, config):
 
 
 def self_play(model_path, out_dir, config):
-    subprocess.run([config["self_play_exec"],
-                    "--model-path", model_path,
-                    "--net-type", config["model_type"] + '_net',
-                    "--games-num", str(config["self_play_games_num"]),
-                    "--out-dir", out_dir,
-                    "--sim-count", str(config["mcts_cfg"]["sim_count"]),
-                    "--explore-factor", str(config["mcts_cfg"]["explore_factor"])],
-                   stderr=sys.stderr, stdout=sys.stdout, check=True)
+    # TODO add option to alternate between DEBUG and RELEASE
+    subprocess.run([
+        "cargo", "run", "--bin",
+        config["self_play_exec"], "--",
+        "--model-path", model_path,
+        "--net-type", config["model_type"] + '_net',
+        "--games-num", str(config["self_play_games_num"]),
+        "--out-dir", out_dir,
+        "--sim-count", str(config["mcts_cfg"]["sim_count"]),
+        "--explore-factor", str(config["mcts_cfg"]["explore_factor"])],
+        stderr=sys.stderr, stdout=sys.stdout, check=True)
 
 
 def train(game, model_path, net_type, training_games_dir):
@@ -122,7 +125,7 @@ def train(game, model_path, net_type, training_games_dir):
               "out_probs": np.array([y[1] for y in ys_raw])}
 
     logging.info("Fitting new model...")
-    model.fit(x=xs, y=ys, batch_size=BATCH_SIZE, epochs=EPOCHS)
+    model.fit(x=xs, y=ys, batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=0)
 
     return model
 

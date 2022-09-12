@@ -9,5 +9,5 @@
     "base_model": "[latest]",
     "model_type": "two_headed",
     "working_area": "/Users/yishai/work/RL/workarea/",
-    "self_play_exec": "/Users/yishai/work/RL/target/release/{}_self_play_runner"
+    "self_play_exec": "{}_self_play_runner"
 }
