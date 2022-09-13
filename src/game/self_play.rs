@@ -5,6 +5,10 @@ use json;
 use std::fs;
 use std::path;
 
+pub trait PlayerBuilder<Game: IGame>: Sync + Send {
+    fn new_player(&self) -> MCTSPlayer<Game>;
+}
+
 pub struct SelfPlayRunner<Game: IGame> {
     encoder: Box<dyn Encoder<Game>>,
 }
@@ -16,7 +20,7 @@ impl<Game: IGame> SelfPlayRunner<Game> {
 
     pub fn generate_data(
         &self,
-        player: &mut MCTSPlayer<Game>,
+        player_builder: Box<dyn PlayerBuilder<Game>>,
         games_num: u32,
         output_dir: &String,
     ) -> std::io::Result<()> {
@@ -32,6 +36,8 @@ impl<Game: IGame> SelfPlayRunner<Game> {
             ));
         }
         let mut data_idx: u64 = 0;
+
+        let mut player = player_builder.new_player();
 
         for game_idx in 0..games_num {
             if games_num < 10 || game_idx % (games_num / 10) == 0 {
