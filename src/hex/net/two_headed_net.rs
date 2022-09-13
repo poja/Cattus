@@ -16,7 +16,7 @@ pub struct TwoHeadedNet {
 }
 
 impl TwoHeadedNet {
-    pub fn new(model_path: String) -> Self {
+    pub fn new(model_path: &String) -> Self {
         let signature_input_parameter_name = "in_position";
         let signature_output_value_parameter_name = "out_value";
         let signature_output_probs_parameter_name = "out_probs";
@@ -24,7 +24,7 @@ impl TwoHeadedNet {
         // Load saved model bundle (session state + meta_graph data)
         let mut graph = Graph::new();
         let bundle =
-            SavedModelBundle::load(&SessionOptions::new(), &["serve"], &mut graph, &model_path)
+            SavedModelBundle::load(&SessionOptions::new(), &["serve"], &mut graph, model_path)
                 .expect("Can't load saved model");
 
         // Get signature metadata from the model bundle

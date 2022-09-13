@@ -21,19 +21,13 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let mut value_func_rand;
-    let mut value_func_net_scalar;
-    let mut value_func_net_two_headed;
-    let value_func: &mut dyn ValueFunction<HexGame>;
+    let value_func: Box<dyn ValueFunction<HexGame>>;
     if args.net_type == "_RAND_MOVES_" {
-        value_func_rand = ValueFunctionRand::new();
-        value_func = &mut value_func_rand;
+        value_func = Box::new(ValueFunctionRand::new());
     } else if args.net_type == "scalar_net" {
-        value_func_net_scalar = ScalarValNet::new(args.model_path);
-        value_func = &mut value_func_net_scalar;
+        value_func = Box::new(ScalarValNet::new(&args.model_path));
     } else if args.net_type == "two_headed_net" {
-        value_func_net_two_headed = TwoHeadedNet::new(args.model_path);
-        value_func = &mut value_func_net_two_headed;
+        value_func = Box::new(TwoHeadedNet::new(&args.model_path));
     } else {
         panic!("unsupported net type: {}", args.net_type);
     }
