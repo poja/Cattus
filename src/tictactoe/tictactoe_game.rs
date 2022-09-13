@@ -80,6 +80,14 @@ pub struct TicTacToePosition {
 }
 
 impl TicTacToePosition {
+    pub fn pieces_x(&self) -> Bitboard {
+        self.board_x
+    }
+
+    pub fn pieces_y(&self) -> Bitboard {
+        self.board_y
+    }
+
     pub fn get_tile(&self, r: u8, c: u8) -> Option<GameColor> {
         assert!(r < BOARD_SIZE && c < BOARD_SIZE);
         let idx = r * BOARD_SIZE + c;

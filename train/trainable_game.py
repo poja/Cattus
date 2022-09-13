@@ -21,5 +21,5 @@ class TrainableGame(ABC):
     def get_net_category(self, net_type: str) -> NetCategory:
         pass
 
-    def load_data_entry(self, path: str) -> dict:
+    def load_data_entry(self, path: str) -> ():
         pass
