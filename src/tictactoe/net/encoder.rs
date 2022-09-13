@@ -10,23 +10,35 @@ impl Encoder {
         Self {}
     }
     pub fn encode_position(&self, pos: &TicTacToePosition) -> Tensor<f32> {
+        let cpu = true;
+
         let planes_num = 2;
         let board_size = BOARD_SIZE as u64;
 
-        let mut encoded_position =
-            Vec::with_capacity((planes_num * board_size * board_size) as usize);
-        let mut encode_plane = |plane: Bitboard| {
-            for idx in 0..(BOARD_SIZE * BOARD_SIZE) {
-                encoded_position.push(match plane.get(idx) {
+        let mut encoded_position = vec![0.0; (board_size * board_size * planes_num) as usize];
+        let mut encode_plane = |plane: Bitboard, plane_idx: u64| {
+            for square in 0..(BOARD_SIZE * BOARD_SIZE) {
+                let idx = if cpu {
+                    square as u64 * planes_num + plane_idx
+                } else {
+                    plane_idx * board_size * board_size + square as u64
+                };
+                encoded_position[idx as usize] = match plane.get(square) {
                     true => 1.0,
                     false => 0.0,
-                });
+                };
             }
         };
-        encode_plane(pos.pieces_x());
-        encode_plane(pos.pieces_y());
 
-        return Tensor::new(&[1, planes_num, board_size, board_size])
+        encode_plane(pos.pieces_x(), 0);
+        encode_plane(pos.pieces_y(), 1);
+
+        let dims = if cpu {
+            [1, board_size, board_size, planes_num]
+        } else {
+            [1, planes_num, board_size, board_size]
+        };
+        return Tensor::new(&dims)
             .with_values(&encoded_position)
             .expect("Can't create input tensor");
     }

@@ -86,10 +86,16 @@ impl TwoHeadedNet {
             .run(&mut args)
             .expect("Error occurred during calculations");
 
-        let val: f32 = args.fetch(output_scalar).unwrap()[0];
-        let probs: Tensor<f32> = args.fetch(output_probs).unwrap();
+        let mut val: f32 = args.fetch(output_scalar).unwrap()[0];
+        if val.is_nan() {
+            val = 0.0;
+        }
+
+        let mut probs: Tensor<f32> = args.fetch(output_probs).unwrap();
         for idx in 0..probs.len() {
-            assert!(probs[idx] >= 0.0);
+            if probs[idx].is_nan() {
+                probs[idx] = f32::MIN;
+            }
         }
         let moves = position.get_legal_moves();
         let moves_probs = moves
