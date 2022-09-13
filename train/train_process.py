@@ -7,7 +7,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-
+import copy
 import tensorflow as tf
 
 from hex import Hex
@@ -26,7 +26,7 @@ def compare_models(model1_path, model2_path):
 
 class TrainProcess:
     def __init__(self, cfg):
-        self.cfg = cfg
+        self.cfg = copy.deepcopy(cfg)
 
         working_area = self.cfg["working_area"]
         if "{RL_TOP}" in working_area:
@@ -52,7 +52,7 @@ class TrainProcess:
         self.net_type = self.cfg["model"]["type"]
         base_model_path = self.cfg["model"]["base"]
         if base_model_path == "[none]":
-            model = self.game.create_model(self.net_type)
+            model = self.game.create_model(self.net_type, self.cfg["model"])
             base_model_path = self._save_model(model)
         elif base_model_path == "[latest]":
             logging.warning(
@@ -100,13 +100,10 @@ class TrainProcess:
     def _train(self, model_path, training_games_dir):
         logging.debug("Loading current model")
         model = self.game.load_model(model_path, self.net_type)
-        xs, ys = [], []
 
         logging.debug("Loading games by current model")
-
         parser = DataParser(self.game, training_games_dir,
                             self.cfg["training"]["entries_count"])
-
         train_dataset = tf.data.Dataset.from_generator(
             parser.generator, output_types=(tf.string, tf.string, tf.string))
         train_dataset = train_dataset.map(parser.get_parse_func())

@@ -2,7 +2,7 @@
     "game": "tictactoe",
     "working_area": "{RL_TOP}/workarea/",
     "mcts": {
-        "sim_count": 800,
+        "sim_count": 140,
         "explore_factor": 1.41421
     },
     "self_play": {
@@ -13,7 +13,9 @@
     },
     "model": {
         "base": "[latest]",
-        "type": "simple_two_headed"
+        "type": "ConvNetV1",
+        "residual_filter_num": 2,
+        "residual_block_num": 2
     },
     "training": {
         "entries_count": 10000

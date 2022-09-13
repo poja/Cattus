@@ -13,5 +13,5 @@ class TrainableGame(ABC):
     def load_model(self, path: str, net_type: str) -> keras.Model:
         pass
 
-    def load_data_entry(self, path: str) -> ():
+    def load_data_entry(self, path: str, cfg: dict) -> ():
         pass

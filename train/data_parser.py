@@ -6,7 +6,6 @@ import tensorflow as tf
 import struct
 import random
 import functools
-from tictactoe import TicTacToe
 
 
 class DataParser:
@@ -14,6 +13,7 @@ class DataParser:
         self.game = game
         self.data_dir = data_dir
         self.entries_count = entries_count
+        self.cpu = True
 
     def _data_entries_filenames_gen(self):
         filenames = os.listdir(self.data_dir)
@@ -42,18 +42,24 @@ class DataParser:
             planes = [np.unpackbits(plane, count=plane_size)
                       for plane in planes]
             planes = np.array(planes, dtype=np.float32)
+            planes = np.reshape(
+                planes, (self.game.PLANES_NUM, self.game.BOARD_SIZE, self.game.BOARD_SIZE))
+            if self.cpu:
+                planes = np.transpose(planes, (1, 2, 0))
             yield (planes, probs, winner)
 
     def _serialize_gen(self, nparr_gen):
+        f32size = np.dtype(np.float32).itemsize
         for (planes, probs, winner) in nparr_gen:
             planes = planes.tobytes()
             plane_size = self.game.BOARD_SIZE * self.game.BOARD_SIZE
-            assert len(planes) == (self.game.PLANES_NUM * plane_size * 4)
+            assert len(planes) == (self.game.PLANES_NUM * plane_size * f32size)
 
-            assert len(probs) == self.game.MOVE_NUM
             probs = probs.astype('f').tostring()
+            assert len(probs) == self.game.MOVE_NUM * f32size
 
             winner = struct.pack('f', winner)
+            assert len(winner) == 1 * f32size
 
             yield (planes, probs, winner)
 
@@ -77,9 +83,12 @@ class DataParser:
         probs = tf.io.decode_raw(probs, tf.float32)
         winner = tf.io.decode_raw(winner, tf.float32)
 
-        # TODO shape of tensor might need to be [size][size][planes] instead
-        planes = tf.reshape(planes, (-1, self.game.PLANES_NUM,
-                            self.game.BOARD_SIZE, self.game.BOARD_SIZE))
+        planes_shape_cpu = (-1, self.game.BOARD_SIZE,
+                            self.game.BOARD_SIZE, self.game.PLANES_NUM)
+        planes_shape_gpu = (-1, self.game.PLANES_NUM,
+                            self.game.BOARD_SIZE, self.game.BOARD_SIZE)
+        planes_shape = planes_shape_cpu if self.cpu else planes_shape_gpu
+        planes = tf.reshape(planes, planes_shape)
         probs = tf.reshape(probs, (-1, self.game.MOVE_NUM))
         winner = tf.reshape(winner, (-1, 1))
 

@@ -34,6 +34,8 @@ impl DataSerializer<HexGame> for HexSerializer {
         planes.push(((pieces_red >> 64) & 0xffffffffffffffff) as u64);
         planes.push(((pieces_blue >> 00) & 0xffffffffffffffff) as u64);
         planes.push(((pieces_blue >> 64) & 0xffffffffffffffff) as u64);
+        /* TODO !!! possible little/big indian bug */
+        /* Need to use some library (protobuf) to ensure writes and reads are done in the same way */
 
         let mut probs_vec = vec![0.0; (BOARD_SIZE * BOARD_SIZE) as usize];
         for (m, prob) in probs {
