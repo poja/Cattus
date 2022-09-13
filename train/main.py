@@ -84,9 +84,9 @@ def play_and_train_loop(game, base_model_path, net_type, config):
 
 
 def self_play(game, model_path, out_dir, config):
-    # TODO add option to alternate between DEBUG and RELEASE
+    profile = "dev" if config["debug"] == "true" else "release"
     subprocess.run([
-        "cargo", "run", "--bin",
+        "cargo", "run", "--profile", profile, "--bin",
         config["self_play_exec"], "--",
         "--model-path", model_path,
         "--net-type", game.get_net_category(config["model_type"]) + '_net',

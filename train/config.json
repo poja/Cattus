@@ -9,5 +9,6 @@
     "base_model": "[latest]",
     "model_type": "simple_two_headed",
     "working_area": "{RL_TOP}/workarea/",
-    "self_play_exec": "{}_self_play_runner"
+    "self_play_exec": "{}_self_play_runner",
+    "debug": "false"
 }
