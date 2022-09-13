@@ -1,21 +1,26 @@
 use crate::game::common::{GameColor, GamePosition, IGame};
 use crate::game::encoder::Encoder;
 use crate::game::mcts::MCTSPlayer;
+use core::panic;
 use json;
 use std::fs;
 use std::path;
+use std::sync::Arc;
+use std::thread::{self, JoinHandle};
 
 pub trait PlayerBuilder<Game: IGame>: Sync + Send {
     fn new_player(&self) -> MCTSPlayer<Game>;
 }
 
 pub struct SelfPlayRunner<Game: IGame> {
-    encoder: Box<dyn Encoder<Game>>,
+    encoder: Arc<dyn Encoder<Game>>,
 }
 
-impl<Game: IGame> SelfPlayRunner<Game> {
+impl<Game: IGame + 'static> SelfPlayRunner<Game> {
     pub fn new(encoder: Box<dyn Encoder<Game>>) -> Self {
-        Self { encoder: encoder }
+        Self {
+            encoder: Arc::from(encoder),
+        }
     }
 
     pub fn generate_data(
@@ -35,15 +40,73 @@ impl<Game: IGame> SelfPlayRunner<Game> {
                 "output dir is not empty",
             ));
         }
-        let mut data_idx: u64 = 0;
 
-        let mut player = player_builder.new_player();
+        let player_builder = Arc::from(player_builder);
 
-        for game_idx in 0..games_num {
-            if games_num < 10 || game_idx % (games_num / 10) == 0 {
-                let percentage = (((game_idx as f32) / games_num as f32) * 100.0) as u32;
-                println!("self play {}%", percentage);
-            }
+        let thread_num = 8;
+        let mut threads: Vec<JoinHandle<()>> = vec![];
+        for thread_idx in 0..thread_num {
+            let start_idx = games_num * thread_idx / thread_num;
+            let end_idx = games_num * (thread_idx + 1) / thread_num;
+
+            let worker = SelfPlayWorker::new(
+                Arc::clone(&player_builder),
+                Arc::clone(&self.encoder),
+                output_dir.to_string(),
+                start_idx,
+                end_idx,
+            );
+            threads.push(thread::spawn(move || {
+                let worker = worker;
+                match worker.generate_data() {
+                    Ok(_) => {}
+                    Err(e) => panic!("{:?}", e),
+                }
+            }));
+        }
+
+        /* Join all threads */
+        for t in threads {
+            t.join().unwrap();
+        }
+
+        return Ok(());
+    }
+}
+
+struct SelfPlayWorker<Game: IGame> {
+    player_builder: Arc<dyn PlayerBuilder<Game>>,
+    encoder: Arc<dyn Encoder<Game>>,
+    output_dir: String,
+    start_idx: u32,
+    end_idx: u32,
+}
+
+impl<Game: IGame> SelfPlayWorker<Game> {
+    fn new(
+        player_builder: Arc<dyn PlayerBuilder<Game>>,
+        encoder: Arc<dyn Encoder<Game>>,
+        output_dir: String,
+        start_idx: u32,
+        end_idx: u32,
+    ) -> Self {
+        Self {
+            player_builder: player_builder,
+            encoder: encoder,
+            output_dir: output_dir,
+            start_idx: start_idx,
+            end_idx: end_idx,
+        }
+    }
+
+    fn generate_data(&self) -> std::io::Result<()> {
+        let mut player = self.player_builder.new_player();
+        let mut pos_idx = 0;
+        for game_idx in self.start_idx..self.end_idx {
+            // if games_num < 10 || game_idx % (games_num / 10) == 0 {
+            //     let percentage = (((game_idx as f32) / games_num as f32) * 100.0) as u32;
+            //     println!("self play {}%", percentage);
+            // }
             let mut pos = Game::Position::new();
             let mut pos_move_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> =
                 Vec::new();
@@ -73,12 +136,11 @@ impl<Game: IGame> SelfPlayRunner<Game> {
                     pos,
                     per_move_prob,
                     winner,
-                    format!("{}/d{:#016x}.json", output_dir, data_idx),
+                    format!("{}/d{:#08x}_{:#04x}.json", self.output_dir, game_idx, pos_idx),
                 )?;
-                data_idx += 1;
+                pos_idx += 1;
             }
         }
-
         return Ok(());
     }
 
