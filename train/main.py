@@ -17,6 +17,10 @@ from hex import Hex
 from tictactoe import TicTacToe
 from trainable_game import NetCategory
 
+
+TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
+RL_TOP = os.path.abspath(os.path.join(TRAIN_DIR, ".."))
+
 BATCH_SIZE = 4
 EPOCHS = 16
 
@@ -24,8 +28,12 @@ EPOCHS = 16
 def main(config):
     # Organize all arguments
 
-    working_area = Path(config["working_area"])
+    working_area = config["working_area"]
+    if "{RL_TOP}" in working_area:
+        working_area = working_area.replace("{RL_TOP}", RL_TOP)
+    working_area = Path(working_area)
     assert(working_area.exists())
+
     config["games_dir"] = working_area / "games"
     config["games_dir"].mkdir(exist_ok=True)
     config["models_dir"] = working_area / "models"
