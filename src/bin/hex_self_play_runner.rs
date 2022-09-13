@@ -1,6 +1,6 @@
 use clap::Parser;
 use rl::game::mcts::{MCTSPlayer, ValueFunction};
-use rl::game::self_play::SelfPlayRunner;
+use rl::game::self_play::{PlayerBuilder, SelfPlayRunner};
 use rl::hex::hex_game::HexGame;
 use rl::hex::net::encoder::SimpleEncoder;
 use rl::hex::net::scalar_value_net::ScalarValNet;
@@ -23,21 +23,49 @@ struct Args {
     explore_factor: f32,
 }
 
+struct Builder {
+    net_type: String,
+    model_path: String,
+    sim_count: u32,
+    explore_factor: f32,
+}
+
+impl Builder {
+    fn new(net_type: String, model_path: String, sim_count: u32, explore_factor: f32) -> Self {
+        Self {
+            net_type: net_type,
+            model_path: model_path,
+            sim_count: sim_count,
+            explore_factor: explore_factor,
+        }
+    }
+}
+
+impl PlayerBuilder<HexGame> for Builder {
+    fn new_player(&self) -> MCTSPlayer<HexGame> {
+        let value_func: Box<dyn ValueFunction<HexGame>>;
+        if self.net_type == "scalar_net" {
+            value_func = Box::new(ScalarValNet::new(&self.model_path));
+        } else if self.net_type == "two_headed_net" {
+            value_func = Box::new(TwoHeadedNet::new(&self.model_path));
+        } else {
+            panic!("unsupported net type: {}", self.net_type);
+        }
+        return MCTSPlayer::new_custom(self.sim_count, self.explore_factor, value_func);
+    }
+}
+
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
 
-    let value_func: Box<dyn ValueFunction<HexGame>>;
-    if args.net_type == "scalar_net" {
-        value_func = Box::new(ScalarValNet::new(&args.model_path));
-    } else if args.net_type == "two_headed_net" {
-        value_func = Box::new(TwoHeadedNet::new(&args.model_path));
-    } else {
-        panic!("unsupported net type: {}", args.net_type);
-    }
-    let mut player = MCTSPlayer::new_custom(args.sim_count, args.explore_factor, value_func);
+    let player_builder = Box::new(Builder::new(
+        args.net_type,
+        args.model_path,
+        args.sim_count,
+        args.explore_factor,
+    ));
 
     let encoder = Box::new(SimpleEncoder::new());
     let trainer = SelfPlayRunner::new(encoder);
-
-    return trainer.generate_data(&mut player, args.games_num, &args.out_dir);
+    return trainer.generate_data(player_builder, args.games_num, &args.out_dir);
 }
