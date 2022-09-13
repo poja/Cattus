@@ -16,8 +16,8 @@ fn main() {
     let args = Args::parse();
     let mut player2 = TttPlayerCmd::new();
 
-    let mut value_func = TwoHeadedNet::new(args.model_path);
-    let mut mcts_player = MCTSPlayer::new_custom(1000, 1.41421, &mut value_func);
+    let value_func = Box::new(TwoHeadedNet::new(&args.model_path));
+    let mut mcts_player = MCTSPlayer::new_custom(1000, 1.41421, value_func);
 
     let mut game = TicTacToeGame::new();
 

@@ -36,22 +36,22 @@ impl<Position: GamePosition> MCTSNode<Position> {
     }
 }
 
-pub struct MCTSPlayer<'a, Game: IGame> {
+pub struct MCTSPlayer<Game: IGame> {
     search_tree: DiGraph<MCTSNode<Game::Position>, Game::Move>,
 
     exploration_param_c: f32,
     simulations_per_move: u32,
-    value_func: &'a mut dyn ValueFunction<Game>,
+    value_func: Box<dyn ValueFunction<Game>>
 }
 
-impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
-    pub fn new(value_func: &'a mut dyn ValueFunction<Game>) -> Self {
+impl<Game: IGame> MCTSPlayer<Game> {
+        pub fn new(value_func: Box<dyn ValueFunction<Game>>) -> Self {
         MCTSPlayer::new_custom(100, (2 as f32).sqrt(), value_func)
     }
     pub fn new_custom(
         simulations_per_move: u32,
         exploration_param_c: f32,
-        value_func: &'a mut dyn ValueFunction<Game>,
+        value_func: Box<dyn ValueFunction<Game>>,
     ) -> Self {
         Self {
             search_tree: DiGraph::new(),
@@ -247,7 +247,7 @@ impl<'a, Game: IGame> MCTSPlayer<'a, Game> {
     }
 }
 
-impl<'a, Game: IGame> GamePlayer<Game> for MCTSPlayer<'a, Game> {
+impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
         let moves = self.calc_moves_probabilities(position);
         self.clear();

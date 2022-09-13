@@ -5,12 +5,12 @@ use json;
 use std::fs;
 use std::path;
 
-pub struct SelfPlayRunner<'a, Game: IGame> {
-    encoder: &'a dyn Encoder<Game>,
+pub struct SelfPlayRunner<Game: IGame> {
+    encoder: Box<dyn Encoder<Game>>,
 }
 
-impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
-    pub fn new(encoder: &'a dyn Encoder<Game>) -> Self {
+impl<Game: IGame> SelfPlayRunner<Game> {
+    pub fn new(encoder: Box<dyn Encoder<Game>>) -> Self {
         Self { encoder: encoder }
     }
 
@@ -52,7 +52,6 @@ impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
                 pos_move_probs_pairs.push((pos.clone(), moves));
 
                 /* Advance game position */
-                // println!("advancing another step in game");
                 pos = match m {
                     None => {
                         eprintln!("player failed to choose a move");

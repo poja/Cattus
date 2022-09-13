@@ -15,14 +15,14 @@ pub struct ScalarValNet {
 }
 
 impl ScalarValNet {
-    pub fn new(model_path: String) -> Self {
+    pub fn new(model_path: &String) -> Self {
         let signature_input_parameter_name = "in_position";
         let signature_output_parameter_name = "out_value";
 
         // Load saved model bundle (session state + meta_graph data)
         let mut graph = Graph::new();
         let bundle =
-            SavedModelBundle::load(&SessionOptions::new(), &["serve"], &mut graph, &model_path)
+            SavedModelBundle::load(&SessionOptions::new(), &["serve"], &mut graph, model_path)
                 .expect("Can't load saved model");
 
         // Get signature metadata from the model bundle
