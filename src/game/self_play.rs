@@ -34,7 +34,10 @@ impl<'a, Game: IGame> SelfPlayRunner<'a, Game> {
         let mut data_idx: u64 = 0;
 
         for game_idx in 0..games_num {
-            println!("Playing game {}/{}", game_idx + 1, games_num);
+            if games_num < 10 || game_idx % (games_num / 10) == 0 {
+                let percentage = (((game_idx as f32) / games_num as f32) * 100.0) as u32;
+                println!("self play {}%", percentage);
+            }
             let mut pos = Game::Position::new();
             let mut pos_move_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> =
                 Vec::new();

@@ -2,10 +2,10 @@
     "game": "tictactoe",
     "iterations": 5,
     "mcts_cfg": {
-        "sim_count": 100,
+        "sim_count": 800,
         "explore_factor": 1.41421
     },
-    "self_play_games_num": 10,
+    "self_play_games_num": 100,
     "base_model": "[latest]",
     "model_type": "simple_two_headed",
     "working_area": "{RL_TOP}/workarea/",
