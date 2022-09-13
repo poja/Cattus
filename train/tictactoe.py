@@ -2,6 +2,7 @@
 
 import json
 
+import numpy as np
 import tensorflow as tf
 from keras import optimizers, Input
 from keras.layers import Dense
@@ -21,15 +22,31 @@ class NetType:
 
 class TicTacToe(TrainableGame):
 
+    BOARD_SIZE = 3
+    PLANES_NUM = 2
+    MOVE_NUM = BOARD_SIZE * BOARD_SIZE
+
     def load_data_entry(self, path):
         with open(path, "rb") as f:
-            data_obj = json.load(f)
-        return data_obj
+            data_entry = json.load(f)
+
+        planes = np.array(data_entry["planes"],
+                          dtype=np.uint32).reshape((-1, 1))
+        assert len(planes) == self.PLANES_NUM
+
+        probs = np.array(data_entry["probs"], dtype=np.float32)
+        assert len(probs) == self.MOVE_NUM
+
+        winner = np.float32(data_entry["winner"])
+
+        return (planes, probs, winner)
 
     def _create_model_simple_scalar(self):
-        input_layer = Input(shape=9, name="in_position")
-        x = Dense(units="9", activation="relu")(input_layer)
-        output_layer = Dense(units="1", activation="tanh", name="out_value")(x)
+        input_layer = Input(
+            shape=(self.PLANES_NUM, self.BOARD_SIZE, self.BOARD_SIZE),
+            name="in_position")
+        x = Dense(units=9, activation="relu")(input_layer)
+        output_layer = Dense(units=1, activation="tanh", name="out_value")(x)
 
         model = Model(inputs=input_layer, outputs=[output_layer])
 
@@ -39,12 +56,14 @@ class TicTacToe(TrainableGame):
         return model
 
     def _create_model_simple_two_headed(self):
-        input_layer = Input(shape=9, name="in_position")
-        x = Dense(units="9", activation="relu")(input_layer)
+        input_layer = Input(
+            shape=(self.PLANES_NUM, self.BOARD_SIZE, self.BOARD_SIZE),
+            name="in_position")
+        x = Dense(units=9, activation="relu")(input_layer)
         output_scalar_layer = Dense(
-            units="1", activation="tanh", name="out_value")(x)
+            units=1, activation="tanh", name="out_value")(x)
         output_probs_layer = Dense(
-            units="9", activation="sigmoid", name="out_probs")(x)
+            units=self.MOVE_NUM, activation="sigmoid", name="out_probs")(x)
 
         model = Model(inputs=input_layer, outputs=[
             output_scalar_layer, output_probs_layer])

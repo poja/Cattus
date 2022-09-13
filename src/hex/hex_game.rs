@@ -155,6 +155,14 @@ impl HexPosition {
         }
     }
 
+    pub fn pieces_red(&self) -> Bitboard {
+        self.board_red
+    }
+
+    pub fn pieces_blue(&self) -> Bitboard {
+        self.board_blue
+    }
+
     pub fn is_valid_move(&self, m: HexMove) -> bool {
         let idx = m.to_idx();
         return idx < (BOARD_SIZE * BOARD_SIZE) as u8

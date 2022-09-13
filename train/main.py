@@ -16,13 +16,11 @@ import tensorflow as tf
 from hex import Hex
 from tictactoe import TicTacToe
 from trainable_game import NetCategory
+from data_parser import DataParser
 
 
 TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 RL_TOP = os.path.abspath(os.path.join(TRAIN_DIR, ".."))
-
-BATCH_SIZE = 4
-EPOCHS = 16
 
 
 def main(config):
@@ -98,38 +96,26 @@ def self_play(game, model_path, out_dir, config):
 
 
 def train(game, model_path, net_type, training_games_dir):
-    logging.debug("Loading current model")
-
-    model = game.load_model(model_path, net_type)
     net_category = game.get_net_category(net_type)
+    if net_category != NetCategory.TwoHeaded:
+        raise ValueError("only two headed network is supported")
+
+    logging.debug("Loading current model")
+    model = game.load_model(model_path, net_type)
     xs, ys = [], []
 
     logging.debug("Loading games by current model")
 
-    for game_file in os.listdir(training_games_dir):
-        data_filename = os.path.join(training_games_dir, game_file)
-        data_entry = game.load_data_entry(data_filename)
-        xs.append(data_entry["position"])
-        if net_category == NetCategory.Scalar:
-            ys.append(data_entry["winner"])
-        elif net_category == NetCategory.TwoHeaded:
-            y = (data_entry["winner"], data_entry["moves_probabilities"])
-            ys.append(y)
-        else:
-            raise ValueError("Unknown model category: " + net_category)
+    parser = DataParser(game, training_games_dir)
 
-    xs = np.array(xs)
-    if net_category == NetCategory.Scalar:
-        ys = np.array(ys)
-    elif net_category == NetCategory.TwoHeaded:
-        ys_raw = ys
-        ys = {"out_value": np.array([y[0] for y in ys_raw]),
-              "out_probs": np.array([y[1] for y in ys_raw])}
-    else:
-        raise ValueError("Unknown model category: " + net_category)
+    train_dataset = tf.data.Dataset.from_generator(
+        parser.generator, output_types=(tf.string, tf.string, tf.string))
+    train_dataset = train_dataset.map(parser.get_parse_func())
+    # train_dataset = train_dataset.batch(32, drop_remainder=True)
+    train_dataset = train_dataset.prefetch(4)
 
     logging.info("Fitting new model...")
-    model.fit(x=xs, y=ys, batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=0)
+    model.fit(train_dataset, epochs=4, verbose=0)
 
     return model
 

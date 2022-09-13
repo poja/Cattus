@@ -27,12 +27,13 @@ impl DataSerializer<HexGame> for HexSerializer {
         let (winner, probs) = net::common::flip_score_if_needed((winner, probs), is_flipped);
         assert!(pos.get_turn() == GameColor::Player1);
 
-        let mut pos_vec = Vec::new();
-        for r in 0..BOARD_SIZE {
-            for c in 0..BOARD_SIZE {
-                pos_vec.push(GameColor::to_idx(pos.get_tile(r, c)) as f32);
-            }
-        }
+        let mut planes = Vec::new();
+        let pieces_red = pos.pieces_red().get_raw();
+        let pieces_blue = pos.pieces_blue().get_raw();
+        planes.push(((pieces_red >> 00) & 0xffffffffffffffff) as u64);
+        planes.push(((pieces_red >> 64) & 0xffffffffffffffff) as u64);
+        planes.push(((pieces_blue >> 00) & 0xffffffffffffffff) as u64);
+        planes.push(((pieces_blue >> 64) & 0xffffffffffffffff) as u64);
 
         let mut probs_vec = vec![0.0; (BOARD_SIZE * BOARD_SIZE) as usize];
         for (m, prob) in probs {
@@ -40,8 +41,8 @@ impl DataSerializer<HexGame> for HexSerializer {
         }
 
         let json_obj = json::object! {
-            position: pos_vec,
-            moves_probabilities: probs_vec,
+            planes: planes,
+            probs: probs_vec,
             winner: winner
         };
 

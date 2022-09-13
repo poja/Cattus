@@ -30,12 +30,9 @@ impl DataSerializer<TicTacToeGame> for TicTacToeSerializer {
         let (winner, probs) = net::common::flip_score_if_needed((winner, probs), is_flipped);
         assert!(pos.get_turn() == GameColor::Player1);
 
-        let mut pos_vec = Vec::new();
-        for r in 0..BOARD_SIZE {
-            for c in 0..BOARD_SIZE {
-                pos_vec.push(GameColor::to_idx(pos.get_tile(r, c)) as f32);
-            }
-        }
+        let mut planes = Vec::new();
+        planes.push(pos.pieces_x().get_raw());
+        planes.push(pos.pieces_y().get_raw());
 
         let mut probs_vec = vec![0.0; (BOARD_SIZE * BOARD_SIZE) as usize];
         for (m, prob) in probs {
@@ -43,8 +40,8 @@ impl DataSerializer<TicTacToeGame> for TicTacToeSerializer {
         }
 
         let json_obj = json::object! {
-            position: pos_vec,
-            moves_probabilities: probs_vec,
+            planes: planes,
+            probs: probs_vec,
             winner: winner
         };
 

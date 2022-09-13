@@ -2,7 +2,7 @@ use crate::game::common::{GamePosition, IGame};
 use crate::game::mcts::ValueFunction;
 use crate::tictactoe::net::common;
 use crate::tictactoe::net::encoder::Encoder;
-use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToePosition, BOARD_SIZE};
+use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToePosition};
 use itertools::Itertools;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
@@ -74,11 +74,7 @@ impl TwoHeadedNet {
         &self,
         position: &TicTacToePosition,
     ) -> (f32, Vec<(<TicTacToeGame as IGame>::Move, f32)>) {
-        let encoded_position = self.encoder.encode_position(position);
-        let input_dim = (BOARD_SIZE * BOARD_SIZE) as usize;
-        let input: Tensor<f32> = Tensor::new(&[1, input_dim as u64])
-            .with_values(&encoded_position)
-            .expect("Can't create input tensor");
+        let input = self.encoder.encode_position(position);
 
         let mut args = SessionRunArgs::new();
         args.add_feed(&self.input_op, 0, &input);
@@ -92,7 +88,7 @@ impl TwoHeadedNet {
 
         let val: f32 = args.fetch(output_scalar).unwrap()[0];
         let probs: Tensor<f32> = args.fetch(output_probs).unwrap();
-        for idx in 0..input_dim {
+        for idx in 0..probs.len() {
             assert!(probs[idx] >= 0.0);
         }
         let moves = position.get_legal_moves();
