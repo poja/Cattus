@@ -13,6 +13,13 @@ impl GameColor {
             GameColor::Player2 => GameColor::Player1,
         }
     }
+    pub fn to_idx(player: Option<GameColor>) -> i32 {
+        match player {
+            Some(GameColor::Player1) => 1,
+            Some(GameColor::Player2) => -1,
+            None => 0,
+        }
+    }
 }
 
 pub trait IGame {
@@ -49,7 +56,6 @@ pub trait GameMove: Clone + Copy + Eq + std::cmp::Eq + std::hash::Hash + std::fm
 pub trait GamePlayer<Game: IGame> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move>;
 }
-
 
 pub struct PlayerRand {}
 

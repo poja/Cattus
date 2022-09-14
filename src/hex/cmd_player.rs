@@ -1,5 +1,5 @@
 use crate::game::common::GamePlayer;
-use crate::hex::hex_game::{HexGame, HexPosition, Location};
+use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 use std::io;
 
 pub struct HexPlayerCmd {}
@@ -11,7 +11,7 @@ impl HexPlayerCmd {
 }
 
 impl GamePlayer<HexGame> for HexPlayerCmd {
-    fn next_move(&mut self, position: &HexPosition) -> Option<Location> {
+    fn next_move(&mut self, position: &HexPosition) -> Option<HexMove> {
         let read_usize = || -> Option<usize> {
             let mut line = String::new();
             io::stdin()
@@ -41,9 +41,10 @@ impl GamePlayer<HexGame> for HexPlayerCmd {
                 None => continue,
                 Some(c) => c,
             };
+            let m = HexMove::new(r as u8, c as u8);
 
-            if position.is_valid_move((r, c)) {
-                return Some((r, c));
+            if position.is_valid_move(m) {
+                return Some(m);
             }
             println!("invalid move");
         }

@@ -1,5 +1,5 @@
 use crate::game::common::{GameColor, GamePlayer, GamePosition, IGame};
-use crate::hex::hex_game::{HexGame, HexPosition, Hexagon, BOARD_SIZE};
+use crate::hex::hex_game::{Bitboard, HexGame, HexMove, HexPosition, BOARD_SIZE};
 use std::io::{BufRead, BufReader, Write};
 use std::string::String;
 use std::{io, process, thread, time};
@@ -93,7 +93,10 @@ impl HexPlayerUXI {
         match response[0] {
             "ready" => return true,
             _ => {
-                eprintln!("[UXIPlayer] Unexpected command: {:?} (expected ready)", response);
+                eprintln!(
+                    "[UXIPlayer] Unexpected command: {:?} (expected ready)",
+                    response
+                );
                 return false;
             }
         };
@@ -170,7 +173,7 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
         &mut self,
         position: &<HexGame as IGame>::Position,
     ) -> Option<<HexGame as IGame>::Move> {
-        let mut command = String::with_capacity(10 + BOARD_SIZE * BOARD_SIZE + 3);
+        let mut command = String::with_capacity((10 + BOARD_SIZE * BOARD_SIZE + 3) as usize);
         command.push_str("next_move ");
         position_to_uxi(position, &mut command);
         self.send_command(command);
@@ -208,7 +211,7 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
                     }
                     Ok(column) => column,
                 };
-                return Some((r, c));
+                return Some(HexMove::new(r as u8, c as u8));
             }
             unknown_cmd => {
                 eprintln!("[UXIPlayer] Unknown command: {}", unknown_cmd);
@@ -255,7 +258,7 @@ impl<'a> UXIEngine<'a> {
                         Some(pos) => {
                             match self.player.next_move(&pos) {
                                 None => println!("error"),
-                                Some(m) => println!("move {},{}", m.0, m.1),
+                                Some(m) => println!("move {},{}", m.row(), m.column()),
                             };
                         }
                     }
@@ -275,11 +278,9 @@ fn position_to_uxi(position: &HexPosition, s: &mut String) {
     for r in 0..BOARD_SIZE {
         for c in 0..BOARD_SIZE {
             s.push(match position.get_tile(r, c) {
-                Hexagon::Empty => 'e',
-                Hexagon::Full(color) => match color {
-                    GameColor::Player1 => 'r',
-                    GameColor::Player2 => 'b',
-                },
+                None => 'e',
+                Some(GameColor::Player1) => 'r',
+                Some(GameColor::Player2) => 'b',
             });
         }
     }
@@ -291,25 +292,26 @@ fn position_to_uxi(position: &HexPosition, s: &mut String) {
 }
 
 fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
-    let mut board: [[Hexagon; BOARD_SIZE]; BOARD_SIZE] = [[Hexagon::Empty; BOARD_SIZE]; BOARD_SIZE];
-    let mut i = 0;
+    let mut board_red = Bitboard::new();
+    let mut board_blue = Bitboard::new();
+    let mut idx = 0;
     for tile in pos_str.chars() {
-        if i >= BOARD_SIZE * BOARD_SIZE {
+        if idx >= BOARD_SIZE * BOARD_SIZE {
             eprintln!("Too many chars in position string");
             return None;
         }
-        board[i / BOARD_SIZE][i % BOARD_SIZE] = match tile {
-            'e' => Hexagon::Empty,
-            'r' => Hexagon::Full(GameColor::Player1),
-            'b' => Hexagon::Full(GameColor::Player2),
+        match tile {
+            'e' => {}
+            'r' => board_red.set(idx, true),
+            'b' => board_blue.set(idx, true),
             unknown_tile => {
                 eprintln!("Unknown tile: {}", unknown_tile);
                 return None;
             }
         };
-        i += 1;
+        idx += 1;
     }
-    if i != BOARD_SIZE * BOARD_SIZE {
+    if idx != BOARD_SIZE * BOARD_SIZE {
         eprintln!("Too few chars in position string");
         return None;
     }
@@ -321,5 +323,5 @@ fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
             return None;
         }
     };
-    return Some(HexPosition::new_from_board(board, player));
+    return Some(HexPosition::new_from_board(board_red, board_blue, player));
 }

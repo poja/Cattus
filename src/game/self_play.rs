@@ -153,20 +153,9 @@ impl<Game: IGame> SelfPlayWorker<Game> {
     ) -> std::io::Result<()> {
         let pos_vec = self.encoder.encode_position(&pos);
 
-        let turn = match pos.get_turn() {
-            GameColor::Player1 => 1,
-            GameColor::Player2 => -1,
-        };
-
+        let turn = GameColor::to_idx(Some(pos.get_turn()));
         let per_move_prob_vec = self.encoder.encode_per_move_probs(&per_move_prob);
-
-        let winner_int = match winner {
-            None => 0,
-            Some(winning_player) => match winning_player {
-                GameColor::Player1 => 1,
-                GameColor::Player2 => -1,
-            },
-        };
+        let winner_int = GameColor::to_idx(winner);
 
         let json_obj = json::object! {
             position: pos_vec,

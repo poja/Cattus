@@ -1,7 +1,7 @@
 use crate::game::common::{GamePosition, IGame};
 use crate::game::encoder::Encoder;
 use crate::game::mcts::ValueFunction;
-use crate::hex::hex_game::{self, HexGame, HexPosition};
+use crate::hex::hex_game::{HexGame, HexPosition, BOARD_SIZE};
 use crate::hex::net::common;
 use crate::hex::net::encoder::SimpleEncoder;
 use itertools::Itertools;
@@ -64,7 +64,7 @@ impl TwoHeadedNet {
 
     pub fn evaluate_position(
         &self,
-        position: &hex_game::HexPosition,
+        position: &HexPosition,
     ) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
         let (flipped_pos, is_flipped) = common::flip_pos_if_needed(*position);
         let eval = self.evaluate_position_impl(&flipped_pos);
@@ -73,10 +73,10 @@ impl TwoHeadedNet {
 
     fn evaluate_position_impl(
         &self,
-        position: &hex_game::HexPosition,
+        position: &HexPosition,
     ) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
         let encoded_position = self.encoder.encode_position(position);
-        let input_dim = hex_game::BOARD_SIZE * hex_game::BOARD_SIZE;
+        let input_dim = (BOARD_SIZE * BOARD_SIZE) as usize;
         let input: Tensor<f32> = Tensor::new(&[1, input_dim as u64])
             .with_values(&encoded_position)
             .expect("Can't create input tensor");
@@ -100,7 +100,7 @@ impl TwoHeadedNet {
         let moves = position.get_legal_moves();
         let moves_probs = moves
             .iter()
-            .map(|(r, c)| ((*r, *c), probs[r * hex_game::BOARD_SIZE + c]))
+            .map(|m| (*m, probs[m.to_idx() as usize]))
             .collect_vec();
 
         return (val, moves_probs);

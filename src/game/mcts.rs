@@ -155,13 +155,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
     fn simulate(&mut self, leaf_id: NodeIndex) -> (f32, Vec<(Game::Move, f32)>) {
         let position = &self.search_tree.node_weight(leaf_id).unwrap().position;
         if position.is_over() {
-            let eval = match position.get_winner() {
-                Some(w) => match w {
-                    GameColor::Player1 => 1.0,
-                    GameColor::Player2 => -1.0,
-                },
-                None => 0.0,
-            };
+            let eval = GameColor::to_idx(position.get_winner()) as f32;
             return (eval, vec![]);
         }
         return self.value_func.evaluate(&position);

@@ -1,6 +1,5 @@
 use crate::game::common::{GameColor, GamePosition, IGame};
-use crate::hex::hex_game::HexGame;
-use crate::hex::hex_game::HexPosition;
+use crate::hex::hex_game::{HexGame, HexPosition, HexMove};
 use itertools::Itertools;
 
 pub fn flip_pos_if_needed(pos: HexPosition) -> (HexPosition, bool) {
@@ -26,7 +25,7 @@ pub fn flip_score_if_needed(
         /* Flip moves */
         let moves_probs = moves_probs
             .iter()
-            .map(|((r, c), p)| ((*c, *r), *p))
+            .map(|(m, p)| (HexMove::new(m.column(), m.row()), *p))
             .collect_vec();
 
         return (val, moves_probs);
