@@ -1,13 +1,12 @@
 use crate::game::common::GamePlayer;
-use crate::tictactoe::tictactoe_game::{TicTacToePosition, TicTacToeMove, TicTacToeGame};
+use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToeMove, TicTacToePosition};
 use std::io;
 
-pub struct TttPlayerCmd {
-}
+pub struct TttPlayerCmd {}
 
 impl TttPlayerCmd {
-    pub fn new() -> Self { 
-        Self { }
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
@@ -43,7 +42,7 @@ impl GamePlayer<TicTacToeGame> for TttPlayerCmd {
                 Some(c) => c,
             };
 
-            let move_ = TicTacToeMove::new(r, c);
+            let move_ = TicTacToeMove::new(r as u8, c as u8);
             if position.is_valid_move(move_) {
                 return Some(move_);
             }

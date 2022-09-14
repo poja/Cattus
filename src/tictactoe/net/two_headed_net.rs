@@ -3,7 +3,7 @@ use crate::game::encoder::Encoder;
 use crate::game::mcts::ValueFunction;
 use crate::tictactoe::net::common;
 use crate::tictactoe::net::encoder::SimpleEncoder;
-use crate::tictactoe::tictactoe_game::{self, TicTacToeGame, TicTacToePosition};
+use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToePosition, BOARD_SIZE};
 use itertools::Itertools;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
@@ -64,7 +64,7 @@ impl TwoHeadedNet {
 
     pub fn evaluate_position(
         &self,
-        position: &tictactoe_game::TicTacToePosition,
+        position: &TicTacToePosition,
     ) -> (f32, Vec<(<TicTacToeGame as IGame>::Move, f32)>) {
         let (flipped_pos, is_flipped) = common::flip_pos_if_needed(*position);
         let eval = self.evaluate_position_impl(&flipped_pos);
@@ -73,10 +73,10 @@ impl TwoHeadedNet {
 
     fn evaluate_position_impl(
         &self,
-        position: &tictactoe_game::TicTacToePosition,
+        position: &TicTacToePosition,
     ) -> (f32, Vec<(<TicTacToeGame as IGame>::Move, f32)>) {
         let encoded_position = self.encoder.encode_position(position);
-        let input_dim = tictactoe_game::BOARD_SIZE * tictactoe_game::BOARD_SIZE;
+        let input_dim = (BOARD_SIZE * BOARD_SIZE) as usize;
         let input: Tensor<f32> = Tensor::new(&[1, input_dim as u64])
             .with_values(&encoded_position)
             .expect("Can't create input tensor");
@@ -99,12 +99,7 @@ impl TwoHeadedNet {
         let moves = position.get_legal_moves();
         let moves_probs = moves
             .iter()
-            .map(|move_| {
-                (
-                    (*move_),
-                    probs[move_.cell.0 * tictactoe_game::BOARD_SIZE + move_.cell.1],
-                )
-            })
+            .map(|move_| ((*move_), probs[move_.to_idx() as usize]))
             .collect_vec();
 
         return (val, moves_probs);
