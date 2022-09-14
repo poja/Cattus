@@ -24,12 +24,6 @@ class TicTacToe(TrainableGame):
     def load_data_entry(self, path):
         with open(path, "rb") as f:
             data_obj = json.load(f)
-
-        # Network always accept position as
-        if data_obj["turn"] != 1:
-            data_obj = self._flip_position(data_obj)
-        assert data_obj["turn"] == 1
-
         return data_obj
 
     def _create_model_simple_scalar(self):
@@ -93,12 +87,3 @@ class TicTacToe(TrainableGame):
             return NetCategory.TwoHeaded
         else:
             raise ValueError("Unknown model type: " + net_type)
-
-    @staticmethod
-    def _flip_position(data_obj):
-        return {
-            "turn": -data_obj["turn"],
-            "winner": -data_obj["winner"],
-            "position": [-x for x in data_obj["position"]],
-            "moves_probabilities": data_obj["moves_probabilities"]
-        }

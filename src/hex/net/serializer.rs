@@ -3,6 +3,7 @@ use std::fs;
 use crate::game::common::{GameColor, GamePosition};
 use crate::game::self_play::DataSerializer;
 use crate::hex::hex_game::{HexGame, HexMove, HexPosition, BOARD_SIZE};
+use crate::hex::net;
 
 pub struct HexSerializer {}
 
@@ -20,6 +21,12 @@ impl DataSerializer<HexGame> for HexSerializer {
         winner: Option<GameColor>,
         filename: String,
     ) -> std::io::Result<()> {
+        /* Always serialize as turn=1 */
+        let winner = GameColor::to_idx(winner) as f32;
+        let (pos, is_flipped) = net::common::flip_pos_if_needed(pos);
+        let (winner, probs) = net::common::flip_score_if_needed((winner, probs), is_flipped);
+        assert!(pos.get_turn() == GameColor::Player1);
+
         let mut pos_vec = Vec::new();
         for r in 0..BOARD_SIZE {
             for c in 0..BOARD_SIZE {
@@ -32,14 +39,10 @@ impl DataSerializer<HexGame> for HexSerializer {
             probs_vec[m.to_idx() as usize] = prob;
         }
 
-        let turn = GameColor::to_idx(Some(pos.get_turn()));
-        let winner_int = GameColor::to_idx(winner);
-
         let json_obj = json::object! {
             position: pos_vec,
-            turn: turn,
             moves_probabilities: probs_vec,
-            winner: winner_int
+            winner: winner
         };
 
         let json_str = json_obj.dump();
