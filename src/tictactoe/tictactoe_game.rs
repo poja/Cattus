@@ -1,6 +1,6 @@
 use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
 
-pub const BOARD_SIZE: usize = 3;
+pub const BOARD_SIZE: u8 = 3;
 
 pub fn color_to_str(c: Option<GameColor>) -> String {
     match c {
@@ -12,12 +12,29 @@ pub fn color_to_str(c: Option<GameColor>) -> String {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TicTacToeMove {
-    pub cell: (usize, usize),
+    idx: u8,
 }
 
 impl TicTacToeMove {
-    pub fn new(x: usize, y: usize) -> Self {
-        Self { cell: (x, y) }
+    pub fn new(r: u8, c: u8) -> Self {
+        TicTacToeMove::from_idx(r * BOARD_SIZE + c)
+    }
+
+    pub fn from_idx(idx: u8) -> Self {
+        assert!(idx < BOARD_SIZE * BOARD_SIZE);
+        Self { idx: idx }
+    }
+
+    pub fn to_idx(&self) -> u8 {
+        self.idx as u8
+    }
+
+    pub fn row(&self) -> u8 {
+        self.idx / BOARD_SIZE
+    }
+
+    pub fn column(&self) -> u8 {
+        self.idx % BOARD_SIZE
     }
 }
 
@@ -26,105 +43,120 @@ impl GameMove for TicTacToeMove {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Bitboard {
+    bitmap: u16,
+}
+
+impl Bitboard {
+    pub fn new() -> Self {
+        Self { bitmap: 0 }
+    }
+    pub fn get_raw(&self) -> u16 {
+        self.bitmap
+    }
+
+    pub fn get(&self, idx: u8) -> bool {
+        assert!(idx < BOARD_SIZE * BOARD_SIZE);
+        return (self.bitmap & (1u16 << idx)) != 0;
+    }
+
+    pub fn set(&mut self, idx: u8, val: bool) {
+        assert!(idx < BOARD_SIZE * BOARD_SIZE);
+        if val {
+            self.bitmap |= 1u16 << idx;
+        } else {
+            self.bitmap &= !(1u16 << idx);
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TicTacToePosition {
-    board: [[usize; BOARD_SIZE]; BOARD_SIZE], // 0 is empty, 1 is player1, 2 is player2
+    board_x: Bitboard,
+    board_y: Bitboard,
     turn: GameColor,
     winner: Option<GameColor>,
-    num_empty_tiles: usize,
+    num_empty_tiles: u8,
 }
 
 impl TicTacToePosition {
-    pub fn get_tile(&self, r: usize, c: usize) -> Option<GameColor> {
+    pub fn get_tile(&self, r: u8, c: u8) -> Option<GameColor> {
         assert!(r < BOARD_SIZE && c < BOARD_SIZE);
-        return match self.board[r][c] {
-            0 => None,
-            1 => Some(GameColor::Player1),
-            2 => Some(GameColor::Player2),
-            _ => panic!("unexpected value"),
-        };
+        let idx = r * BOARD_SIZE + c;
+        if self.board_x.get(idx) {
+            return Some(GameColor::Player1);
+        }
+        if self.board_y.get(idx) {
+            return Some(GameColor::Player2);
+        }
+        return None;
     }
 
-    pub fn make_move(&mut self, r: usize, c: usize) {
-        assert!(r <= 2 && c <= 2);
+    pub fn make_move(&mut self, m: TicTacToeMove) {
+        assert!(self.is_valid_move(m));
         assert!(!self.is_over());
 
-        self.board[r][c] = if self.turn == GameColor::Player1 {
-            1
-        } else {
-            2
-        };
+        match self.turn {
+            GameColor::Player1 => &mut self.board_x,
+            GameColor::Player2 => &mut self.board_y,
+        }
+        .set(m.to_idx(), true);
+
         self.num_empty_tiles -= 1;
         self.turn = self.turn.opposite();
-
         self.check_winner();
     }
 
     pub fn is_valid_move(&self, m: TicTacToeMove) -> bool {
-        self.board[m.cell.0][m.cell.1] == 0
+        let idx = m.to_idx();
+        return !self.board_x.get(idx) && !self.board_y.get(idx);
     }
 
     pub fn check_winner(&mut self) {
-        let is_sequence = |x, y, z| x != 0 && x == y && y == z;
-        let num_to_some_player = |n| {
-            if n == 1 {
-                Some(GameColor::Player1)
-            } else {
-                Some(GameColor::Player2)
+        let winning_sequences = vec![
+            0b111000000, // row 1
+            0b000111000, // row 2
+            0b000000111, // row 3
+            0b100100100, // col 1
+            0b010010010, // col 2
+            0b001001001, // col 3
+            0b100010001, // dial 1
+            0b001010100, // dial 2
+        ];
+
+        for winning_sequence in winning_sequences {
+            if (self.board_x.get_raw() & winning_sequence) == winning_sequence {
+                self.winner = Some(GameColor::Player1);
+                return;
             }
-        };
-        for row_i in 0..=2 {
-            let r = self.board[row_i];
-            if is_sequence(r[0], r[1], r[2]) {
-                self.winner = num_to_some_player(r[0]);
+            if (self.board_y.get_raw() & winning_sequence) == winning_sequence {
+                self.winner = Some(GameColor::Player2);
+                return;
             }
         }
-        let b = self.board;
-        for col_i in 0..=2 {
-            if is_sequence(b[0][col_i], b[1][col_i], b[2][col_i]) {
-                self.winner = num_to_some_player(b[0][col_i]);
-            }
-        }
-        if is_sequence(b[0][0], b[1][1], b[2][2]) {
-            self.winner = num_to_some_player(b[0][0]);
-        };
-        if is_sequence(b[0][2], b[1][1], b[2][0]) {
-            self.winner = num_to_some_player(b[0][2]);
-        };
+        self.winner = None;
     }
 
     pub fn flip_of(pos: &TicTacToePosition) -> Self {
-        let mut flipped_pos = Self {
-            board: [[0; BOARD_SIZE]; BOARD_SIZE],
+        Self {
+            board_x: pos.board_y,
+            board_y: pos.board_x,
             turn: pos.turn.opposite(),
             num_empty_tiles: pos.num_empty_tiles,
             winner: match pos.winner {
                 Some(w) => Some(w.opposite()),
-                None => None
+                None => None,
             },
-        };
-        for r in 0..BOARD_SIZE {
-            for c in 0..BOARD_SIZE {
-                flipped_pos.board[r][c] = match pos.board[r][c] {
-                    0 => 0,
-                    1 => 2,
-                    2 => 1,
-                    _ => panic!("Board is corrupt.")
-                };
-            }
         }
-        return flipped_pos;
-    }    
+    }
 
     pub fn print(&self) -> () {
-        // TODO there's a RUST way to print
-        for row_i in 0..=2 {
-            let row_characters: Vec<String> = self.board[row_i]
-                .iter()
-                .map(|symbol| match symbol {
-                    0 => String::from("_"),
-                    1 => String::from("X"),
-                    2 => String::from("O"),
-                    _ => panic!("Board is corrupt."),
+        for r in 0..BOARD_SIZE {
+            let row_characters: Vec<String> = (0..BOARD_SIZE)
+                .map(|c| match self.get_tile(r, c) {
+                    None => String::from("_"),
+                    Some(GameColor::Player1) => String::from("X"),
+                    Some(GameColor::Player2) => String::from("O"),
                 })
                 .collect();
             println!("{}", row_characters.join(" "));
@@ -137,10 +169,11 @@ impl GamePosition for TicTacToePosition {
 
     fn new() -> Self {
         TicTacToePosition {
-            board: [[0; 3]; 3],
+            board_x: Bitboard::new(),
+            board_y: Bitboard::new(),
             turn: GameColor::Player1,
             winner: None,
-            num_empty_tiles: 9,
+            num_empty_tiles: BOARD_SIZE * BOARD_SIZE,
         }
     }
 
@@ -150,10 +183,10 @@ impl GamePosition for TicTacToePosition {
 
     fn get_legal_moves(&self) -> Vec<<Self::Game as IGame>::Move> {
         let mut moves = Vec::new();
-        for x in 0..=2 {
-            for y in 0..=2 {
-                if self.board[x][y] == 0 {
-                    moves.push(TicTacToeMove::new(x, y));
+        for r in 0..BOARD_SIZE {
+            for c in 0..BOARD_SIZE {
+                if self.get_tile(r, c) == None {
+                    moves.push(TicTacToeMove::new(r, c));
                 }
             }
         }
@@ -164,10 +197,10 @@ impl GamePosition for TicTacToePosition {
         &self,
         m: <Self::Game as IGame>::Move,
     ) -> <Self::Game as IGame>::Position {
-        // TODO this is duplicated fro hex_game
+        // TODO this is duplicated from hex_game
         assert!(self.is_valid_move(m));
         let mut res = self.clone();
-        res.make_move(m.cell.0, m.cell.1);
+        res.make_move(m);
         return res;
     }
 
@@ -213,7 +246,7 @@ impl IGame for TicTacToeGame {
         }
         let next_move = player.next_move(&self.pos).unwrap();
         assert!(self.pos.is_valid_move(next_move));
-        self.pos.make_move(next_move.cell.0, next_move.cell.1);
+        self.pos.make_move(next_move);
     }
     fn play_until_over(
         &mut self,
