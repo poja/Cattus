@@ -70,7 +70,6 @@ mod tests {
                 }
             };
             pos = pos.get_moved_position(m);
-            println!("{:?}", pos.fifth_rule_count);
         }
         assert!(pos.is_over());
         assert!(pos.get_winner().is_none());
