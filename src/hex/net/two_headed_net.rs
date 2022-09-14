@@ -1,15 +1,14 @@
 use crate::game::common::{GamePosition, IGame};
-use crate::game::encoder::Encoder;
 use crate::game::mcts::ValueFunction;
 use crate::hex::hex_game::{HexGame, HexPosition, BOARD_SIZE};
 use crate::hex::net::common;
-use crate::hex::net::encoder::SimpleEncoder;
+use crate::hex::net::encoder::Encoder;
 use itertools::Itertools;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
 pub struct TwoHeadedNet {
     bundle: SavedModelBundle,
-    encoder: SimpleEncoder,
+    encoder: Encoder,
     input_op: Operation,
     output_scalar_op: Operation,
     output_probs_op: Operation,
@@ -55,7 +54,7 @@ impl TwoHeadedNet {
 
         Self {
             bundle: bundle,
-            encoder: SimpleEncoder::new(),
+            encoder: Encoder::new(),
             input_op: input_op,
             output_scalar_op: output_scalar_op,
             output_probs_op: output_probs_op,

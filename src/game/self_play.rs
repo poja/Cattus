@@ -1,8 +1,6 @@
 use crate::game::common::{GameColor, GamePosition, IGame};
-use crate::game::encoder::Encoder;
 use crate::game::mcts::MCTSPlayer;
 use core::panic;
-use json;
 use std::fs;
 use std::path;
 use std::sync::Arc;
@@ -12,14 +10,24 @@ pub trait PlayerBuilder<Game: IGame>: Sync + Send {
     fn new_player(&self) -> MCTSPlayer<Game>;
 }
 
+pub trait DataSerializer<Game: IGame>: Sync + Send {
+    fn serialize_data_entry_to_file(
+        &self,
+        pos: Game::Position,
+        probs: Vec<(Game::Move, f32)>,
+        winner: Option<GameColor>,
+        filename: String,
+    ) -> std::io::Result<()>;
+}
+
 pub struct SelfPlayRunner<Game: IGame> {
-    encoder: Arc<dyn Encoder<Game>>,
+    serializer: Arc<dyn DataSerializer<Game>>,
 }
 
 impl<Game: IGame + 'static> SelfPlayRunner<Game> {
-    pub fn new(encoder: Box<dyn Encoder<Game>>) -> Self {
+    pub fn new(serializer: Box<dyn DataSerializer<Game>>) -> Self {
         Self {
-            encoder: Arc::from(encoder),
+            serializer: Arc::from(serializer),
         }
     }
 
@@ -51,7 +59,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
 
             let worker = SelfPlayWorker::new(
                 Arc::clone(&player_builder),
-                Arc::clone(&self.encoder),
+                Arc::clone(&self.serializer),
                 output_dir.to_string(),
                 start_idx,
                 end_idx,
@@ -76,7 +84,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
 
 struct SelfPlayWorker<Game: IGame> {
     player_builder: Arc<dyn PlayerBuilder<Game>>,
-    encoder: Arc<dyn Encoder<Game>>,
+    serializer: Arc<dyn DataSerializer<Game>>,
     output_dir: String,
     start_idx: u32,
     end_idx: u32,
@@ -85,14 +93,14 @@ struct SelfPlayWorker<Game: IGame> {
 impl<Game: IGame> SelfPlayWorker<Game> {
     fn new(
         player_builder: Arc<dyn PlayerBuilder<Game>>,
-        encoder: Arc<dyn Encoder<Game>>,
+        serializer: Arc<dyn DataSerializer<Game>>,
         output_dir: String,
         start_idx: u32,
         end_idx: u32,
     ) -> Self {
         Self {
             player_builder: player_builder,
-            encoder: encoder,
+            serializer: serializer,
             output_dir: output_dir,
             start_idx: start_idx,
             end_idx: end_idx,
@@ -108,8 +116,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             //     println!("self play {}%", percentage);
             // }
             let mut pos = Game::Position::new();
-            let mut pos_move_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> =
-                Vec::new();
+            let mut pos_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> = Vec::new();
 
             while !pos.is_over() {
                 /* Generate probabilities from MCTS player */
@@ -118,7 +125,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                 let m = player.choose_move_from_probabilities(&moves);
 
                 /* Store probabilities */
-                pos_move_probs_pairs.push((pos.clone(), moves));
+                pos_probs_pairs.push((pos.clone(), moves));
 
                 /* Advance game position */
                 pos = match m {
@@ -131,42 +138,16 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             }
             let winner = pos.get_winner();
 
-            for (pos, per_move_prob) in pos_move_probs_pairs {
-                self.write_data_to_file(
+            for (pos, probs) in pos_probs_pairs {
+                self.serializer.serialize_data_entry_to_file(
                     pos,
-                    per_move_prob,
+                    probs,
                     winner,
                     format!("{}/d{:#08x}_{:#04x}.json", self.output_dir, game_idx, pos_idx),
                 )?;
                 pos_idx += 1;
             }
         }
-        return Ok(());
-    }
-
-    fn write_data_to_file(
-        &self,
-        pos: Game::Position,
-        per_move_prob: Vec<(Game::Move, f32)>,
-        winner: Option<GameColor>,
-        filename: String,
-    ) -> std::io::Result<()> {
-        let pos_vec = self.encoder.encode_position(&pos);
-
-        let turn = GameColor::to_idx(Some(pos.get_turn()));
-        let per_move_prob_vec = self.encoder.encode_per_move_probs(&per_move_prob);
-        let winner_int = GameColor::to_idx(winner);
-
-        let json_obj = json::object! {
-            position: pos_vec,
-            turn: turn,
-            moves_probabilities: per_move_prob_vec,
-            winner: winner_int
-        };
-
-        let json_str = json_obj.dump();
-        fs::write(filename, json_str)?;
-
         return Ok(());
     }
 }
