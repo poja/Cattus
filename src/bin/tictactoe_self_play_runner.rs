@@ -1,7 +1,7 @@
 use clap::Parser;
 use rl::game::mcts::{MCTSPlayer, ValueFunction};
 use rl::game::self_play::{PlayerBuilder, SelfPlayRunner};
-use rl::tictactoe::net::encoder::SimpleEncoder;
+use rl::tictactoe::net::serializer::TicTacToeSerializer;
 use rl::tictactoe::net::two_headed_net::TwoHeadedNet;
 use rl::tictactoe::tictactoe_game::TicTacToeGame;
 
@@ -64,7 +64,7 @@ fn main() -> std::io::Result<()> {
         args.explore_factor,
     ));
 
-    let encoder = Box::new(SimpleEncoder::new());
-    let trainer = SelfPlayRunner::new(encoder);
+    let serializer = Box::new(TicTacToeSerializer::new());
+    let trainer = SelfPlayRunner::new(serializer);
     return trainer.generate_data(player_builder, args.games_num, &args.out_dir);
 }
