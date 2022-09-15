@@ -41,11 +41,11 @@ pub struct MCTSPlayer<Game: IGame> {
 
     exploration_param_c: f32,
     simulations_per_move: u32,
-    value_func: Box<dyn ValueFunction<Game>>
+    value_func: Box<dyn ValueFunction<Game>>,
 }
 
 impl<Game: IGame> MCTSPlayer<Game> {
-        pub fn new(value_func: Box<dyn ValueFunction<Game>>) -> Self {
+    pub fn new(value_func: Box<dyn ValueFunction<Game>>) -> Self {
         MCTSPlayer::new_custom(100, (2 as f32).sqrt(), value_func)
     }
     pub fn new_custom(

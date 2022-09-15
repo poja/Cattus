@@ -1,5 +1,5 @@
 use crate::game::common::{GameColor, GamePosition, IGame};
-use crate::hex::hex_game::{HexGame, HexPosition, HexMove};
+use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 use itertools::Itertools;
 
 pub fn flip_pos_if_needed(pos: HexPosition) -> (HexPosition, bool) {

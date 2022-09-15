@@ -15,7 +15,6 @@ import tensorflow as tf
 
 from hex import Hex
 from tictactoe import TicTacToe
-from trainable_game import NetCategory
 from data_parser import DataParser
 
 
@@ -87,7 +86,6 @@ def self_play(game, model_path, out_dir, config):
         "cargo", "run", "--profile", profile, "--bin",
         config["self_play_exec"], "--",
         "--model-path", model_path,
-        "--net-type", game.get_net_category(config["model_type"]) + '_net',
         "--games-num", str(config["self_play_games_num"]),
         "--out-dir", out_dir,
         "--sim-count", str(config["mcts_cfg"]["sim_count"]),
@@ -96,10 +94,6 @@ def self_play(game, model_path, out_dir, config):
 
 
 def train(game, model_path, net_type, training_games_dir):
-    net_category = game.get_net_category(net_type)
-    if net_category != NetCategory.TwoHeaded:
-        raise ValueError("only two headed network is supported")
-
     logging.debug("Loading current model")
     model = game.load_model(model_path, net_type)
     xs, ys = [], []
