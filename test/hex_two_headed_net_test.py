@@ -13,7 +13,7 @@ RL_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "hex_two_headed_net_test")
 CONFIG_FILE = os.path.join(TMP_DIR, "config.json")
 BIN_DIR = os.path.join(RL_TOP, "target", "debug" if DEBUG else "release")
-SELF_PLAY_RUNNER = os.path.join(RL_TOP, "target", "debug", "{}_self_play_runner")
+SELF_PLAY_RUNNER = "{}_self_play_runner"
 PYTHON_MAIN = os.path.join(RL_TOP, "train", "main.py")
 
 
@@ -37,9 +37,10 @@ def run_test():
                 },
                 "self_play_games_num": 3,
                 "base_model": "[none]",
-                "model_type": "two_headed",
+                "model_type": "simple_two_headed",
                 "working_area": TMP_DIR,
-                "self_play_exec": SELF_PLAY_RUNNER
+                "self_play_exec": SELF_PLAY_RUNNER,
+                "debug": "true"
             }, f)
 
         logging.info("Running self play and generating new models...")
