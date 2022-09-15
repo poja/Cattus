@@ -30,16 +30,23 @@ def run_test():
         with open(CONFIG_FILE, "w") as f:
             json.dump({
                 "game": "hex",
-                "iterations": 2,
-                "mcts_cfg": {
+                "working_area": TMP_DIR,
+                "mcts": {
                     "sim_count": 100,
                     "explore_factor": 1.41421
                 },
-                "self_play_games_num": 3,
-                "base_model": "[none]",
-                "model_type": "simple_two_headed",
-                "working_area": TMP_DIR,
-                "self_play_exec": SELF_PLAY_RUNNER,
+                "self_play": {
+                    "iterations": 2,
+                    "games_num": 3,
+                    "exec": SELF_PLAY_RUNNER,
+                },
+                "model": {
+                    "base": "[none]",
+                    "type": "simple_two_headed",
+                },
+                "training": {
+                    "entries_count": 10000
+                },
                 "debug": "true"
             }, f)
 

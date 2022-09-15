@@ -10,20 +10,20 @@ from tictactoe import TicTacToe
 
 
 class DataParser:
-    def __init__(self, game, data_dir):
+    def __init__(self, game, data_dir, entries_count):
         self.game = game
         self.data_dir = data_dir
+        self.entries_count = entries_count
 
     def _data_entries_filenames_gen(self):
         filenames = os.listdir(self.data_dir)
         filenames = [os.path.join(self.data_dir, filename)
                      for filename in filenames]
 
-        # take the latests files_count files
-        files_count = 100000
+        # take the latests files
         filenames.sort(key=os.path.getmtime, reverse=True)
-        if len(filenames) > files_count:
-            filenames = filenames[:files_count]
+        if len(filenames) > self.entries_count:
+            filenames = filenames[:self.entries_count]
 
         random.shuffle(filenames)
 

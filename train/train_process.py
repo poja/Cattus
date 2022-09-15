@@ -46,11 +46,11 @@ class TrainProcess:
             self.game = Hex()
         else:
             raise ValueError("Unknown game argument in config file.")
-        self.cfg["self_play_exec"] = self.cfg["self_play_exec"].format(
+        self.cfg["self_play"]["exec"] = self.cfg["self_play"]["exec"].format(
             self.cfg["game"])
 
-        self.net_type = self.cfg["model_type"]
-        base_model_path = self.cfg["base_model"]
+        self.net_type = self.cfg["model"]["type"]
+        base_model_path = self.cfg["model"]["base"]
         if base_model_path == "[none]":
             model = self.game.create_model(self.net_type)
             base_model_path = self._save_model(model)
@@ -70,7 +70,7 @@ class TrainProcess:
 
         # In each iteration there will be a new model_path
         model_path = self.base_model_path
-        for iter_num in range(self.cfg["iterations"]):
+        for iter_num in range(self.cfg["self_play"]["iterations"]):
             logging.info(f"Training iteration {iter_num}")
             model_id = net_utils.model_id(
                 self.game.load_model(model_path, self.net_type))
@@ -88,12 +88,12 @@ class TrainProcess:
         profile = "dev" if self.cfg["debug"] == "true" else "release"
         subprocess.run([
             "cargo", "run", "--profile", profile, "--bin",
-            self.cfg["self_play_exec"], "--",
+            self.cfg["self_play"]["exec"], "--",
             "--model-path", model_path,
-            "--games-num", str(self.cfg["self_play_games_num"]),
+            "--games-num", str(self.cfg["self_play"]["games_num"]),
             "--out-dir", out_dir,
-            "--sim-count", str(self.cfg["mcts_cfg"]["sim_count"]),
-            "--explore-factor", str(self.cfg["mcts_cfg"]["explore_factor"])],
+            "--sim-count", str(self.cfg["mcts"]["sim_count"]),
+            "--explore-factor", str(self.cfg["mcts"]["explore_factor"])],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
 
     def _train(self, model_path, training_games_dir):
@@ -103,7 +103,8 @@ class TrainProcess:
 
         logging.debug("Loading games by current model")
 
-        parser = DataParser(self.game, training_games_dir)
+        parser = DataParser(self.game, training_games_dir,
+                            self.cfg["training"]["entries_count"])
 
         train_dataset = tf.data.Dataset.from_generator(
             parser.generator, output_types=(tf.string, tf.string, tf.string))
