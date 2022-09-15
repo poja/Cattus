@@ -93,7 +93,8 @@ class TrainProcess:
             "--games-num", str(self.cfg["self_play"]["games_num"]),
             "--out-dir", out_dir,
             "--sim-count", str(self.cfg["mcts"]["sim_count"]),
-            "--explore-factor", str(self.cfg["mcts"]["explore_factor"])],
+            "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
+            "--threads", str(self.cfg["self_play"]["threads"])],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
 
     def _train(self, model_path, training_games_dir):

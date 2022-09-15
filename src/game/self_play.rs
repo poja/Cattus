@@ -1,10 +1,12 @@
+use itertools::Itertools;
+
 use crate::game::common::{GameColor, GamePosition, IGame};
 use crate::game::mcts::MCTSPlayer;
 use core::panic;
 use std::fs;
 use std::path;
 use std::sync::Arc;
-use std::thread::{self, JoinHandle};
+use std::thread;
 
 pub trait PlayerBuilder<Game: IGame>: Sync + Send {
     fn new_player(&self) -> MCTSPlayer<Game>;
@@ -21,22 +23,26 @@ pub trait DataSerializer<Game: IGame>: Sync + Send {
 }
 
 pub struct SelfPlayRunner<Game: IGame> {
+    player_builder: Arc<dyn PlayerBuilder<Game>>,
     serializer: Arc<dyn DataSerializer<Game>>,
+    thread_num: u32,
 }
 
 impl<Game: IGame + 'static> SelfPlayRunner<Game> {
-    pub fn new(serializer: Box<dyn DataSerializer<Game>>) -> Self {
+    pub fn new(
+        player_builder: Box<dyn PlayerBuilder<Game>>,
+        serializer: Box<dyn DataSerializer<Game>>,
+        thread_num: u32,
+    ) -> Self {
+        assert!(thread_num > 0);
         Self {
+            player_builder: Arc::from(player_builder),
             serializer: Arc::from(serializer),
+            thread_num: thread_num,
         }
     }
 
-    pub fn generate_data(
-        &self,
-        player_builder: Box<dyn PlayerBuilder<Game>>,
-        games_num: u32,
-        output_dir: &String,
-    ) -> std::io::Result<()> {
+    pub fn generate_data(&self, games_num: u32, output_dir: &String) -> std::io::Result<()> {
         /* Create output dir if doesn't exists */
         if !path::Path::new(output_dir).is_dir() {
             fs::create_dir_all(output_dir)?;
@@ -49,29 +55,31 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
             ));
         }
 
-        let player_builder = Arc::from(player_builder);
-
-        let thread_num = 8;
-        let mut threads: Vec<JoinHandle<()>> = vec![];
-        for thread_idx in 0..thread_num {
-            let start_idx = games_num * thread_idx / thread_num;
-            let end_idx = games_num * (thread_idx + 1) / thread_num;
+        let job_builder = |thread_idx| {
+            let start_idx = games_num * thread_idx / self.thread_num;
+            let end_idx = games_num * (thread_idx + 1) / self.thread_num;
 
             let worker = SelfPlayWorker::new(
-                Arc::clone(&player_builder),
+                Arc::clone(&self.player_builder),
                 Arc::clone(&self.serializer),
                 output_dir.to_string(),
                 start_idx,
                 end_idx,
             );
-            threads.push(thread::spawn(move || {
-                let worker = worker;
-                match worker.generate_data() {
-                    Ok(_) => {}
-                    Err(e) => panic!("{:?}", e),
-                }
-            }));
-        }
+
+            return move || match worker.generate_data() {
+                Ok(_) => {}
+                Err(e) => panic!("{:?}", e),
+            };
+        };
+
+        /* Spawn thread_num-1 to jobs [1..thread_num-1] */
+        let threads = (1..self.thread_num)
+            .map(|thread_idx| thread::spawn(job_builder(thread_idx)))
+            .collect_vec();
+
+        /* Use current thread to do job 0 */
+        job_builder(0)();
 
         /* Join all threads */
         for t in threads {
@@ -143,7 +151,10 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                     pos,
                     probs,
                     winner,
-                    format!("{}/d{:#08x}_{:#04x}.json", self.output_dir, game_idx, pos_idx),
+                    format!(
+                        "{}/d{:#08x}_{:#04x}.json",
+                        self.output_dir, game_idx, pos_idx
+                    ),
                 )?;
                 pos_idx += 1;
             }

@@ -8,7 +8,8 @@
     "self_play": {
         "iterations": 5,
         "games_num": 100,
-        "exec": "{}_self_play_runner"
+        "exec": "{}_self_play_runner",
+        "threads": 8
     },
     "model": {
         "base": "[latest]",

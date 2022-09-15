@@ -184,9 +184,9 @@ impl HexPosition {
 
     fn foreach_neighbor<OP: FnMut(u8, u8)>(r: u8, c: u8, mut op: OP) {
         let connection_dirs: [(i8, i8); 6] = [(0, 1), (-1, 0), (-1, -1), (0, -1), (1, 0), (1, 1)];
-        for d in connection_dirs {
-            let nr = r as i8 + d.0;
-            let nc = c as i8 + d.1;
+        for (dr, dc) in connection_dirs {
+            let nr = r as i8 + dr;
+            let nc = c as i8 + dc;
             if nr < 0 || nr as u8 >= BOARD_SIZE || nc < 0 || nc as u8 >= BOARD_SIZE {
                 continue;
             }

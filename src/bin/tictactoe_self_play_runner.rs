@@ -18,6 +18,8 @@ struct Args {
     sim_count: u32,
     #[clap(long, default_value = "1.41421")]
     explore_factor: f32,
+    #[clap(long, default_value = "1")]
+    threads: u32,
 }
 
 struct Builder {
@@ -54,6 +56,6 @@ fn main() -> std::io::Result<()> {
     ));
 
     let serializer = Box::new(TicTacToeSerializer::new());
-    let trainer = SelfPlayRunner::new(serializer);
-    return trainer.generate_data(player_builder, args.games_num, &args.out_dir);
+    let trainer = SelfPlayRunner::new(player_builder, serializer, args.threads);
+    return trainer.generate_data(args.games_num, &args.out_dir);
 }
