@@ -18,7 +18,14 @@
         "residual_block_num": 2
     },
     "training": {
-        "entries_count": 10000
+        "entries_count": 10000,
+        "compare": {
+            "games_num": 20,
+            "switching_winning_threshold": 0.55,
+            "warning_losing_threshold": 0.55,
+            "exec": "{}_player_comparator",
+            "threads": 8
+        }
     },
     "debug": "false"
 }

@@ -56,6 +56,6 @@ fn main() -> std::io::Result<()> {
     ));
 
     let serializer = Box::new(TicTacToeSerializer::new());
-    let trainer = SelfPlayRunner::new(player_builder, serializer, args.threads);
-    return trainer.generate_data(args.games_num, &args.out_dir);
+    let self_player = SelfPlayRunner::new(player_builder, serializer, args.threads);
+    return self_player.generate_data(args.games_num, &args.out_dir);
 }
