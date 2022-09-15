@@ -1,19 +1,20 @@
 use clap::Parser;
 use rl::game::mcts::{MCTSPlayer, ValueFunction};
-use rl::game::self_play::{PlayerBuilder, SelfPlayRunner};
+use rl::game::players_compare::{PlayerBuilder, PlayerComparator};
 use rl::hex::hex_game::HexGame;
-use rl::hex::net::serializer::HexSerializer;
 use rl::hex::net::two_headed_net::TwoHeadedNet;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
 struct Args {
     #[clap(long)]
-    model_path: String,
+    model1_path: String,
+    #[clap(long)]
+    model2_path: String,
     #[clap(long, default_value = "10")]
     games_num: u32,
     #[clap(long)]
-    out_dir: String,
+    result_file: String,
     #[clap(long, default_value = "100")]
     sim_count: u32,
     #[clap(long, default_value = "1.41421")]
@@ -49,13 +50,17 @@ impl PlayerBuilder<HexGame> for Builder {
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
 
-    let player_builder = Box::new(Builder::new(
-        args.model_path,
+    let player1_builder = Box::new(Builder::new(
+        args.model1_path,
+        args.sim_count,
+        args.explore_factor,
+    ));
+    let player2_builder = Box::new(Builder::new(
+        args.model2_path,
         args.sim_count,
         args.explore_factor,
     ));
 
-    let serializer = Box::new(HexSerializer::new());
-    let self_player = SelfPlayRunner::new(player_builder, serializer, args.threads);
-    return self_player.generate_data(args.games_num, &args.out_dir);
+    let comparator = PlayerComparator::new(player1_builder, player2_builder, args.threads);
+    return comparator.compare_players(args.games_num, &args.result_file);
 }

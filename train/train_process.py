@@ -8,6 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 import copy
+import json
 import tensorflow as tf
 
 from hex import Hex
@@ -18,10 +19,6 @@ import net_utils
 
 TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 RL_TOP = os.path.abspath(os.path.join(TRAIN_DIR, ".."))
-
-
-def compare_models(model1_path, model2_path):
-    pass  # TODO
 
 
 class TrainProcess:
@@ -47,6 +44,8 @@ class TrainProcess:
         else:
             raise ValueError("Unknown game argument in config file.")
         self.cfg["self_play"]["exec"] = self.cfg["self_play"]["exec"].format(
+            self.cfg["game"])
+        self.cfg["training"]["compare"]["exec"] = self.cfg["training"]["compare"]["exec"].format(
             self.cfg["game"])
 
         self.net_type = self.cfg["model"]["type"]
@@ -81,8 +80,14 @@ class TrainProcess:
             new_model = self._train(model_path, training_games_dir)
 
             new_model_path = self._save_model(new_model)
-            compare_models(model_path, new_model_path)
-            model_path = new_model_path
+            w1, w2, d = self._compare_models(model_path, new_model_path)
+            total_games = w1 + w2 + d
+            winning = w2 / total_games
+            losing = w1 / total_games
+            if winning > self.cfg["training"]["compare"]["switching_winning_threshold"]:
+                model_path = new_model_path
+            elif losing > self.cfg["training"]["compare"]["warning_losing_threshold"]:
+                print("WARNING: new model is worse than previous one, losing ratio:", losing)
 
     def _self_play(self, model_path, out_dir):
         profile = "dev" if self.cfg["debug"] == "true" else "release"
@@ -114,6 +119,26 @@ class TrainProcess:
         model.fit(train_dataset, epochs=4, verbose=0)
 
         return model
+
+    def _compare_models(self, model1_path, model2_path):
+        compare_res_file = os.path.join(self.cfg["working_area"], "compare_result.json")
+
+        profile = "dev" if self.cfg["debug"] == "true" else "release"
+        subprocess.run([
+            "cargo", "run", "--profile", profile, "--bin",
+            self.cfg["training"]["compare"]["exec"], "--",
+            "--model1-path", model1_path,
+            "--model2-path", model2_path,
+            "--games-num", str(self.cfg["training"]["compare"]["games_num"]),
+            "--result-file", compare_res_file,
+            "--sim-count", str(self.cfg["mcts"]["sim_count"]),
+            "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
+            "--threads", str(self.cfg["training"]["compare"]["threads"])],
+            stderr=sys.stderr, stdout=sys.stdout, check=True)
+
+        with open(compare_res_file, "r") as res_file:
+            res = json.load(res_file)
+        return res["player1_wins"], res["player2_wins"], res["draws"]
 
     def _save_model(self, model):
         model_time = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
