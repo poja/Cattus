@@ -4,6 +4,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import struct
+import random
 import functools
 from tictactoe import TicTacToe
 
@@ -24,15 +25,17 @@ class DataParser:
         if len(filenames) > files_count:
             filenames = filenames[:files_count]
 
+        random.shuffle(filenames)
+
         for filename in filenames:
             yield os.path.join(self.data_dir, filename)
 
-    def _read_data_entry_gen(self, gen):
-        for filename in gen:
+    def _read_data_entry_gen(self, filenames_gen):
+        for filename in filenames_gen:
             yield self.game.load_data_entry(filename)
 
-    def _unpack_planes_gen(self, gen):
-        for (planes, probs, winner) in gen:
+    def _unpack_planes_gen(self, nparr_packed_gen):
+        for (planes, probs, winner) in nparr_packed_gen:
             assert planes.dtype == np.uint32
             plane_size = self.game.BOARD_SIZE * self.game.BOARD_SIZE
             planes = [np.frombuffer(plane, dtype=np.uint8) for plane in planes]
@@ -41,8 +44,8 @@ class DataParser:
             planes = np.array(planes, dtype=np.float32)
             yield (planes, probs, winner)
 
-    def _pack_gen(self, gen):
-        for (planes, probs, winner) in gen:
+    def _serialize_gen(self, nparr_gen):
+        for (planes, probs, winner) in nparr_gen:
             planes = planes.tobytes()
             plane_size = self.game.BOARD_SIZE * self.game.BOARD_SIZE
             assert len(planes) == (self.game.PLANES_NUM * plane_size * 4)
@@ -56,14 +59,14 @@ class DataParser:
 
     def generator(self):
         # choose entries
-        gen = self._data_entries_filenames_gen()
+        filenames_gen = self._data_entries_filenames_gen()
         # filename -> tuple of np array with packed planes
-        gen = self._read_data_entry_gen(gen)
+        nparr_packed_gen = self._read_data_entry_gen(filenames_gen)
         # planes bitmap -> full planes arrays
-        gen = self._unpack_planes_gen(gen)
-        # tuple -> tuple of bytes
-        gen = self._pack_gen(gen)
-        for x in gen:
+        nparr_gen = self._unpack_planes_gen(nparr_packed_gen)
+        # np tuple -> tuple of bytes
+        bytes_gen = self._serialize_gen(nparr_gen)
+        for x in bytes_gen:
             yield x
 
     def _parse_func(self, planes, probs, winner):
