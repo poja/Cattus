@@ -61,8 +61,7 @@ class Hex(TrainableGame):
         x = Dense(units=121, activation="relu")(inputs)
         head_val = Dense(
             units=1, activation="tanh", name="out_value")(x)
-        head_probs = Dense(
-            units=self.MOVE_NUM, activation="sigmoid", name="out_probs")(x)
+        head_probs = Dense(units=self.MOVE_NUM, name="out_probs")(x)
 
         model = Model(inputs=inputs, outputs=[head_val, head_probs])
 
@@ -79,7 +78,7 @@ class Hex(TrainableGame):
         inputs = Input(
             shape=self._get_input_shape(),
             name="in_position")
-        outputs = net_utils.create_two_headed_net(
+        outputs = net_utils.create_convnetv1(
             inputs,
             residual_filter_num=cfg["residual_filter_num"],
             residual_block_num=cfg["residual_block_num"],

@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
 pub struct TwoHeadedNetBase {
@@ -74,5 +75,12 @@ impl TwoHeadedNetBase {
         }
 
         return (val, probs);
+    }
+
+    pub fn softmax_normalizatione(x: Vec<f32>) -> Vec<f32> {
+        let max_p = x.iter().cloned().fold(f32::MIN, f32::max);
+        let x = x.iter().map(|p| (p - max_p).exp()).collect_vec();
+        let p_sum: f32 = x.iter().sum();
+        return x.iter().map(|p| p / p_sum).collect_vec();
     }
 }

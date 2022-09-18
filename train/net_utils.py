@@ -113,7 +113,7 @@ def residual_block(inputs, channels, name, cpu):
     return tf.keras.layers.Activation('relu')(flow)
 
 
-def create_two_headed_net(inputs, residual_filter_num, residual_block_num, moves_num):
+def create_convnetv1(inputs, residual_filter_num, residual_block_num, moves_num):
     cpu = True
 
     # single conv block
@@ -160,8 +160,6 @@ def create_two_headed_net(inputs, residual_filter_num, residual_block_num, moves
                                      kernel_initializer='glorot_normal',
                                      kernel_regularizer=l2reg,
                                      bias_regularizer=l2reg,
-                                     #  activation="sigmoid",
                                      name='out_probs')(flow_pol)
-    # TODO missing activation func for policy?
 
     return [head_val, head_pol]

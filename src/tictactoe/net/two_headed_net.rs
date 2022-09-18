@@ -27,9 +27,16 @@ impl TwoHeadedNet {
         let (val, probs) = self.base.run_net(input);
 
         let moves = position.get_legal_moves();
+        let moves_probs = TwoHeadedNetBase::softmax_normalizatione(
+            moves
+                .iter()
+                .map(|m| probs[m.to_idx() as usize])
+                .collect_vec(),
+        );
         let moves_probs = moves
             .iter()
-            .map(|move_| ((*move_), probs[move_.to_idx() as usize]))
+            .cloned()
+            .zip(moves_probs.iter().cloned())
             .collect_vec();
 
         return (val, moves_probs);
