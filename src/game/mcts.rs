@@ -137,6 +137,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         }
         let parent_pos = parent.position;
 
+        // TODO remove
         let moves_actual: HashSet<Game::Move> =
             HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| *m));
         let moves_expected: HashSet<Game::Move> =
