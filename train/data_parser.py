@@ -55,7 +55,7 @@ class DataParser:
             plane_size = self.game.BOARD_SIZE * self.game.BOARD_SIZE
             assert len(planes) == (self.game.PLANES_NUM * plane_size * f32size)
 
-            probs = probs.astype('f').tostring()
+            probs = probs.astype('f').tobytes()
             assert len(probs) == self.game.MOVE_NUM * f32size
 
             winner = struct.pack('f', winner)
