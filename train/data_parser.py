@@ -39,7 +39,7 @@ class DataParser:
             assert planes.dtype == np.uint32
             plane_size = self.game.BOARD_SIZE * self.game.BOARD_SIZE
             planes = [np.frombuffer(plane, dtype=np.uint8) for plane in planes]
-            planes = [np.unpackbits(plane, count=plane_size)
+            planes = [np.unpackbits(plane, count=plane_size, bitorder='little')
                       for plane in planes]
             planes = np.array(planes, dtype=np.float32)
             planes = np.reshape(
