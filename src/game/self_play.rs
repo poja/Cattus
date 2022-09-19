@@ -117,7 +117,6 @@ impl<Game: IGame> SelfPlayWorker<Game> {
 
     fn generate_data(&self) -> std::io::Result<()> {
         let mut player = self.player_builder.new_player();
-        let mut pos_idx = 0;
         for game_idx in self.start_idx..self.end_idx {
             // if games_num < 10 || game_idx % (games_num / 10) == 0 {
             //     let percentage = (((game_idx as f32) / games_num as f32) * 100.0) as u32;
@@ -146,15 +145,13 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             }
             let winner = pos.get_winner();
 
+            let mut pos_idx = 0;
             for (pos, probs) in pos_probs_pairs {
                 self.serializer.serialize_data_entry_to_file(
                     pos,
                     probs,
                     winner,
-                    format!(
-                        "{}/d{:#08x}_{:#04x}.json",
-                        self.output_dir, game_idx, pos_idx
-                    ),
+                    format!("{}/d{:#08}_{:#03}.json", self.output_dir, game_idx, pos_idx),
                 )?;
                 pos_idx += 1;
             }

@@ -74,7 +74,7 @@ class TrainProcess:
             model_id = net_utils.model_id(
                 self.game.load_model(model_path, self.net_type))
             training_games_dir = os.path.join(
-                self.cfg["games_dir"], f"{run_id}_{iter_num}_{model_id}")
+                self.cfg["games_dir"], "{0}_{1:05d}_{2}".format(run_id, iter_num, model_id))
 
             self._self_play(model_path, training_games_dir)
             new_model = self._train(model_path, training_games_dir)
