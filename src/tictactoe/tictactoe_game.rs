@@ -1,4 +1,4 @@
-use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
+use crate::game::common::{Bitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
 
 pub const BOARD_SIZE: u8 = 3;
 
@@ -43,31 +43,33 @@ impl GameMove for TicTacToeMove {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Bitboard {
+pub struct TtoBitboard {
     bitmap: u16,
 }
 
-impl Bitboard {
-    pub fn new() -> Self {
+impl TtoBitboard {
+    pub fn get_raw(&self) -> u16 {
+        self.bitmap
+    }
+}
+
+impl Bitboard for TtoBitboard {
+    fn new() -> Self {
         Self { bitmap: 0 }
     }
 
-    pub fn new_with_all(val: bool) -> Self {
+    fn new_with_all(val: bool) -> Self {
         Self {
             bitmap: if val { (1u16 << 9) - 1 } else { 0 },
         }
     }
 
-    pub fn get_raw(&self) -> u16 {
-        self.bitmap
-    }
-
-    pub fn get(&self, idx: u8) -> bool {
+    fn get(&self, idx: u8) -> bool {
         assert!(idx < BOARD_SIZE * BOARD_SIZE);
         return (self.bitmap & (1u16 << idx)) != 0;
     }
 
-    pub fn set(&mut self, idx: u8, val: bool) {
+    fn set(&mut self, idx: u8, val: bool) {
         assert!(idx < BOARD_SIZE * BOARD_SIZE);
         if val {
             self.bitmap |= 1u16 << idx;
@@ -79,19 +81,19 @@ impl Bitboard {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TicTacToePosition {
-    board_x: Bitboard,
-    board_o: Bitboard,
+    board_x: TtoBitboard,
+    board_o: TtoBitboard,
     turn: GameColor,
     winner: Option<GameColor>,
     num_empty_tiles: u8,
 }
 
 impl TicTacToePosition {
-    pub fn pieces_x(&self) -> Bitboard {
+    pub fn pieces_x(&self) -> TtoBitboard {
         self.board_x
     }
 
-    pub fn pieces_o(&self) -> Bitboard {
+    pub fn pieces_o(&self) -> TtoBitboard {
         self.board_o
     }
 
