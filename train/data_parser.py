@@ -66,8 +66,8 @@ class DataParser:
         nparr_gen = self._unpack_planes_gen(nparr_packed_gen)
         # np tuple -> tuple of bytes
         bytes_gen = self._serialize_gen(nparr_gen)
-        for x in bytes_gen:
-            yield x
+
+        yield from bytes_gen
 
     def _parse_func(self, planes, probs, winner):
         """
