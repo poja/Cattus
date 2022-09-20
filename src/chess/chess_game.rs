@@ -33,6 +33,10 @@ impl ChessMove {
 }
 impl GameMove for ChessMove {
     type Game = ChessGame;
+
+    fn to_nn_idx(&self) -> usize {
+        self.m.get_source().to_index() * 64 + self.m.get_dest().to_index()
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

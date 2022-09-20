@@ -1,4 +1,4 @@
-use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame, Bitboard};
+use crate::game::common::{Bitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
 
 pub const BOARD_SIZE: u8 = 11;
 
@@ -18,7 +18,7 @@ impl HexMove {
     }
 
     pub fn to_idx(&self) -> u8 {
-        self.idx as u8
+        self.idx
     }
 
     pub fn row(&self) -> u8 {
@@ -32,6 +32,10 @@ impl HexMove {
 
 impl GameMove for HexMove {
     type Game = HexGame;
+
+    fn to_nn_idx(&self) -> usize {
+        self.idx as usize
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

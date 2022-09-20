@@ -3,7 +3,6 @@ use crate::game::mcts::ValueFunction;
 use crate::game::net::TwoHeadedNetBase;
 use crate::tictactoe::net::common;
 use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToePosition, BOARD_SIZE};
-use itertools::Itertools;
 
 pub struct TwoHeadedNet {
     base: TwoHeadedNetBase,
@@ -22,20 +21,10 @@ impl TwoHeadedNet {
     ) -> (f32, Vec<(<TicTacToeGame as IGame>::Move, f32)>) {
         let planes = common::position_to_planes(position);
         let input = TwoHeadedNetBase::planes_to_tensor(planes, BOARD_SIZE as usize);
-        let (val, probs) = self.base.run_net(input);
+        let (val, move_scores) = self.base.run_net(input);
 
         let moves = position.get_legal_moves();
-        let moves_probs = TwoHeadedNetBase::softmax_normalizatione(
-            moves
-                .iter()
-                .map(|m| probs[m.to_idx() as usize])
-                .collect_vec(),
-        );
-        let moves_probs = moves
-            .iter()
-            .cloned()
-            .zip(moves_probs.iter().cloned())
-            .collect_vec();
+        let moves_probs = TwoHeadedNetBase::calc_moves_probs(moves, move_scores);
 
         return (val, moves_probs);
     }
