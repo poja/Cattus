@@ -26,8 +26,7 @@ class TrainProcess:
         self.cfg = copy.deepcopy(cfg)
 
         working_area = self.cfg["working_area"]
-        if "{RL_TOP}" in working_area:
-            working_area = working_area.replace("{RL_TOP}", RL_TOP)
+        working_area = working_area.format(RL_TOP=RL_TOP)
         self.cfg["working_area"] = working_area
         working_area = Path(working_area)
         assert(working_area.exists())
@@ -121,7 +120,8 @@ class TrainProcess:
         return model
 
     def _compare_models(self, model1_path, model2_path):
-        compare_res_file = os.path.join(self.cfg["working_area"], "compare_result.json")
+        compare_res_file = os.path.join(
+            self.cfg["working_area"], "compare_result.json")
 
         profile = "dev" if self.cfg["debug"] == "true" else "release"
         subprocess.run([
