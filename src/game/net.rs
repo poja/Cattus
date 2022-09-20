@@ -1,3 +1,4 @@
+use crate::game::common::Bitboard;
 use itertools::Itertools;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
@@ -82,5 +83,34 @@ impl TwoHeadedNetBase {
         let x = x.iter().map(|p| (p - max_p).exp()).collect_vec();
         let p_sum: f32 = x.iter().sum();
         return x.iter().map(|p| p / p_sum).collect_vec();
+    }
+
+    pub fn planes_to_tensor<B: Bitboard>(planes: Vec<B>, board_size: usize) -> Tensor<f32> {
+        let cpu = true;
+        let planes_num = planes.len();
+
+        let mut encoded_position = vec![0.0; (planes_num * board_size * board_size) as usize];
+        for (plane_idx, plane) in planes.into_iter().enumerate() {
+            for square in 0..(board_size * board_size) {
+                let idx = if cpu {
+                    square * planes_num + plane_idx
+                } else {
+                    plane_idx * board_size * board_size + square
+                };
+                encoded_position[idx] = match plane.get(square as u8) {
+                    true => 1.0,
+                    false => 0.0,
+                };
+            }
+        }
+
+        let dims = if cpu {
+            [1, board_size as u64, board_size as u64, planes_num as u64]
+        } else {
+            [1, planes_num as u64, board_size as u64, board_size as u64]
+        };
+        return Tensor::new(&dims)
+            .with_values(&encoded_position)
+            .expect("Can't create input tensor");
     }
 }

@@ -57,6 +57,13 @@ pub trait GamePlayer<Game: IGame> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move>;
 }
 
+pub trait Bitboard {
+    fn new() -> Self;
+    fn new_with_all(val: bool) -> Self;
+    fn get(&self, idx: u8) -> bool;
+    fn set(&mut self, idx: u8, val: bool);
+}
+
 pub struct PlayerRand {}
 
 impl PlayerRand {

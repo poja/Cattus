@@ -1,5 +1,5 @@
-use crate::game::common::{GameColor, GamePlayer, GamePosition, IGame};
-use crate::hex::hex_game::{Bitboard, HexGame, HexMove, HexPosition, BOARD_SIZE};
+use crate::game::common::{Bitboard, GameColor, GamePlayer, GamePosition, IGame};
+use crate::hex::hex_game::{HexBitboard, HexGame, HexMove, HexPosition, BOARD_SIZE};
 use std::io::{BufRead, BufReader, Write};
 use std::string::String;
 use std::{io, process, thread, time};
@@ -292,8 +292,8 @@ fn position_to_uxi(position: &HexPosition, s: &mut String) {
 }
 
 fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
-    let mut board_red = Bitboard::new();
-    let mut board_blue = Bitboard::new();
+    let mut board_red = HexBitboard::new();
+    let mut board_blue = HexBitboard::new();
     let mut idx = 0;
     for tile in pos_str.chars() {
         if idx >= BOARD_SIZE * BOARD_SIZE {

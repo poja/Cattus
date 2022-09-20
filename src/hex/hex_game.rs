@@ -1,4 +1,4 @@
-use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
+use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame, Bitboard};
 
 pub const BOARD_SIZE: u8 = 11;
 
@@ -35,41 +35,17 @@ impl GameMove for HexMove {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Bitboard {
+pub struct HexBitboard {
     bitmap: u128,
 }
 
-impl Bitboard {
-    pub fn new() -> Self {
-        Self { bitmap: 0 }
-    }
-
-    pub fn new_with_all(val: bool) -> Self {
-        Self {
-            bitmap: if val { (1u128 << 121) - 1 } else { 0 },
-        }
-    }
-
+impl HexBitboard {
     pub fn get_raw(&self) -> u128 {
         self.bitmap
     }
 
-    pub fn get(&self, idx: u8) -> bool {
-        assert!(idx < BOARD_SIZE * BOARD_SIZE);
-        return (self.bitmap & (1u128 << idx)) != 0;
-    }
-
-    pub fn set(&mut self, idx: u8, val: bool) {
-        assert!(idx < BOARD_SIZE * BOARD_SIZE);
-        if val {
-            self.bitmap |= 1u128 << idx;
-        } else {
-            self.bitmap &= !(1u128 << idx);
-        }
-    }
-
     fn flip(&self) -> Self {
-        let mut f = Bitboard::new();
+        let mut f = HexBitboard::new();
         for r in 0..BOARD_SIZE {
             for c in 0..BOARD_SIZE {
                 let idx = r * BOARD_SIZE + c;
@@ -85,20 +61,46 @@ impl Bitboard {
     }
 }
 
+impl Bitboard for HexBitboard {
+    fn new() -> Self {
+        Self { bitmap: 0 }
+    }
+
+    fn new_with_all(val: bool) -> Self {
+        Self {
+            bitmap: if val { (1u128 << 121) - 1 } else { 0 },
+        }
+    }
+
+    fn get(&self, idx: u8) -> bool {
+        assert!(idx < BOARD_SIZE * BOARD_SIZE);
+        return (self.bitmap & (1u128 << idx)) != 0;
+    }
+
+    fn set(&mut self, idx: u8, val: bool) {
+        assert!(idx < BOARD_SIZE * BOARD_SIZE);
+        if val {
+            self.bitmap |= 1u128 << idx;
+        } else {
+            self.bitmap &= !(1u128 << idx);
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct HexPosition {
     /// The board should be imagined in 2D like so:
     /// The board is a rhombus, slanted right. So, board[0][BOARD_SIZE - 1] is the "top right end",
     /// also called the "top end" of the board, and board[BOARD_SIZE - 1][0] is the "bottom end".
     /// Red tries to move left-right and blue tries to move top-bottom.
-    board_red: Bitboard,
-    board_blue: Bitboard,
+    board_red: HexBitboard,
+    board_blue: HexBitboard,
     turn: GameColor,
 
     /* bitmap of all the tiles one can reach from the left side of the board stepping only on tiles with red pieces */
-    left_red_reach: Bitboard,
+    left_red_reach: HexBitboard,
     /* bitmap of all the tiles one can reach from the top side of the board stepping only on tiles with blue pieces */
-    top_blue_reach: Bitboard,
+    top_blue_reach: HexBitboard,
     number_of_empty_tiles: u8,
     winner: Option<GameColor>,
 }
@@ -106,23 +108,27 @@ pub struct HexPosition {
 impl HexPosition {
     pub fn new_with_starting_color(starting_color: GameColor) -> Self {
         Self {
-            board_red: Bitboard::new(),
-            board_blue: Bitboard::new(),
+            board_red: HexBitboard::new(),
+            board_blue: HexBitboard::new(),
             turn: starting_color,
-            left_red_reach: Bitboard::new(),
-            top_blue_reach: Bitboard::new(),
+            left_red_reach: HexBitboard::new(),
+            top_blue_reach: HexBitboard::new(),
             number_of_empty_tiles: (BOARD_SIZE * BOARD_SIZE) as u8,
             winner: None,
         }
     }
 
-    pub fn new_from_board(board_red: Bitboard, board_blue: Bitboard, turn: GameColor) -> Self {
+    pub fn new_from_board(
+        board_red: HexBitboard,
+        board_blue: HexBitboard,
+        turn: GameColor,
+    ) -> Self {
         let mut s = Self {
             board_red: board_red,
             board_blue: board_blue,
             turn: turn,
-            left_red_reach: Bitboard::new(),
-            top_blue_reach: Bitboard::new(),
+            left_red_reach: HexBitboard::new(),
+            top_blue_reach: HexBitboard::new(),
             number_of_empty_tiles: (BOARD_SIZE * BOARD_SIZE) as u8,
             winner: None,
         };
@@ -162,11 +168,11 @@ impl HexPosition {
         }
     }
 
-    pub fn pieces_red(&self) -> Bitboard {
+    pub fn pieces_red(&self) -> HexBitboard {
         self.board_red
     }
 
-    pub fn pieces_blue(&self) -> Bitboard {
+    pub fn pieces_blue(&self) -> HexBitboard {
         self.board_blue
     }
 
@@ -219,7 +225,7 @@ impl HexPosition {
             GameColor::Player2 => |r: u8, _: u8| r == BOARD_SIZE - 1,
         };
 
-        let mut bfs_layer = Bitboard::new();
+        let mut bfs_layer = HexBitboard::new();
 
         let mut update_reach = is_reach_begin(r, c);
         HexPosition::foreach_neighbor(r, c, |nr: u8, nc: u8| {

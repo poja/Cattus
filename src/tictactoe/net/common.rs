@@ -1,5 +1,5 @@
-use crate::game::common::{GameColor, GamePosition, IGame};
-use crate::tictactoe::tictactoe_game::{Bitboard, TicTacToeGame, TicTacToePosition};
+use crate::game::common::{Bitboard, GameColor, GamePosition, IGame};
+use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToePosition, TtoBitboard};
 
 pub const PLANES_NUM: usize = 3;
 
@@ -24,14 +24,14 @@ pub fn flip_score_if_needed(
     }
 }
 
-pub fn position_to_planes(pos: &TicTacToePosition) -> Vec<Bitboard> {
+pub fn position_to_planes(pos: &TicTacToePosition) -> Vec<TtoBitboard> {
     let mut planes = Vec::new();
     /* x pieces plane */
     planes.push(pos.pieces_x());
     /* o pieces plane */
     planes.push(pos.pieces_o());
     /* a plane with all ones to help NN find board edges */
-    planes.push(Bitboard::new_with_all(true));
+    planes.push(TtoBitboard::new_with_all(true));
 
     assert!(planes.len() == PLANES_NUM);
     return planes;
