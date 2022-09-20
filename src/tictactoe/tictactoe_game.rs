@@ -51,6 +51,13 @@ impl Bitboard {
     pub fn new() -> Self {
         Self { bitmap: 0 }
     }
+
+    pub fn new_with_all(val: bool) -> Self {
+        Self {
+            bitmap: if val { (1u16 << 9) - 1 } else { 0 },
+        }
+    }
+
     pub fn get_raw(&self) -> u16 {
         self.bitmap
     }
@@ -73,7 +80,7 @@ impl Bitboard {
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TicTacToePosition {
     board_x: Bitboard,
-    board_y: Bitboard,
+    board_o: Bitboard,
     turn: GameColor,
     winner: Option<GameColor>,
     num_empty_tiles: u8,
@@ -84,8 +91,8 @@ impl TicTacToePosition {
         self.board_x
     }
 
-    pub fn pieces_y(&self) -> Bitboard {
-        self.board_y
+    pub fn pieces_o(&self) -> Bitboard {
+        self.board_o
     }
 
     pub fn get_tile(&self, r: u8, c: u8) -> Option<GameColor> {
@@ -94,7 +101,7 @@ impl TicTacToePosition {
         if self.board_x.get(idx) {
             return Some(GameColor::Player1);
         }
-        if self.board_y.get(idx) {
+        if self.board_o.get(idx) {
             return Some(GameColor::Player2);
         }
         return None;
@@ -106,7 +113,7 @@ impl TicTacToePosition {
 
         match self.turn {
             GameColor::Player1 => &mut self.board_x,
-            GameColor::Player2 => &mut self.board_y,
+            GameColor::Player2 => &mut self.board_o,
         }
         .set(m.to_idx(), true);
 
@@ -117,7 +124,7 @@ impl TicTacToePosition {
 
     pub fn is_valid_move(&self, m: TicTacToeMove) -> bool {
         let idx = m.to_idx();
-        return !self.board_x.get(idx) && !self.board_y.get(idx);
+        return !self.board_x.get(idx) && !self.board_o.get(idx);
     }
 
     pub fn check_winner(&mut self) {
@@ -137,7 +144,7 @@ impl TicTacToePosition {
                 self.winner = Some(GameColor::Player1);
                 return;
             }
-            if (self.board_y.get_raw() & winning_sequence) == winning_sequence {
+            if (self.board_o.get_raw() & winning_sequence) == winning_sequence {
                 self.winner = Some(GameColor::Player2);
                 return;
             }
@@ -147,8 +154,8 @@ impl TicTacToePosition {
 
     pub fn flip_of(pos: &TicTacToePosition) -> Self {
         Self {
-            board_x: pos.board_y,
-            board_y: pos.board_x,
+            board_x: pos.board_o,
+            board_o: pos.board_x,
             turn: pos.turn.opposite(),
             num_empty_tiles: pos.num_empty_tiles,
             winner: match pos.winner {
@@ -178,7 +185,7 @@ impl GamePosition for TicTacToePosition {
     fn new() -> Self {
         TicTacToePosition {
             board_x: Bitboard::new(),
-            board_y: Bitboard::new(),
+            board_o: Bitboard::new(),
             turn: GameColor::Player1,
             winner: None,
             num_empty_tiles: BOARD_SIZE * BOARD_SIZE,

@@ -1,9 +1,11 @@
 use std::fs;
 
+use itertools::Itertools;
+
 use crate::game::common::{GameColor, GamePosition};
 use crate::game::self_play::DataSerializer;
 use crate::hex::hex_game::{HexGame, HexMove, HexPosition, BOARD_SIZE};
-use crate::hex::net;
+use crate::hex::net::common;
 
 pub struct HexSerializer {}
 
@@ -23,19 +25,23 @@ impl DataSerializer<HexGame> for HexSerializer {
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(winner) as f32;
-        let (pos, is_flipped) = net::common::flip_pos_if_needed(pos);
-        let (winner, probs) = net::common::flip_score_if_needed((winner, probs), is_flipped);
+        let (pos, is_flipped) = common::flip_pos_if_needed(pos);
+        let (winner, probs) = common::flip_score_if_needed((winner, probs), is_flipped);
         assert!(pos.get_turn() == GameColor::Player1);
 
-        let mut planes = Vec::new();
-        let pieces_red = pos.pieces_red().get_raw();
-        let pieces_blue = pos.pieces_blue().get_raw();
-        planes.push(((pieces_red >> 00) & 0xffffffffffffffff) as u64);
-        planes.push(((pieces_red >> 64) & 0xffffffffffffffff) as u64);
-        planes.push(((pieces_blue >> 00) & 0xffffffffffffffff) as u64);
-        planes.push(((pieces_blue >> 64) & 0xffffffffffffffff) as u64);
-        /* TODO !!! possible little/big indian bug */
-        /* Need to use some library (protobuf) to ensure writes and reads are done in the same way */
+        let planes = common::position_to_planes(&pos)
+            .into_iter()
+            .flat_map(|p| {
+                [
+                    /* TODO !!! possible little/big indian bug */
+                    /* Need to use some library (protobuf) to ensure writes and reads are done in the same way */
+                    ((p.get_raw() >> 00) & 0xffffffffffffffff) as u64,
+                    ((p.get_raw() >> 64) & 0xffffffffffffffff) as u64,
+                ]
+                .into_iter()
+            })
+            .into_iter()
+            .collect_vec();
 
         let mut probs_vec = vec![0.0; (BOARD_SIZE * BOARD_SIZE) as usize];
         for (m, prob) in probs {

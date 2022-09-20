@@ -43,6 +43,13 @@ impl Bitboard {
     pub fn new() -> Self {
         Self { bitmap: 0 }
     }
+
+    pub fn new_with_all(val: bool) -> Self {
+        Self {
+            bitmap: if val { (1u128 << 121) - 1 } else { 0 },
+        }
+    }
+
     pub fn get_raw(&self) -> u128 {
         self.bitmap
     }
