@@ -1,4 +1,4 @@
-use crate::game::common::Bitboard;
+use crate::game::common::{Bitboard, GameMove};
 use itertools::Itertools;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
@@ -78,11 +78,22 @@ impl TwoHeadedNetBase {
         return (val, probs);
     }
 
-    pub fn softmax_normalizatione(x: Vec<f32>) -> Vec<f32> {
-        let max_p = x.iter().cloned().fold(f32::MIN, f32::max);
-        let x = x.iter().map(|p| (p - max_p).exp()).collect_vec();
-        let p_sum: f32 = x.iter().sum();
-        return x.iter().map(|p| p / p_sum).collect_vec();
+    pub fn calc_moves_probs<M: GameMove>(moves: Vec<M>, move_scores: Tensor<f32>) -> Vec<(M, f32)> {
+        let moves_scores = moves
+            .iter()
+            .map(|m| move_scores[m.to_nn_idx()])
+            .collect_vec();
+
+        // Softmax normalization
+        let max_p = moves_scores.iter().cloned().fold(f32::MIN, f32::max);
+        let scores = moves_scores
+            .into_iter()
+            .map(|p| (p - max_p).exp())
+            .collect_vec();
+        let p_sum: f32 = scores.iter().sum();
+        let probs = scores.into_iter().map(|p| p / p_sum).collect_vec();
+
+        return moves.into_iter().zip(probs.into_iter()).collect_vec();
     }
 
     pub fn planes_to_tensor<B: Bitboard>(planes: Vec<B>, board_size: usize) -> Tensor<f32> {

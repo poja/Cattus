@@ -51,6 +51,8 @@ pub trait GamePosition: Clone + Copy + Eq {
 
 pub trait GameMove: Clone + Copy + Eq + std::cmp::Eq + std::hash::Hash + std::fmt::Debug {
     type Game: IGame<Move = Self>;
+
+    fn to_nn_idx(&self) -> usize;
 }
 
 pub trait GamePlayer<Game: IGame> {

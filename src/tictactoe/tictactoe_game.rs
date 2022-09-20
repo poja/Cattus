@@ -26,7 +26,7 @@ impl TicTacToeMove {
     }
 
     pub fn to_idx(&self) -> u8 {
-        self.idx as u8
+        self.idx
     }
 
     pub fn row(&self) -> u8 {
@@ -40,6 +40,10 @@ impl TicTacToeMove {
 
 impl GameMove for TicTacToeMove {
     type Game = TicTacToeGame;
+
+    fn to_nn_idx(&self) -> usize {
+        self.idx as usize
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
