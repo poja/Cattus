@@ -1,9 +1,10 @@
 use std::fs;
 
-use crate::game::common::GameColor;
-use crate::game::common::GamePosition;
+use itertools::Itertools;
+
+use crate::game::common::{GameColor, GamePosition};
 use crate::game::self_play::DataSerializer;
-use crate::tictactoe::net;
+use crate::tictactoe::net::common;
 use crate::tictactoe::tictactoe_game::{
     TicTacToeGame, TicTacToeMove, TicTacToePosition, BOARD_SIZE,
 };
@@ -26,13 +27,14 @@ impl DataSerializer<TicTacToeGame> for TicTacToeSerializer {
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(winner) as f32;
-        let (pos, is_flipped) = net::common::flip_pos_if_needed(pos);
-        let (winner, probs) = net::common::flip_score_if_needed((winner, probs), is_flipped);
+        let (pos, is_flipped) = common::flip_pos_if_needed(pos);
+        let (winner, probs) = common::flip_score_if_needed((winner, probs), is_flipped);
         assert!(pos.get_turn() == GameColor::Player1);
 
-        let mut planes = Vec::new();
-        planes.push(pos.pieces_x().get_raw());
-        planes.push(pos.pieces_y().get_raw());
+        let planes = common::position_to_planes(&pos)
+            .iter()
+            .map(|p| p.get_raw())
+            .collect_vec();
 
         let mut probs_vec = vec![0.0; (BOARD_SIZE * BOARD_SIZE) as usize];
         for (m, prob) in probs {

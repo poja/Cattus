@@ -1,6 +1,8 @@
 use crate::game::common::{GameColor, GamePosition, IGame};
-use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
+use crate::hex::hex_game::{Bitboard, HexGame, HexMove, HexPosition};
 use itertools::Itertools;
+
+pub const PLANES_NUM: usize = 3;
 
 pub fn flip_pos_if_needed(pos: HexPosition) -> (HexPosition, bool) {
     if pos.get_turn() == GameColor::Player1 {
@@ -30,4 +32,17 @@ pub fn flip_score_if_needed(
 
         return (val, moves_probs);
     }
+}
+
+pub fn position_to_planes(pos: &HexPosition) -> Vec<Bitboard> {
+    let mut planes = Vec::new();
+    /* red pieces plane */
+    planes.push(pos.pieces_red());
+    /* blue pieces plane */
+    planes.push(pos.pieces_blue());
+    /* a plane with all ones to help NN find board edges */
+    planes.push(Bitboard::new_with_all(true));
+
+    assert!(planes.len() == PLANES_NUM);
+    return planes;
 }

@@ -23,7 +23,7 @@ class TtoNetType:
 class TicTacToe(TrainableGame):
 
     BOARD_SIZE = 3
-    PLANES_NUM = 2
+    PLANES_NUM = 3
     MOVE_NUM = BOARD_SIZE * BOARD_SIZE
 
     def load_data_entry(self, path):
