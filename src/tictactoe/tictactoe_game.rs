@@ -1,6 +1,6 @@
 use crate::game::common::{Bitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
 
-pub const BOARD_SIZE: u8 = 3;
+pub const BOARD_SIZE: usize = 3;
 
 pub fn color_to_str(c: Option<GameColor>) -> String {
     match c {
@@ -16,25 +16,25 @@ pub struct TicTacToeMove {
 }
 
 impl TicTacToeMove {
-    pub fn new(r: u8, c: u8) -> Self {
+    pub fn new(r: usize, c: usize) -> Self {
         TicTacToeMove::from_idx(r * BOARD_SIZE + c)
     }
 
-    pub fn from_idx(idx: u8) -> Self {
+    pub fn from_idx(idx: usize) -> Self {
         assert!(idx < BOARD_SIZE * BOARD_SIZE);
-        Self { idx: idx }
+        Self { idx: idx as u8 }
     }
 
-    pub fn to_idx(&self) -> u8 {
-        self.idx
+    pub fn to_idx(&self) -> usize {
+        self.idx as usize
     }
 
-    pub fn row(&self) -> u8 {
-        self.idx / BOARD_SIZE
+    pub fn row(&self) -> usize {
+        self.idx as usize / BOARD_SIZE
     }
 
-    pub fn column(&self) -> u8 {
-        self.idx % BOARD_SIZE
+    pub fn column(&self) -> usize {
+        self.idx as usize % BOARD_SIZE
     }
 }
 
@@ -68,12 +68,12 @@ impl Bitboard for TtoBitboard {
         }
     }
 
-    fn get(&self, idx: u8) -> bool {
+    fn get(&self, idx: usize) -> bool {
         assert!(idx < BOARD_SIZE * BOARD_SIZE);
         return (self.bitmap & (1u16 << idx)) != 0;
     }
 
-    fn set(&mut self, idx: u8, val: bool) {
+    fn set(&mut self, idx: usize, val: bool) {
         assert!(idx < BOARD_SIZE * BOARD_SIZE);
         if val {
             self.bitmap |= 1u16 << idx;
@@ -101,7 +101,7 @@ impl TicTacToePosition {
         self.board_o
     }
 
-    pub fn get_tile(&self, r: u8, c: u8) -> Option<GameColor> {
+    pub fn get_tile(&self, r: usize, c: usize) -> Option<GameColor> {
         assert!(r < BOARD_SIZE && c < BOARD_SIZE);
         let idx = r * BOARD_SIZE + c;
         if self.board_x.get(idx) {
@@ -194,7 +194,7 @@ impl GamePosition for TicTacToePosition {
             board_o: Bitboard::new(),
             turn: GameColor::Player1,
             winner: None,
-            num_empty_tiles: BOARD_SIZE * BOARD_SIZE,
+            num_empty_tiles: (BOARD_SIZE * BOARD_SIZE) as u8,
         }
     }
 

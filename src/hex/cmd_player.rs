@@ -41,7 +41,7 @@ impl GamePlayer<HexGame> for HexPlayerCmd {
                 None => continue,
                 Some(c) => c,
             };
-            let m = HexMove::new(r as u8, c as u8);
+            let m = HexMove::new(r, c);
 
             if position.is_valid_move(m) {
                 return Some(m);

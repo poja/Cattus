@@ -2,7 +2,7 @@ use crate::game::common::{GamePosition, IGame};
 use crate::game::mcts::ValueFunction;
 use crate::game::net::TwoHeadedNetBase;
 use crate::tictactoe::net::common;
-use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToePosition, BOARD_SIZE};
+use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToePosition, TtoBitboard, BOARD_SIZE};
 
 pub struct TwoHeadedNet {
     base: TwoHeadedNetBase,
@@ -20,7 +20,7 @@ impl TwoHeadedNet {
         position: &TicTacToePosition,
     ) -> (f32, Vec<(<TicTacToeGame as IGame>::Move, f32)>) {
         let planes = common::position_to_planes(position);
-        let input = TwoHeadedNetBase::planes_to_tensor(planes, BOARD_SIZE as usize);
+        let input = TwoHeadedNetBase::planes_to_tensor::<TtoBitboard, BOARD_SIZE>(planes);
         let (val, move_scores) = self.base.run_net(input);
 
         let moves = position.get_legal_moves();

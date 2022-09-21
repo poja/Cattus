@@ -1,7 +1,7 @@
 use crate::game::common::{GamePosition, IGame};
 use crate::game::mcts::ValueFunction;
 use crate::game::net::TwoHeadedNetBase;
-use crate::hex::hex_game::{HexGame, HexPosition, BOARD_SIZE};
+use crate::hex::hex_game::{HexBitboard, HexGame, HexPosition, BOARD_SIZE};
 use crate::hex::net::common;
 
 pub struct TwoHeadedNet {
@@ -20,7 +20,7 @@ impl TwoHeadedNet {
         position: &HexPosition,
     ) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
         let planes = common::position_to_planes(position);
-        let input = TwoHeadedNetBase::planes_to_tensor(planes, BOARD_SIZE as usize);
+        let input = TwoHeadedNetBase::planes_to_tensor::<HexBitboard, BOARD_SIZE>(planes);
         let (val, move_scores) = self.base.run_net(input);
 
         let moves = position.get_legal_moves();

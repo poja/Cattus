@@ -42,7 +42,7 @@ impl GamePlayer<TicTacToeGame> for TttPlayerCmd {
                 Some(c) => c,
             };
 
-            let move_ = TicTacToeMove::new(r as u8, c as u8);
+            let move_ = TicTacToeMove::new(r, c);
             if position.is_valid_move(move_) {
                 return Some(move_);
             }

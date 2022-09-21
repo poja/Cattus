@@ -173,7 +173,7 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
         &mut self,
         position: &<HexGame as IGame>::Position,
     ) -> Option<<HexGame as IGame>::Move> {
-        let mut command = String::with_capacity((10 + BOARD_SIZE * BOARD_SIZE + 3) as usize);
+        let mut command = String::with_capacity(10 + BOARD_SIZE * BOARD_SIZE + 3);
         command.push_str("next_move ");
         position_to_uxi(position, &mut command);
         self.send_command(command);
@@ -211,7 +211,7 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
                     }
                     Ok(column) => column,
                 };
-                return Some(HexMove::new(r as u8, c as u8));
+                return Some(HexMove::new(r, c));
             }
             unknown_cmd => {
                 eprintln!("[UXIPlayer] Unknown command: {}", unknown_cmd);
