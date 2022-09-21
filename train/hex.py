@@ -15,7 +15,7 @@ import net_utils
 _LEARNING_RATE = 0.001
 
 
-class NetType:
+class HexNetType:
     SimpleTwoHeaded = "simple_two_headed"
 
 
@@ -72,13 +72,13 @@ class Hex(TrainableGame):
         return model
 
     def create_model(self, net_type: str) -> keras.Model:
-        if net_type == NetType.SimpleTwoHeaded:
+        if net_type == HexNetType.SimpleTwoHeaded:
             return self._create_model_simple_two_headed()
         else:
             raise ValueError("Unknown model type: " + net_type)
 
     def load_model(self, path: str, net_type: str) -> keras.Model:
-        if net_type == NetType.SimpleTwoHeaded:
+        if net_type == HexNetType.SimpleTwoHeaded:
             custom_objects = {
                 "loss_cross_entropy": net_utils.loss_cross_entropy
             }
