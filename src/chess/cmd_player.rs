@@ -1,5 +1,5 @@
 use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
-use crate::game::common::GamePlayer;
+use crate::game::common::{GamePlayer, GamePosition};
 use std::io;
 
 pub struct ChessPlayerCmd {}

@@ -1,25 +1,23 @@
-use std::fs;
-
-use itertools::Itertools;
-
+use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
+use crate::chess::net::common::{self, MOVES_NUM};
 use crate::game::common::{GameColor, GameMove, GamePosition};
 use crate::game::self_play::DataSerializer;
-use crate::tictactoe::net::common::{self, MOVES_NUM};
-use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToeMove, TicTacToePosition};
+use itertools::Itertools;
+use std::fs;
 
-pub struct TicTacToeSerializer {}
+pub struct ChessSerializer {}
 
-impl TicTacToeSerializer {
+impl ChessSerializer {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl DataSerializer<TicTacToeGame> for TicTacToeSerializer {
+impl DataSerializer<ChessGame> for ChessSerializer {
     fn serialize_data_entry_to_file(
         &self,
-        pos: TicTacToePosition,
-        probs: Vec<(TicTacToeMove, f32)>,
+        pos: ChessPosition,
+        probs: Vec<(ChessMove, f32)>,
         winner: Option<GameColor>,
         filename: String,
     ) -> std::io::Result<()> {

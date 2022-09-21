@@ -2,7 +2,6 @@ use itertools::Itertools;
 
 use crate::game::common::{GameColor, GamePosition, IGame};
 use crate::game::mcts::MCTSPlayer;
-use core::panic;
 use std::fs;
 use std::path;
 use std::sync::Arc;

@@ -1,7 +1,8 @@
 use crate::game::common::{Bitboard, GameColor, GamePosition, IGame};
-use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToePosition, TtoBitboard};
+use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToePosition, TtoBitboard, BOARD_SIZE};
 
 pub const PLANES_NUM: usize = 3;
+pub const MOVES_NUM: usize = BOARD_SIZE * BOARD_SIZE;
 
 pub fn flip_pos_if_needed(pos: TicTacToePosition) -> (TicTacToePosition, bool) {
     if pos.get_turn() == GameColor::Player1 {

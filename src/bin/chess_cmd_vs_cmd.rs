@@ -1,6 +1,6 @@
 use rl::chess::chess_game::ChessGame;
 use rl::chess::cmd_player::ChessPlayerCmd;
-use rl::game::common::{GameColor, IGame};
+use rl::game::common::{GameColor, GamePosition, IGame};
 
 fn color_to_str(c: Option<GameColor>) -> String {
     match c {

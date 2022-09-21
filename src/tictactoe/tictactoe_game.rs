@@ -170,19 +170,6 @@ impl TicTacToePosition {
             },
         }
     }
-
-    pub fn print(&self) -> () {
-        for r in 0..BOARD_SIZE {
-            let row_characters: Vec<String> = (0..BOARD_SIZE)
-                .map(|c| match self.get_tile(r, c) {
-                    None => String::from("_"),
-                    Some(GameColor::Player1) => String::from("X"),
-                    Some(GameColor::Player2) => String::from("O"),
-                })
-                .collect();
-            println!("{}", row_characters.join(" "));
-        }
-    }
 }
 
 impl GamePosition for TicTacToePosition {
@@ -232,6 +219,19 @@ impl GamePosition for TicTacToePosition {
     fn get_winner(&self) -> Option<GameColor> {
         assert!(self.is_over());
         self.winner
+    }
+
+    fn print(&self) -> () {
+        for r in 0..BOARD_SIZE {
+            let row_characters: Vec<String> = (0..BOARD_SIZE)
+                .map(|c| match self.get_tile(r, c) {
+                    None => String::from("_"),
+                    Some(GameColor::Player1) => String::from("X"),
+                    Some(GameColor::Player2) => String::from("O"),
+                })
+                .collect();
+            println!("{}", row_characters.join(" "));
+        }
     }
 }
 

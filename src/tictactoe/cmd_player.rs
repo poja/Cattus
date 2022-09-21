@@ -1,4 +1,4 @@
-use crate::game::common::GamePlayer;
+use crate::game::common::{GamePlayer, GamePosition};
 use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToeMove, TicTacToePosition};
 use std::io;
 

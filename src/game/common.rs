@@ -47,6 +47,7 @@ pub trait GamePosition: Clone + Copy + Eq {
         -> <Self::Game as IGame>::Position;
     fn is_over(&self) -> bool;
     fn get_winner(&self) -> Option<GameColor>;
+    fn print(&self);
 }
 
 pub trait GameMove: Clone + Copy + Eq + std::cmp::Eq + std::hash::Hash + std::fmt::Debug {

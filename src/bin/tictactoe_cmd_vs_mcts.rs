@@ -1,5 +1,5 @@
 use clap::Parser;
-use rl::game::common::IGame;
+use rl::game::common::{GamePosition, IGame};
 use rl::game::mcts::MCTSPlayer;
 use rl::tictactoe::cmd_player::TttPlayerCmd;
 use rl::tictactoe::net::two_headed_net::TwoHeadedNet;
