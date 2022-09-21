@@ -96,19 +96,19 @@ impl TwoHeadedNetBase {
         return moves.into_iter().zip(probs.into_iter()).collect_vec();
     }
 
-    pub fn planes_to_tensor<B: Bitboard>(planes: Vec<B>, board_size: usize) -> Tensor<f32> {
+    pub fn planes_to_tensor<B: Bitboard, const BOARD_SIZE: usize>(planes: Vec<B>) -> Tensor<f32> {
         let cpu = true;
         let planes_num = planes.len();
 
-        let mut encoded_position = vec![0.0; (planes_num * board_size * board_size) as usize];
+        let mut encoded_position = vec![0.0; planes_num * BOARD_SIZE * BOARD_SIZE];
         for (plane_idx, plane) in planes.into_iter().enumerate() {
-            for square in 0..(board_size * board_size) {
+            for square in 0..(BOARD_SIZE * BOARD_SIZE) {
                 let idx = if cpu {
                     square * planes_num + plane_idx
                 } else {
-                    plane_idx * board_size * board_size + square
+                    plane_idx * BOARD_SIZE * BOARD_SIZE + square
                 };
-                encoded_position[idx] = match plane.get(square as u8) {
+                encoded_position[idx] = match plane.get(square) {
                     true => 1.0,
                     false => 0.0,
                 };
@@ -116,9 +116,9 @@ impl TwoHeadedNetBase {
         }
 
         let dims = if cpu {
-            [1, board_size as u64, board_size as u64, planes_num as u64]
+            [1, BOARD_SIZE as u64, BOARD_SIZE as u64, planes_num as u64]
         } else {
-            [1, planes_num as u64, board_size as u64, board_size as u64]
+            [1, planes_num as u64, BOARD_SIZE as u64, BOARD_SIZE as u64]
         };
         return Tensor::new(&dims)
             .with_values(&encoded_position)

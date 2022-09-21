@@ -36,9 +36,9 @@ impl DataSerializer<TicTacToeGame> for TicTacToeSerializer {
             .map(|p| p.get_raw())
             .collect_vec();
 
-        let mut probs_vec = vec![0.0; (BOARD_SIZE * BOARD_SIZE) as usize];
+        let mut probs_vec = vec![0.0; BOARD_SIZE * BOARD_SIZE];
         for (m, prob) in probs {
-            probs_vec[m.to_idx() as usize] = prob;
+            probs_vec[m.to_idx()] = prob;
         }
 
         let json_obj = json::object! {

@@ -62,8 +62,8 @@ pub trait GamePlayer<Game: IGame> {
 pub trait Bitboard {
     fn new() -> Self;
     fn new_with_all(val: bool) -> Self;
-    fn get(&self, idx: u8) -> bool;
-    fn set(&mut self, idx: u8, val: bool);
+    fn get(&self, idx: usize) -> bool;
+    fn set(&mut self, idx: usize, val: bool);
 }
 
 pub struct PlayerRand {}
