@@ -1,12 +1,9 @@
+use crate::game::common::{GameColor, IGame};
+use crate::game::mcts::MCTSPlayer;
 use itertools::Itertools;
-
-use crate::game::common::IGame;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::{fs, thread};
-
-use super::common::GameColor;
-use super::mcts::MCTSPlayer;
 
 pub trait PlayerBuilder<Game: IGame>: Sync + Send {
     fn new_player(&self) -> MCTSPlayer<Game>;
