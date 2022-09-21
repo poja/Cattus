@@ -30,8 +30,6 @@ impl DataSerializer<HexGame> for HexSerializer {
             .into_iter()
             .flat_map(|p| {
                 [
-                    /* TODO !!! possible little/big indian bug */
-                    /* Need to use some library (protobuf) to ensure writes and reads are done in the same way */
                     ((p.get_raw() >> 00) & 0xffffffffffffffff) as u64,
                     ((p.get_raw() >> 64) & 0xffffffffffffffff) as u64,
                 ]

@@ -11,7 +11,7 @@ pub struct TwoHeadedNet {
 impl TwoHeadedNet {
     pub fn new(model_path: &String) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, "in_position", "out_value", "out_probs"),
+            base: TwoHeadedNetBase::new(model_path),
         }
     }
 

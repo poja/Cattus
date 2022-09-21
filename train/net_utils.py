@@ -36,11 +36,24 @@ def model_id(model):
 # When running on CPU need to change to 'channels_last'
 #
 
+def mask_illegal_moves(target, output):
+    legal_moves = tf.greater_equal(target, 0)
+    output = tf.where(legal_moves, output, tf.zeros_like(output) - 1.0e10)
+    target = tf.nn.relu(target)
+    return target, output
+
 
 def loss_cross_entropy(target, output):
+    target, output = mask_illegal_moves(target, output)
     policy_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
         labels=tf.stop_gradient(target), logits=output)
     return tf.reduce_mean(input_tensor=policy_cross_entropy)
+
+
+def policy_head_accuracy(target, output):
+    target, output = mask_illegal_moves(target, output)
+    return tf.reduce_mean(tf.cast(tf.equal(tf.argmax(input=target, axis=1),
+                                           tf.argmax(input=output, axis=1)), tf.float32))
 
 
 def batch_norm(input, name, scale=False):
@@ -119,7 +132,7 @@ def create_convnetv1(inputs, residual_filter_num, residual_block_num, moves_num,
     flow = conv_block(inputs,
                       filter_size=3,
                       output_channels=residual_filter_num,
-                      name='in_position',
+                      name='input_planes',
                       l2reg=l2reg,
                       cpu=cpu,
                       bn_scale=True)
@@ -149,7 +162,7 @@ def create_convnetv1(inputs, residual_filter_num, residual_block_num, moves_num,
                                      kernel_initializer='glorot_normal',
                                      kernel_regularizer=l2reg,
                                      activation='tanh',
-                                     name='out_value')(flow_val)
+                                     name='value_head')(flow_val)
 
     # Policy head
     flow_pol = conv_block(flow,
@@ -163,6 +176,6 @@ def create_convnetv1(inputs, residual_filter_num, residual_block_num, moves_num,
                                      kernel_initializer='glorot_normal',
                                      kernel_regularizer=l2reg,
                                      bias_regularizer=l2reg,
-                                     name='out_probs')(flow_pol)
+                                     name='policy_head')(flow_pol)
 
     return [head_val, head_pol]

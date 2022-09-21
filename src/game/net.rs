@@ -10,12 +10,7 @@ pub struct TwoHeadedNetBase {
 }
 
 impl TwoHeadedNetBase {
-    pub fn new(
-        model_path: &String,
-        input_name: &str,
-        value_head_name: &str,
-        policy_head_name: &str,
-    ) -> Self {
+    pub fn new(model_path: &String) -> Self {
         // Load saved model bundle (session state + meta_graph data)
         let mut graph = Graph::new();
         let bundle =
@@ -29,9 +24,9 @@ impl TwoHeadedNetBase {
             .unwrap();
 
         // Get input/output info
-        let input_info = signature.get_input(input_name).unwrap();
-        let output_scalar_info = signature.get_output(value_head_name).unwrap();
-        let output_probs_info = signature.get_output(policy_head_name).unwrap();
+        let input_info = signature.get_input("input_planes").unwrap();
+        let output_scalar_info = signature.get_output("value_head").unwrap();
+        let output_probs_info = signature.get_output("policy_head").unwrap();
 
         // Get input/output ops from graph
         let input_op = graph
