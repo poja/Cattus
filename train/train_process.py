@@ -54,6 +54,9 @@ class TrainProcess:
         base_model_path = self.cfg["model"]["base"]
         if base_model_path == "[none]":
             model = self.game.create_model(self.net_type, self.cfg)
+            assert model.get_layer("value_head").output_shape == (None, 1)
+            assert model.get_layer("policy_head").output_shape == (
+                None, self.game.MOVE_NUM)
             base_model_path = self._save_model(model)
         elif base_model_path == "[latest]":
             logging.warning(
@@ -89,7 +92,9 @@ class TrainProcess:
             if winning > self.cfg["training"]["compare"]["switching_winning_threshold"]:
                 model_path = new_model_path
             elif losing > self.cfg["training"]["compare"]["warning_losing_threshold"]:
-                print("WARNING: new model is worse than previous one, losing ratio:", losing)
+                print(
+                    "WARNING: new model is worse than previous one, losing ratio:", losing)
+            print("best model:", model_path)
 
     def _self_play(self, model_path, out_dir):
         profile = "dev" if self.cfg["debug"] == "true" else "release"

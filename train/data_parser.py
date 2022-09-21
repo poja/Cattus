@@ -36,11 +36,12 @@ class DataParser:
 
     def _unpack_planes_gen(self, nparr_packed_gen):
         for (planes, probs, winner) in nparr_packed_gen:
-            assert planes.dtype == np.uint32
+            assert planes.dtype == np.uint32 and len(
+                planes) == self.game.PLANES_NUM
             plane_size = self.game.BOARD_SIZE * self.game.BOARD_SIZE
             planes = [np.frombuffer(plane, dtype=np.uint8) for plane in planes]
-            planes = [np.unpackbits(plane, count=plane_size, bitorder='little')
-                      for plane in planes]
+            planes = [np.unpackbits(
+                plane, count=plane_size, bitorder='little') for plane in planes]
             planes = np.array(planes, dtype=np.float32)
             planes = np.reshape(
                 planes, (self.game.PLANES_NUM, self.game.BOARD_SIZE, self.game.BOARD_SIZE))
@@ -83,14 +84,14 @@ class DataParser:
         probs = tf.io.decode_raw(probs, tf.float32)
         winner = tf.io.decode_raw(winner, tf.float32)
 
-        planes_shape_cpu = (-1, self.game.BOARD_SIZE,
+        planes_shape_cpu = (1, self.game.BOARD_SIZE,
                             self.game.BOARD_SIZE, self.game.PLANES_NUM)
-        planes_shape_gpu = (-1, self.game.PLANES_NUM,
+        planes_shape_gpu = (1, self.game.PLANES_NUM,
                             self.game.BOARD_SIZE, self.game.BOARD_SIZE)
         planes_shape = planes_shape_cpu if self.cpu else planes_shape_gpu
         planes = tf.reshape(planes, planes_shape)
-        probs = tf.reshape(probs, (-1, self.game.MOVE_NUM))
-        winner = tf.reshape(winner, (-1, 1))
+        probs = tf.reshape(probs, (1, self.game.MOVE_NUM))
+        winner = tf.reshape(winner, (1, 1))
 
         return (planes, probs, winner)
 
