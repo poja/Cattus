@@ -277,23 +277,6 @@ impl HexPosition {
         self.number_of_empty_tiles -= 1;
         self.turn = self.turn.opposite();
     }
-
-    pub fn print(&self) -> () {
-        // TODO there's a RUST way to print
-        for r in 0..BOARD_SIZE {
-            let row_characters: Vec<String> = (0..BOARD_SIZE)
-                .map(|c| {
-                    String::from(match self.get_tile(r, c) {
-                        None => '.',
-                        Some(GameColor::Player1) => 'R',
-                        Some(GameColor::Player2) => 'B',
-                    })
-                })
-                .collect();
-            let spaces = " ".repeat(BOARD_SIZE - r - 1);
-            println!("{}{}", spaces, row_characters.join(" "));
-        }
-    }
 }
 
 impl GamePosition for HexPosition {
@@ -332,6 +315,23 @@ impl GamePosition for HexPosition {
     fn get_winner(&self) -> Option<GameColor> {
         assert!(self.is_over());
         self.winner
+    }
+
+    fn print(&self) -> () {
+        // TODO there's a RUST way to print
+        for r in 0..BOARD_SIZE {
+            let row_characters: Vec<String> = (0..BOARD_SIZE)
+                .map(|c| {
+                    String::from(match self.get_tile(r, c) {
+                        None => '.',
+                        Some(GameColor::Player1) => 'R',
+                        Some(GameColor::Player2) => 'B',
+                    })
+                })
+                .collect();
+            let spaces = " ".repeat(BOARD_SIZE - r - 1);
+            println!("{}{}", spaces, row_characters.join(" "));
+        }
     }
 }
 

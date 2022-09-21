@@ -13,6 +13,7 @@ import tensorflow as tf
 
 from hex import Hex
 from tictactoe import TicTacToe
+from chess import Chess
 from data_parser import DataParser
 import net_utils
 
@@ -40,6 +41,8 @@ class TrainProcess:
             self.game = TicTacToe()
         elif self.cfg["game"] == "hex":
             self.game = Hex()
+        elif self.cfg["game"] == "chess":
+            self.game = Chess()
         else:
             raise ValueError("Unknown game argument in config file.")
         self.cfg["self_play"]["exec"] = self.cfg["self_play"]["exec"].format(

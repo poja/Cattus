@@ -1,4 +1,4 @@
-use crate::game::common::GamePlayer;
+use crate::game::common::{GamePlayer, GamePosition};
 use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 use std::io;
 

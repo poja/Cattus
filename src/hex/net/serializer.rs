@@ -2,10 +2,10 @@ use std::fs;
 
 use itertools::Itertools;
 
-use crate::game::common::{GameColor, GamePosition};
+use crate::game::common::{GameColor, GameMove, GamePosition};
 use crate::game::self_play::DataSerializer;
-use crate::hex::hex_game::{HexGame, HexMove, HexPosition, BOARD_SIZE};
-use crate::hex::net::common;
+use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
+use crate::hex::net::common::{self, MOVES_NUM};
 
 pub struct HexSerializer {}
 
@@ -43,9 +43,9 @@ impl DataSerializer<HexGame> for HexSerializer {
             .into_iter()
             .collect_vec();
 
-        let mut probs_vec = vec![0.0; BOARD_SIZE * BOARD_SIZE];
+        let mut probs_vec = vec![0.0; MOVES_NUM];
         for (m, prob) in probs {
-            probs_vec[m.to_idx()] = prob;
+            probs_vec[m.to_nn_idx()] = prob;
         }
 
         let json_obj = json::object! {

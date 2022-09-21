@@ -822,6 +822,7 @@ dependencies = [
  "itertools",
  "json",
  "lazy_static",
+ "once_cell",
  "petgraph",
  "rand 0.8.4",
  "tensorflow",

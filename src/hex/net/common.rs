@@ -1,8 +1,9 @@
 use crate::game::common::{Bitboard, GameColor, GamePosition, IGame};
-use crate::hex::hex_game::{HexBitboard, HexGame, HexMove, HexPosition};
+use crate::hex::hex_game::{HexBitboard, HexGame, HexMove, HexPosition, BOARD_SIZE};
 use itertools::Itertools;
 
 pub const PLANES_NUM: usize = 3;
+pub const MOVES_NUM: usize = BOARD_SIZE * BOARD_SIZE;
 
 pub fn flip_pos_if_needed(pos: HexPosition) -> (HexPosition, bool) {
     if pos.get_turn() == GameColor::Player1 {
