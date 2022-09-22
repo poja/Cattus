@@ -5,36 +5,14 @@ import tensorflow as tf
 import struct
 
 
-def model_id(model):
-    def floatToBits(f):
-        return struct.unpack('>l', struct.pack('>f', f))[0]
-
-    def np_array_hash(arr):
-        h = 0
-        for a in arr:
-            h = h * 31 + (np_array_hash(a) if type(a)
-                          is np.ndarray else floatToBits(a))
-            h = h & 0xffffffffffffffff
-        return h
-
-    h = 0
-    for vars_ in model.trainable_variables:
-        h = h * 31 + np_array_hash(vars_.numpy())
-        h = h & 0xffffffffffffffff
-
-    assert type(h) is int
-    assert h <= 0xffffffffffffffff
-    return h
-
-
-# The Conv2D op currently only supports the NHWC tensor format on the CPU. The op was given the format: NCHW
 # N: number of images in the batch
 # H: height of the image
 # W: width of the image
 # C: number of channels of the image
 #
-# When running on CPU need to change to 'channels_last'
-#
+# CPU - NHWC ('channels_last')
+# GPU - NCHW ('channels_first')
+
 
 def mask_illegal_moves(target, output):
     legal_moves = tf.greater_equal(target, 0)
