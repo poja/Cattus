@@ -72,29 +72,29 @@ class TrainProcess:
         # TODO better organize the mode type parameter, and validate that the model path matches the requested model type
         run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
 
-        # In each iteration there will be a new model_path
-        model_path = self.base_model_path
+        best_model = self.base_model_path
+        latest_model = self.base_model_path
         for iter_num in range(self.cfg["self_play"]["iterations"]):
             logging.info(f"Training iteration {iter_num}")
             model_id = net_utils.model_id(
-                self.game.load_model(model_path, self.net_type))
+                self.game.load_model(best_model, self.net_type))
             training_games_dir = os.path.join(
                 self.cfg["games_dir"], "{0}_{1:05d}_{2}".format(run_id, iter_num, model_id))
 
-            self._self_play(model_path, training_games_dir)
-            new_model = self._train(model_path, training_games_dir)
+            self._self_play(best_model, training_games_dir)
+            new_model = self._train(latest_model, training_games_dir)
 
-            new_model_path = self._save_model(new_model)
-            w1, w2, d = self._compare_models(model_path, new_model_path)
+            latest_model = self._save_model(new_model)
+            w1, w2, d = self._compare_models(best_model, latest_model)
             total_games = w1 + w2 + d
             winning = w2 / total_games
             losing = w1 / total_games
             if winning > self.cfg["training"]["compare"]["switching_winning_threshold"]:
-                model_path = new_model_path
+                best_model = latest_model
             elif losing > self.cfg["training"]["compare"]["warning_losing_threshold"]:
                 print(
                     "WARNING: new model is worse than previous one, losing ratio:", losing)
-            print("best model:", model_path)
+            print("best model:", best_model)
 
     def _self_play(self, model_path, out_dir):
         profile = "dev" if self.cfg["debug"] == "true" else "release"
