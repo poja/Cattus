@@ -6,6 +6,7 @@ import logging
 import os
 import subprocess
 import sys
+import random
 from pathlib import Path
 import copy
 import json
@@ -76,8 +77,7 @@ class TrainProcess:
         latest_model = self.base_model_path
         for iter_num in range(self.cfg["self_play"]["iterations"]):
             logging.info(f"Training iteration {iter_num}")
-            model_id = net_utils.model_id(
-                self.game.load_model(best_model, self.net_type))
+            model_id = os.path.basename(best_model)
             training_games_dir = os.path.join(
                 self.cfg["games_dir"], "{0}_{1:05d}_{2}".format(run_id, iter_num, model_id))
 
@@ -149,7 +149,8 @@ class TrainProcess:
         return res["player1_wins"], res["player2_wins"], res["draws"]
 
     def _save_model(self, model):
-        model_time = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+        model_time = datetime.datetime.now().strftime("%y%m%d_%H%M%S") + \
+            "_{0:04x}".format(random.randint(0, 1 << 16))
         model_path = os.path.join(
             self.cfg["models_dir"], f"model_{model_time}")
         model.save(model_path, save_format='tf')
