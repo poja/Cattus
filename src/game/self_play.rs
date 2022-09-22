@@ -1,7 +1,6 @@
-use itertools::Itertools;
-
-use crate::game::common::{GameColor, GamePosition, IGame};
+use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
 use crate::game::mcts::MCTSPlayer;
+use itertools::Itertools;
 use std::fs;
 use std::path;
 use std::sync::Arc;
@@ -12,13 +11,43 @@ pub trait PlayerBuilder<Game: IGame>: Sync + Send {
 }
 
 pub trait DataSerializer<Game: IGame>: Sync + Send {
-    fn serialize_data_entry_to_file(
+    fn serialize_data_entry(
         &self,
         pos: Game::Position,
         probs: Vec<(Game::Move, f32)>,
         winner: Option<GameColor>,
         filename: String,
     ) -> std::io::Result<()>;
+}
+
+pub struct SerializerBase {}
+
+impl SerializerBase {
+    pub fn write_entry<Game: IGame, const MOVES_NUM: usize>(
+        planes: Vec<u64>,
+        probs: Vec<(Game::Move, f32)>,
+        winner: f32,
+        filename: String,
+    ) -> std::io::Result<()> {
+        /* Use -1 for illegal moves */
+        let mut probs_vec = vec![-1.0f32; MOVES_NUM];
+
+        /* Fill legal moves probabilities */
+        for (m, prob) in probs {
+            probs_vec[m.to_nn_idx()] = prob;
+        }
+
+        /* Write to file */
+        return fs::write(
+            filename,
+            json::object! {
+                planes: planes,
+                probs: probs_vec,
+                winner: winner
+            }
+            .dump(),
+        );
+    }
 }
 
 pub struct SelfPlayRunner<Game: IGame> {
@@ -146,7 +175,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
 
             let mut pos_idx = 0;
             for (pos, probs) in pos_probs_pairs {
-                self.serializer.serialize_data_entry_to_file(
+                self.serializer.serialize_data_entry(
                     pos,
                     probs,
                     winner,

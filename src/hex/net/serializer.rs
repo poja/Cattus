@@ -1,11 +1,8 @@
-use std::fs;
-
-use itertools::Itertools;
-
-use crate::game::common::{GameColor, GameMove, GamePosition};
-use crate::game::self_play::DataSerializer;
+use crate::game::common::{GameColor, GamePosition};
+use crate::game::self_play::{DataSerializer, SerializerBase};
 use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 use crate::hex::net::common::{self, MOVES_NUM};
+use itertools::Itertools;
 
 pub struct HexSerializer {}
 
@@ -16,7 +13,7 @@ impl HexSerializer {
 }
 
 impl DataSerializer<HexGame> for HexSerializer {
-    fn serialize_data_entry_to_file(
+    fn serialize_data_entry(
         &self,
         pos: HexPosition,
         probs: Vec<(HexMove, f32)>,
@@ -43,20 +40,6 @@ impl DataSerializer<HexGame> for HexSerializer {
             .into_iter()
             .collect_vec();
 
-        let mut probs_vec = vec![0.0; MOVES_NUM];
-        for (m, prob) in probs {
-            probs_vec[m.to_nn_idx()] = prob;
-        }
-
-        let json_obj = json::object! {
-            planes: planes,
-            probs: probs_vec,
-            winner: winner
-        };
-
-        let json_str = json_obj.dump();
-        fs::write(filename, json_str)?;
-
-        return Ok(());
+        return SerializerBase::write_entry::<HexGame, MOVES_NUM>(planes, probs, winner, filename);
     }
 }

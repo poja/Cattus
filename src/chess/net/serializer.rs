@@ -1,9 +1,8 @@
 use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
 use crate::chess::net::common::{self, MOVES_NUM};
-use crate::game::common::{GameColor, GameMove, GamePosition};
-use crate::game::self_play::DataSerializer;
+use crate::game::common::{GameColor, GamePosition};
+use crate::game::self_play::{DataSerializer, SerializerBase};
 use itertools::Itertools;
-use std::fs;
 
 pub struct ChessSerializer {}
 
@@ -14,7 +13,7 @@ impl ChessSerializer {
 }
 
 impl DataSerializer<ChessGame> for ChessSerializer {
-    fn serialize_data_entry_to_file(
+    fn serialize_data_entry(
         &self,
         pos: ChessPosition,
         probs: Vec<(ChessMove, f32)>,
@@ -32,20 +31,8 @@ impl DataSerializer<ChessGame> for ChessSerializer {
             .map(|p| p.get_raw())
             .collect_vec();
 
-        let mut probs_vec = vec![0.0; MOVES_NUM];
-        for (m, prob) in probs {
-            probs_vec[m.to_nn_idx()] = prob;
-        }
-
-        let json_obj = json::object! {
-            planes: planes,
-            probs: probs_vec,
-            winner: winner
-        };
-
-        let json_str = json_obj.dump();
-        fs::write(filename, json_str)?;
-
-        return Ok(());
+        return SerializerBase::write_entry::<ChessGame, MOVES_NUM>(
+            planes, probs, winner, filename,
+        );
     }
 }
