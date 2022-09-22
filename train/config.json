@@ -15,7 +15,8 @@
         "base": "[latest]",
         "type": "ConvNetV1",
         "residual_filter_num": 2,
-        "residual_block_num": 2
+        "residual_block_num": 2,
+        "l2reg": 0.00005
     },
     "training": {
         "entries_count": 10000,
@@ -27,5 +28,6 @@
             "threads": 8
         }
     },
-    "debug": "false"
+    "cpu": true,
+    "debug": false
 }

@@ -36,8 +36,6 @@ def model_id(model):
 # When running on CPU need to change to 'channels_last'
 #
 
-l2reg = tf.keras.regularizers.l2(l=0.5 * (0.0001))
-
 
 def loss_cross_entropy(target, output):
     policy_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
@@ -58,6 +56,7 @@ def conv_block(inputs,
                filter_size,
                output_channels,
                name,
+               l2reg,
                cpu,
                bn_scale=False):
     conv_data_fmt = 'channels_last' if cpu else 'channels_first'
@@ -77,7 +76,7 @@ def conv_block(inputs,
     return tf.keras.layers.Activation('relu')(flow)
 
 
-def residual_block(inputs, channels, name, cpu):
+def residual_block(inputs, channels, name, l2reg, cpu):
     conv_data_fmt = 'channels_last' if cpu else 'channels_first'
 
     # convolution
@@ -113,14 +112,15 @@ def residual_block(inputs, channels, name, cpu):
     return tf.keras.layers.Activation('relu')(flow)
 
 
-def create_convnetv1(inputs, residual_filter_num, residual_block_num, moves_num):
-    cpu = True
+def create_convnetv1(inputs, residual_filter_num, residual_block_num, moves_num, l2reg, cpu):
+    l2reg = tf.keras.regularizers.l2(l=l2reg)
 
     # single conv block
     flow = conv_block(inputs,
                       filter_size=3,
                       output_channels=residual_filter_num,
                       name='in_position',
+                      l2reg=l2reg,
                       cpu=cpu,
                       bn_scale=True)
 
@@ -129,6 +129,7 @@ def create_convnetv1(inputs, residual_filter_num, residual_block_num, moves_num)
         flow = residual_block(flow,
                               residual_filter_num,
                               name='residual_{}'.format(block_idx + 1),
+                              l2reg=l2reg,
                               cpu=cpu)
 
     # Value head
@@ -136,6 +137,7 @@ def create_convnetv1(inputs, residual_filter_num, residual_block_num, moves_num)
                           filter_size=1,
                           output_channels=2,
                           name='value',
+                          l2reg=l2reg,
                           cpu=cpu)
     flow_val = tf.keras.layers.Flatten()(flow_val)
     flow_val = tf.keras.layers.Dense(128,
@@ -154,6 +156,7 @@ def create_convnetv1(inputs, residual_filter_num, residual_block_num, moves_num)
                           filter_size=1,
                           output_channels=2,  # accept as argument
                           name='policy',
+                          l2reg=l2reg,
                           cpu=cpu)
     flow_pol = tf.keras.layers.Flatten()(flow_pol)
     head_pol = tf.keras.layers.Dense(moves_num,
