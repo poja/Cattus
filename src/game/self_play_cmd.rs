@@ -13,6 +13,8 @@ struct SelfPlayArgs {
     games_num: u32,
     #[clap(long)]
     out_dir: String,
+    #[clap(long, default_value = "")]
+    data_entries_prefix: String,
     #[clap(long, default_value = "100")]
     sim_count: u32,
     #[clap(long, default_value = "1.41421")]
@@ -70,5 +72,5 @@ pub fn run_main<Game: IGame + 'static>(
     ));
 
     let self_player = SelfPlayRunner::new(player_builder, serializer, args.threads);
-    return self_player.generate_data(args.games_num, &args.out_dir);
+    return self_player.generate_data(args.games_num, &args.out_dir, &args.data_entries_prefix);
 }

@@ -70,17 +70,15 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
         }
     }
 
-    pub fn generate_data(&self, games_num: u32, output_dir: &String) -> std::io::Result<()> {
+    pub fn generate_data(
+        &self,
+        games_num: u32,
+        output_dir: &String,
+        data_entries_prefix: &String,
+    ) -> std::io::Result<()> {
         /* Create output dir if doesn't exists */
         if !path::Path::new(output_dir).is_dir() {
             fs::create_dir_all(output_dir)?;
-        }
-        let is_empty = path::PathBuf::from(output_dir).read_dir()?.next().is_none();
-        if !is_empty {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "output dir is not empty",
-            ));
         }
 
         let job_builder = |thread_idx| {
@@ -91,6 +89,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
                 Arc::clone(&self.player_builder),
                 Arc::clone(&self.serializer),
                 output_dir.to_string(),
+                data_entries_prefix.to_string(),
                 start_idx,
                 end_idx,
             );
@@ -122,6 +121,7 @@ struct SelfPlayWorker<Game: IGame> {
     player_builder: Arc<dyn PlayerBuilder<Game>>,
     serializer: Arc<dyn DataSerializer<Game>>,
     output_dir: String,
+    data_entries_prefix: String,
     start_idx: u32,
     end_idx: u32,
 }
@@ -131,6 +131,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         player_builder: Arc<dyn PlayerBuilder<Game>>,
         serializer: Arc<dyn DataSerializer<Game>>,
         output_dir: String,
+        data_entries_prefix: String,
         start_idx: u32,
         end_idx: u32,
     ) -> Self {
@@ -138,6 +139,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             player_builder: player_builder,
             serializer: serializer,
             output_dir: output_dir,
+            data_entries_prefix: data_entries_prefix,
             start_idx: start_idx,
             end_idx: end_idx,
         }
@@ -179,7 +181,10 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                     pos,
                     probs,
                     winner,
-                    format!("{}/d{:#08}_{:#03}.json", self.output_dir, game_idx, pos_idx),
+                    format!(
+                        "{}/{}{:#08}_{:#03}.json",
+                        self.output_dir, self.data_entries_prefix, game_idx, pos_idx
+                    ),
                 )?;
                 pos_idx += 1;
             }

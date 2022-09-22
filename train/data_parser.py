@@ -9,11 +9,13 @@ import functools
 
 
 class DataParser:
-    def __init__(self, game, data_dir, entries_count):
+    def __init__(self, game, data_dir, cfg):
         self.game = game
         self.data_dir = data_dir
-        self.entries_count = entries_count
+        self.cfg = cfg
         self.cpu = True
+
+        assert self.cfg["training"]["latest_data_entries"] >= self.cfg["training"]["iteration_data_entries"]
 
     def _data_entries_filenames_gen(self):
         filenames = os.listdir(self.data_dir)
@@ -21,11 +23,16 @@ class DataParser:
                      for filename in filenames]
 
         # take the latests files
+        latest_de = self.cfg["training"]["latest_data_entries"]
         filenames.sort(key=os.path.getmtime, reverse=True)
-        if len(filenames) > self.entries_count:
-            filenames = filenames[:self.entries_count]
+        if len(filenames) > latest_de:
+            filenames = filenames[:latest_de]
 
+        # take a sub set
+        iter_de = self.cfg["training"]["iteration_data_entries"]
         random.shuffle(filenames)
+        if len(filenames) > iter_de:
+            filenames = filenames[:iter_de]
 
         for filename in filenames:
             yield os.path.join(self.data_dir, filename)

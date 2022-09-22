@@ -72,17 +72,15 @@ class TrainProcess:
     def run_training_loop(self):
         # TODO better organize the mode type parameter, and validate that the model path matches the requested model type
         run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+        games_dir = os.path.join(self.cfg["games_dir"], run_id)
 
         best_model = self.base_model_path
         latest_model = self.base_model_path
         for iter_num in range(self.cfg["self_play"]["iterations"]):
             logging.info(f"Training iteration {iter_num}")
-            model_id = os.path.basename(best_model)
-            training_games_dir = os.path.join(
-                self.cfg["games_dir"], "{0}_{1:05d}_{2}".format(run_id, iter_num, model_id))
 
-            self._self_play(best_model, training_games_dir)
-            new_model = self._train(latest_model, training_games_dir)
+            self._self_play(best_model, games_dir, iter_num)
+            new_model = self._train(latest_model, games_dir)
 
             latest_model = self._save_model(new_model)
             w1, w2, d = self._compare_models(best_model, latest_model)
@@ -96,7 +94,7 @@ class TrainProcess:
                     "WARNING: new model is worse than previous one, losing ratio:", losing)
             print("best model:", best_model)
 
-    def _self_play(self, model_path, out_dir):
+    def _self_play(self, model_path, out_dir, iter_num):
         profile = "dev" if self.cfg["debug"] == "true" else "release"
         subprocess.run([
             "cargo", "run", "--profile", profile, "--bin",
@@ -106,7 +104,8 @@ class TrainProcess:
             "--out-dir", out_dir,
             "--sim-count", str(self.cfg["mcts"]["sim_count"]),
             "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
-            "--threads", str(self.cfg["self_play"]["threads"])],
+            "--threads", str(self.cfg["self_play"]["threads"]),
+            "--data-entries-prefix", "i{0:04d}_".format(iter_num)],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
 
     def _train(self, model_path, training_games_dir):
@@ -114,8 +113,7 @@ class TrainProcess:
         model = self.game.load_model(model_path, self.net_type)
 
         logging.debug("Loading games by current model")
-        parser = DataParser(self.game, training_games_dir,
-                            self.cfg["training"]["entries_count"])
+        parser = DataParser(self.game, training_games_dir, self.cfg)
         train_dataset = tf.data.Dataset.from_generator(
             parser.generator, output_types=(tf.string, tf.string, tf.string))
         train_dataset = train_dataset.map(parser.get_parse_func())
@@ -123,7 +121,7 @@ class TrainProcess:
         train_dataset = train_dataset.prefetch(4)
 
         logging.info("Fitting new model...")
-        model.fit(train_dataset, epochs=4, verbose=0)
+        model.fit(train_dataset, epochs=1, verbose=0)
 
         return model
 
