@@ -53,7 +53,7 @@ class TrainProcess:
         self.net_type = self.cfg["model"]["type"]
         base_model_path = self.cfg["model"]["base"]
         if base_model_path == "[none]":
-            model = self.game.create_model(self.net_type, self.cfg["model"])
+            model = self.game.create_model(self.net_type, self.cfg)
             base_model_path = self._save_model(model)
         elif base_model_path == "[latest]":
             logging.warning(
