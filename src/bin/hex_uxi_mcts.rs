@@ -19,8 +19,11 @@ fn main() {
     let args = Args::parse();
 
     let value_func: Box<dyn ValueFunction<HexGame>> = Box::new(TwoHeadedNet::new(&args.model_path));
-    let mut player: MCTSPlayer<HexGame> =
-        MCTSPlayer::new_custom(args.sim_count, args.explore_param_c, value_func);
-    let mut engine = uxi::UXIEngine::new(&mut player);
+    let player = Box::new(MCTSPlayer::new_custom(
+        args.sim_count,
+        args.explore_param_c,
+        value_func,
+    ));
+    let mut engine = uxi::UXIEngine::new(player);
     engine.run();
 }

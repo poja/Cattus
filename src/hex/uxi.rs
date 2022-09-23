@@ -221,12 +221,12 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
     }
 }
 
-pub struct UXIEngine<'a> {
-    player: &'a mut dyn GamePlayer<HexGame>,
+pub struct UXIEngine {
+    player: Box<dyn GamePlayer<HexGame>>,
 }
 
-impl<'a> UXIEngine<'a> {
-    pub fn new(player: &'a mut dyn GamePlayer<HexGame>) -> Self {
+impl UXIEngine {
+    pub fn new(player: Box<dyn GamePlayer<HexGame>>) -> Self {
         Self { player: player }
     }
 

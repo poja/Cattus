@@ -1,7 +1,7 @@
-use rl::{hex::uxi, game::common::PlayerRand};
+use rl::{game::common::PlayerRand, hex::uxi};
 
 fn main() {
-    let mut player = PlayerRand::new();
-    let mut engine = uxi::UXIEngine::new(&mut player);
+    let player = Box::new(PlayerRand::new());
+    let mut engine = uxi::UXIEngine::new(player);
     engine.run();
 }
