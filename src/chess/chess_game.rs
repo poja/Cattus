@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+
 use crate::game::common::Bitboard;
 use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
 use chess;
@@ -111,7 +114,7 @@ impl Bitboard for ChessBitboard {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone)]
 pub struct ChessPosition {
     board: chess::Board,
     fifth_rule_count: u8,
@@ -177,6 +180,18 @@ fn chess_color_to_game_color(c: chess::Color) -> GameColor {
     match c {
         chess::Color::White => GameColor::Player1,
         chess::Color::Black => GameColor::Player2,
+    }
+}
+
+impl PartialEq for ChessPosition {
+    fn eq(&self, other: &Self) -> bool {
+        self.board == other.board
+    }
+}
+impl Eq for ChessPosition {}
+impl Hash for ChessPosition {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.board.hash(state);
     }
 }
 
@@ -271,6 +286,8 @@ impl GamePosition for ChessPosition {
 
 pub struct ChessGame {
     pos: ChessPosition,
+    seen_positions: HashMap<ChessPosition, u32>,
+    repetition_detected: bool,
 }
 
 impl IGame for ChessGame {
@@ -278,13 +295,15 @@ impl IGame for ChessGame {
     type Move = ChessMove;
 
     fn new() -> Self {
-        Self {
-            pos: Self::Position::new(),
-        }
+        Self::new_from_pos(Self::Position::new())
     }
 
     fn new_from_pos(pos: Self::Position) -> Self {
-        Self { pos: pos }
+        Self {
+            pos: pos,
+            seen_positions: HashMap::from([(pos, 1)]),
+            repetition_detected: false,
+        }
     }
 
     fn get_position(&self) -> &Self::Position {
@@ -292,18 +311,28 @@ impl IGame for ChessGame {
     }
 
     fn is_over(&self) -> bool {
-        return self.pos.is_over();
+        return self.repetition_detected || self.pos.is_over();
     }
 
     fn get_winner(&self) -> Option<GameColor> {
         assert!(self.is_over());
-        return self.pos.get_winner();
+        if self.repetition_detected {
+            return None;
+        } else {
+            return self.pos.get_winner();
+        };
     }
 
     fn play_single_turn(&mut self, next_move: Self::Move) {
         assert!(!self.is_over());
         assert!(self.pos.is_valid_move(next_move));
         self.pos = self.pos.get_moved_position(next_move);
+
+        let repeat = self.seen_positions.entry(self.pos).or_insert(0);
+        *repeat += 1;
+        if *repeat >= Self::get_repetition_limit().unwrap() {
+            self.repetition_detected = true;
+        }
     }
 
     fn play_until_over(
@@ -320,6 +349,10 @@ impl IGame for ChessGame {
             self.play_single_turn(next_move);
         }
         return (self.pos, self.get_winner());
+    }
+
+    fn get_repetition_limit() -> Option<u32> {
+        return Some(3);
     }
 }
 

@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use rand::Rng;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -37,9 +39,10 @@ pub trait IGame {
         player1: &mut dyn GamePlayer<Self>,
         player2: &mut dyn GamePlayer<Self>,
     ) -> (Self::Position, Option<GameColor>);
+    fn get_repetition_limit() -> Option<u32>;
 }
 
-pub trait GamePosition: Clone + Copy + Eq {
+pub trait GamePosition: Clone + Copy + Eq + Hash {
     type Game: IGame<Position = Self>;
     fn new() -> Self;
     fn get_turn(&self) -> GameColor;

@@ -386,4 +386,8 @@ impl IGame for HexGame {
         }
         return (self.pos, self.get_winner());
     }
+
+    fn get_repetition_limit() -> Option<u32> {
+        return None;
+    }
 }
