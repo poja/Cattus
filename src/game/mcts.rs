@@ -3,7 +3,7 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::game::common::{GameColor, GamePlayer, GamePosition, IGame, PlayerRand};
@@ -45,9 +45,6 @@ pub struct MCTSPlayer<Game: IGame> {
 }
 
 impl<Game: IGame> MCTSPlayer<Game> {
-    pub fn new(value_func: Box<dyn ValueFunction<Game>>) -> Self {
-        MCTSPlayer::new_custom(100, (2 as f32).sqrt(), value_func)
-    }
     pub fn new_custom(
         simulations_per_move: u32,
         exploration_param_c: f32,
@@ -61,17 +58,52 @@ impl<Game: IGame> MCTSPlayer<Game> {
         }
     }
 
+    fn detect_repetition(&self, trajectory: &Vec<NodeIndex>) -> bool {
+        let repetition_limit = Game::get_repetition_limit();
+        if repetition_limit.is_none() {
+            return false;
+        }
+
+        let positions = trajectory
+            .iter()
+            .map(|idx| &self.search_tree.node_weight(*idx).unwrap().position);
+
+        let mut repetitions = HashMap::new();
+        for pos in positions {
+            *repetitions.entry(pos).or_insert(0) += 1;
+        }
+
+        for (_pos, repeat) in repetitions {
+            if repeat >= repetition_limit.unwrap() {
+                return true;
+            }
+        }
+        return false;
+    }
+
     fn develop_tree(&mut self, root_id: NodeIndex<u32>) -> () {
         for _ in 0..self.simulations_per_move {
             /* Select a leaf node */
             let path_to_selection = self.select(root_id);
 
-            /* Run value function once to obtain "simulation" value and initial children scores (probabilities) */
+            let repetition_reached = self.detect_repetition(&path_to_selection);
             let leaf_id: NodeIndex = *path_to_selection.last().unwrap();
-            let (eval, per_move_val) = self.simulate(leaf_id);
+            let leaf_pos = &self.search_tree.node_weight(leaf_id).unwrap().position;
 
-            /* Expand leaf and assign initial scores */
-            self.create_children(leaf_id, per_move_val);
+            let (eval, per_move_val);
+            if leaf_pos.is_over() || repetition_reached {
+                eval = if repetition_reached {
+                    0.0
+                } else {
+                    GameColor::to_idx(leaf_pos.get_winner()) as f32
+                };
+            } else {
+                /* Run value function once to obtain "simulation" value and initial children scores (probabilities) */
+                (eval, per_move_val) = self.simulate(leaf_id);
+
+                /* Expand leaf and assign initial scores */
+                self.create_children(leaf_id, per_move_val);
+            }
 
             /* back propagate the position score to the parents */
             self.backpropagate(&path_to_selection, eval)
@@ -131,11 +163,8 @@ impl<Game: IGame> MCTSPlayer<Game> {
         parent_id: NodeIndex<u32>,
         per_move_init_score: Vec<(Game::Move, f32)>,
     ) {
-        let parent = self.search_tree.node_weight(parent_id).unwrap();
-        if parent.position.is_over() {
-            return;
-        }
-        let parent_pos = parent.position;
+        let parent_pos = self.search_tree.node_weight(parent_id).unwrap().position;
+        assert!(!parent_pos.is_over());
 
         // TODO remove
         let moves_actual: HashSet<Game::Move> =
@@ -155,10 +184,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
     fn simulate(&mut self, leaf_id: NodeIndex) -> (f32, Vec<(Game::Move, f32)>) {
         let position = &self.search_tree.node_weight(leaf_id).unwrap().position;
-        if position.is_over() {
-            let eval = GameColor::to_idx(position.get_winner()) as f32;
-            return (eval, vec![]);
-        }
+        assert!(!position.is_over());
         return self.value_func.evaluate(&position);
     }
 
