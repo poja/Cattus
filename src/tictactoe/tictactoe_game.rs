@@ -257,29 +257,37 @@ impl IGame for TicTacToeGame {
         Self { pos: pos }
     }
 
-    fn get_position(&self) -> Self::Position {
-        return self.pos;
+    fn get_position(&self) -> &Self::Position {
+        return &self.pos;
     }
 
-    fn play_single_turn(&mut self, player: &mut dyn GamePlayer<Self>) {
-        if self.pos.is_over() {
-            panic!("game is already over");
-        }
-        let next_move = player.next_move(&self.pos).unwrap();
+    fn is_over(&self) -> bool {
+        return self.pos.is_over();
+    }
+
+    fn get_winner(&self) -> Option<GameColor> {
+        assert!(self.is_over());
+        return self.pos.get_winner();
+    }
+
+    fn play_single_turn(&mut self, next_move: Self::Move) {
         assert!(self.pos.is_valid_move(next_move));
         self.pos.make_move(next_move);
     }
+
     fn play_until_over(
         &mut self,
         player1: &mut dyn GamePlayer<Self>,
         player2: &mut dyn GamePlayer<Self>,
     ) -> (Self::Position, Option<GameColor>) {
-        while !self.pos.is_over() {
-            self.play_single_turn(match self.pos.get_turn() {
+        while !self.is_over() {
+            let player: &mut dyn GamePlayer<Self> = match self.pos.get_turn() {
                 GameColor::Player1 => player1,
                 GameColor::Player2 => player2,
-            });
+            };
+            let next_move = player.next_move(&self.pos).unwrap();
+            self.play_single_turn(next_move)
         }
-        return (self.pos, self.pos.get_winner());
+        return (self.pos, self.get_winner());
     }
 }
