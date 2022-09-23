@@ -1,4 +1,4 @@
-use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
+use crate::game::common::{GameColor, GameMove, IGame};
 use crate::game::mcts::MCTSPlayer;
 use itertools::Itertools;
 use std::fs;
@@ -152,28 +152,22 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             //     let percentage = (((game_idx as f32) / games_num as f32) * 100.0) as u32;
             //     println!("self play {}%", percentage);
             // }
-            let mut pos = Game::Position::new();
+            let mut game = Game::new();
             let mut pos_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> = Vec::new();
 
-            while !pos.is_over() {
+            while !game.is_over() {
                 /* Generate probabilities from MCTS player */
-                let moves = player.calc_moves_probabilities(&pos);
+                let moves = player.calc_moves_probabilities(game.get_position());
                 player.clear();
-                let m = player.choose_move_from_probabilities(&moves);
+                let next_move = player.choose_move_from_probabilities(&moves).unwrap();
 
                 /* Store probabilities */
-                pos_probs_pairs.push((pos.clone(), moves));
+                pos_probs_pairs.push((game.get_position().clone(), moves));
 
                 /* Advance game position */
-                pos = match m {
-                    None => {
-                        eprintln!("player failed to choose a move");
-                        break;
-                    }
-                    Some(next_move) => pos.get_moved_position(next_move),
-                }
+                game.play_single_turn(next_move);
             }
-            let winner = pos.get_winner();
+            let winner = game.get_winner();
 
             let mut pos_idx = 0;
             for (pos, probs) in pos_probs_pairs {

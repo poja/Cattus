@@ -28,8 +28,10 @@ pub trait IGame {
 
     fn new() -> Self;
     fn new_from_pos(pos: Self::Position) -> Self;
-    fn get_position(&self) -> Self::Position;
-    fn play_single_turn(&mut self, player: &mut dyn GamePlayer<Self>);
+    fn get_position(&self) -> &Self::Position;
+    fn is_over(&self) -> bool;
+    fn get_winner(&self) -> Option<GameColor>;
+    fn play_single_turn(&mut self, next_move: Self::Move);
     fn play_until_over(
         &mut self,
         player1: &mut dyn GamePlayer<Self>,
