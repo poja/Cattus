@@ -32,21 +32,32 @@ def run_test():
                 "game": "hex",
                 "working_area": TMP_DIR,
                 "mcts": {
-                    "sim_count": 100,
-                    "explore_factor": 1.41421
+                    "sim_count": 10,
+                    "explore_factor": 1.41421,
                 },
                 "self_play": {
                     "iterations": 2,
-                    "games_num": 3,
+                    "games_num": 8,
+                    "threads": 1,
                 },
                 "model": {
                     "base": "[none]",
                     "type": "simple_two_headed",
+                    "l2reg": 0.00005,
                 },
                 "training": {
-                    "entries_count": 10000
+                    "latest_data_entries": 1024,
+                    "iteration_data_entries": 128,
+                    "batch_size": 4,
+                    "compare": {
+                        "games_num": 4,
+                        "switching_winning_threshold": 0.55,
+                        "warning_losing_threshold": 0.55,
+                        "threads": 1,
+                    }
                 },
-                "debug": "true"
+                "cpu": True,
+                "debug": True,
             }, f)
 
         logging.info("Running self play and generating new models...")

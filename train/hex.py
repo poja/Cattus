@@ -49,7 +49,7 @@ class Hex(TrainableGame):
         shape_gpu = (self.PLANES_NUM, self.BOARD_SIZE, self.BOARD_SIZE)
         return shape_cpu if cfg["cpu"] else shape_gpu
 
-    def _create_model_simple_two_headed(self):
+    def _create_model_simple_two_headed(self, cfg):
         inputs = Input(
             shape=self._get_input_shape(cfg),
             name="input_planes")

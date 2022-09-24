@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
+    use crate::game::common::Bitboard;
     use crate::game::common::{GameColor, GamePosition};
-    use crate::hex::hex_game::{Bitboard, HexPosition, BOARD_SIZE};
+    use crate::hex::hex_game::{HexBitboard, HexPosition, BOARD_SIZE};
 
     fn string_to_position(s: &str, starting_player: GameColor) -> HexPosition {
-        let mut board_red = Bitboard::new();
-        let mut board_blue = Bitboard::new();
+        let mut board_red = HexBitboard::new();
+        let mut board_blue = HexBitboard::new();
         let mut idx = 0;
         for tile in s.chars() {
             if idx >= BOARD_SIZE * BOARD_SIZE {
@@ -44,7 +45,7 @@ mod tests {
 				eeeeeeeeeer",
             GameColor::Player2,
         );
-		assert!(pos.is_over());
+        assert!(pos.is_over());
         assert!(pos.get_winner() == Some(GameColor::Player1));
 
         let pos = string_to_position(
@@ -62,7 +63,7 @@ mod tests {
             GameColor::Player1,
         );
 
-		assert!(pos.is_over());
+        assert!(pos.is_over());
         assert!(pos.get_winner() == Some(GameColor::Player2));
     }
 
