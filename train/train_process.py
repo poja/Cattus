@@ -10,9 +10,11 @@ import random
 from pathlib import Path
 import copy
 import json
-import tensorflow as tf
 import tempfile
 import shutil
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+import tensorflow as tf
 
 from hex import Hex
 from tictactoe import TicTacToe
@@ -98,7 +100,7 @@ class TrainProcess:
     def _self_play(self, model_path, out_dir, iter_num):
         profile = "dev" if self.cfg["debug"] == "true" else "release"
         subprocess.run([
-            "cargo", "run", "--profile", profile, "--bin",
+            "cargo", "run", "--profile", profile, "-q", "--bin",
             self.self_play_exec, "--",
             "--model1-path", model_path,
             "--model2-path", model_path,
@@ -136,7 +138,7 @@ class TrainProcess:
 
             profile = "dev" if self.cfg["debug"] == "true" else "release"
             subprocess.run([
-                "cargo", "run", "--profile", profile, "--bin",
+                "cargo", "run", "--profile", profile, "-q", "--bin",
                 self.self_play_exec, "--",
                 "--model1-path", best_model,
                 "--model2-path", latest_model,
