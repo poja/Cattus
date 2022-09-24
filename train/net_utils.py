@@ -33,6 +33,10 @@ def policy_head_accuracy(target, output):
     return tf.reduce_mean(tf.cast(tf.equal(tf.argmax(input=target, axis=1),
                                            tf.argmax(input=output, axis=1)), tf.float32))
 
+def value_head_accuracy(target, output):
+    # Both the target and output should be in range [-1,1]
+    return 1 - tf.abs(target - output) / 2
+
 
 def batch_norm(input, name, scale=False):
     return tf.keras.layers.BatchNormalization(

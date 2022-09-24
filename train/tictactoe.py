@@ -61,7 +61,7 @@ class TicTacToe(TrainableGame):
             optimizer=opt,
             loss={'value_head': tf.keras.losses.MeanSquaredError(),
                   'policy_head': net_utils.loss_cross_entropy},
-            metrics={'value_head': tf.keras.metrics.MeanSquaredError(),
+            metrics={'value_head': net_utils.value_head_accuracy,
                      'policy_head': net_utils.policy_head_accuracy})
         return model
 
@@ -83,7 +83,7 @@ class TicTacToe(TrainableGame):
             optimizer=opt,
             loss={'value_head': tf.keras.losses.MeanSquaredError(),
                   'policy_head': net_utils.loss_cross_entropy},
-            metrics={'value_head': tf.keras.metrics.RootMeanSquaredError(),
+            metrics={'value_head': net_utils.value_head_accuracy,
                      'policy_head': net_utils.policy_head_accuracy})
         return model
 
@@ -99,7 +99,8 @@ class TicTacToe(TrainableGame):
         if net_type == TtoNetType.SimpleTwoHeaded or net_type == TtoNetType.ConvNetV1:
             custom_objects = {
                 "loss_cross_entropy": net_utils.loss_cross_entropy,
-                "policy_head_accuracy": net_utils.policy_head_accuracy}
+                "policy_head_accuracy": net_utils.policy_head_accuracy,
+                "value_head_accuracy": net_utils.value_head_accuracy}
         else:
             raise ValueError("Unknown model type: " + net_type)
 
