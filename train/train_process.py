@@ -11,6 +11,8 @@ from pathlib import Path
 import copy
 import json
 import tensorflow as tf
+import tempfile
+import shutil
 
 from hex import Hex
 from tictactoe import TicTacToe
@@ -46,10 +48,7 @@ class TrainProcess:
             self.game = Chess()
         else:
             raise ValueError("Unknown game argument in config file.")
-        self.cfg["self_play"]["exec"] = self.cfg["self_play"]["exec"].format(
-            self.cfg["game"])
-        self.cfg["training"]["compare"]["exec"] = self.cfg["training"]["compare"]["exec"].format(
-            self.cfg["game"])
+        self.self_play_exec = "{}_self_play_runner".format(self.cfg["game"])
 
         self.net_type = self.cfg["model"]["type"]
         base_model_path = self.cfg["model"]["base"]
@@ -98,14 +97,16 @@ class TrainProcess:
         profile = "dev" if self.cfg["debug"] == "true" else "release"
         subprocess.run([
             "cargo", "run", "--profile", profile, "--bin",
-            self.cfg["self_play"]["exec"], "--",
-            "--model-path", model_path,
+            self.self_play_exec, "--",
+            "--model1-path", model_path,
+            "--model2-path", model_path,
             "--games-num", str(self.cfg["self_play"]["games_num"]),
-            "--out-dir", out_dir,
+            "--out-dir1", out_dir,
+            "--out-dir2", out_dir,
+            "--data-entries-prefix", "i{0:04d}_".format(iter_num),
             "--sim-count", str(self.cfg["mcts"]["sim_count"]),
             "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
-            "--threads", str(self.cfg["self_play"]["threads"]),
-            "--data-entries-prefix", "i{0:04d}_".format(iter_num)],
+            "--threads", str(self.cfg["self_play"]["threads"])],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
 
     def _train(self, model_path, training_games_dir):
@@ -126,25 +127,32 @@ class TrainProcess:
         return model
 
     def _compare_models(self, model1_path, model2_path):
-        compare_res_file = os.path.join(
-            self.cfg["working_area"], "compare_result.json")
+        tmp_dirpath = tempfile.mkdtemp()
+        try:
+            compare_res_file = os.path.join(tmp_dirpath, "compare_result.json")
+            games_dir = os.path.join(tmp_dirpath, "games")
 
-        profile = "dev" if self.cfg["debug"] == "true" else "release"
-        subprocess.run([
-            "cargo", "run", "--profile", profile, "--bin",
-            self.cfg["training"]["compare"]["exec"], "--",
-            "--model1-path", model1_path,
-            "--model2-path", model2_path,
-            "--games-num", str(self.cfg["training"]["compare"]["games_num"]),
-            "--result-file", compare_res_file,
-            "--sim-count", str(self.cfg["mcts"]["sim_count"]),
-            "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
-            "--threads", str(self.cfg["training"]["compare"]["threads"])],
-            stderr=sys.stderr, stdout=sys.stdout, check=True)
+            profile = "dev" if self.cfg["debug"] == "true" else "release"
+            subprocess.run([
+                "cargo", "run", "--profile", profile, "--bin",
+                self.self_play_exec, "--",
+                "--model1-path", model1_path,
+                "--model2-path", model2_path,
+                "--games-num", str(self.cfg["training"]
+                                   ["compare"]["games_num"]),
+                "--out-dir1", games_dir,
+                "--out-dir2", games_dir,
+                "--result-file", compare_res_file,
+                "--sim-count", str(self.cfg["mcts"]["sim_count"]),
+                "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
+                "--threads", str(self.cfg["training"]["compare"]["threads"])],
+                stderr=sys.stderr, stdout=sys.stdout, check=True)
 
-        with open(compare_res_file, "r") as res_file:
-            res = json.load(res_file)
-        return res["player1_wins"], res["player2_wins"], res["draws"]
+            with open(compare_res_file, "r") as res_file:
+                res = json.load(res_file)
+            return res["player1_wins"], res["player2_wins"], res["draws"]
+        finally:
+            shutil.rmtree(tmp_dirpath)
 
     def _save_model(self, model):
         model_time = datetime.datetime.now().strftime("%y%m%d_%H%M%S") + \
