@@ -122,7 +122,10 @@ class TrainProcess:
         train_dataset = tf.data.Dataset.from_generator(
             parser.generator, output_types=(tf.string, tf.string, tf.string))
         train_dataset = train_dataset.map(parser.get_parse_func())
-        # train_dataset = train_dataset.batch(32, drop_remainder=True)
+        train_dataset = train_dataset.batch(
+            self.cfg["training"]["batch_size"], drop_remainder=True)
+        train_dataset = train_dataset.map(
+            parser.get_after_batch_reshape_func())
         train_dataset = train_dataset.prefetch(4)
 
         logging.info("Fitting new model...")

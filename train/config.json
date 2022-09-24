@@ -18,8 +18,9 @@
         "l2reg": 0.00005
     },
     "training": {
-        "latest_data_entries": 10000,
-        "iteration_data_entries": 1000,
+        "latest_data_entries": 16384,
+        "iteration_data_entries": 1024,
+        "batch_size": 32,
         "compare": {
             "games_num": 20,
             "switching_winning_threshold": 0.55,
