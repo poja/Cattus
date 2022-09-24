@@ -1,8 +1,9 @@
-use crate::game::common::{GameColor, GameMove, IGame};
+use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
 use crate::game::mcts::MCTSPlayer;
 use itertools::Itertools;
 use std::fs;
 use std::path;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::thread;
 
@@ -50,21 +51,30 @@ impl SerializerBase {
     }
 }
 
+struct GamesResults {
+    w1: AtomicU32,
+    w2: AtomicU32,
+    d: AtomicU32,
+}
+
 pub struct SelfPlayRunner<Game: IGame> {
-    player_builder: Arc<dyn PlayerBuilder<Game>>,
+    player1_builder: Arc<dyn PlayerBuilder<Game>>,
+    player2_builder: Arc<dyn PlayerBuilder<Game>>,
     serializer: Arc<dyn DataSerializer<Game>>,
     thread_num: u32,
 }
 
 impl<Game: IGame + 'static> SelfPlayRunner<Game> {
     pub fn new(
-        player_builder: Box<dyn PlayerBuilder<Game>>,
+        player1_builder: Box<dyn PlayerBuilder<Game>>,
+        player2_builder: Box<dyn PlayerBuilder<Game>>,
         serializer: Box<dyn DataSerializer<Game>>,
         thread_num: u32,
     ) -> Self {
         assert!(thread_num > 0);
         Self {
-            player_builder: Arc::from(player_builder),
+            player1_builder: Arc::from(player1_builder),
+            player2_builder: Arc::from(player2_builder),
             serializer: Arc::from(serializer),
             thread_num: thread_num,
         }
@@ -73,23 +83,36 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
     pub fn generate_data(
         &self,
         games_num: u32,
-        output_dir: &String,
+        output_dir1: &String,
+        output_dir2: &String,
         data_entries_prefix: &String,
+        result_file: &String,
     ) -> std::io::Result<()> {
         /* Create output dir if doesn't exists */
-        if !path::Path::new(output_dir).is_dir() {
-            fs::create_dir_all(output_dir)?;
+        for output_dir in [output_dir1, output_dir2] {
+            if !path::Path::new(output_dir).is_dir() {
+                fs::create_dir_all(output_dir)?;
+            }
         }
+
+        let result = Arc::new(GamesResults {
+            w1: AtomicU32::new(0),
+            w2: AtomicU32::new(0),
+            d: AtomicU32::new(0),
+        });
 
         let job_builder = |thread_idx| {
             let start_idx = games_num * thread_idx / self.thread_num;
             let end_idx = games_num * (thread_idx + 1) / self.thread_num;
 
             let worker = SelfPlayWorker::new(
-                Arc::clone(&self.player_builder),
+                Arc::clone(&self.player1_builder),
+                Arc::clone(&self.player2_builder),
                 Arc::clone(&self.serializer),
-                output_dir.to_string(),
+                output_dir1.to_string(),
+                output_dir2.to_string(),
                 data_entries_prefix.to_string(),
+                Arc::clone(&result),
                 start_idx,
                 end_idx,
             );
@@ -113,40 +136,62 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
             t.join().unwrap();
         }
 
+        if result_file != "_NONE_" {
+            fs::write(
+                result_file,
+                json::object! {
+                    player1_wins: result.w1.load(Ordering::Relaxed),
+                    player2_wins: result.w2.load(Ordering::Relaxed),
+                    draws: result.d.load(Ordering::Relaxed),
+                }
+                .dump(),
+            )?;
+        }
+
         return Ok(());
     }
 }
 
 struct SelfPlayWorker<Game: IGame> {
-    player_builder: Arc<dyn PlayerBuilder<Game>>,
+    player1_builder: Arc<dyn PlayerBuilder<Game>>,
+    player2_builder: Arc<dyn PlayerBuilder<Game>>,
     serializer: Arc<dyn DataSerializer<Game>>,
-    output_dir: String,
+    output_dir1: String,
+    output_dir2: String,
     data_entries_prefix: String,
+    results: Arc<GamesResults>,
     start_idx: u32,
     end_idx: u32,
 }
 
 impl<Game: IGame> SelfPlayWorker<Game> {
     fn new(
-        player_builder: Arc<dyn PlayerBuilder<Game>>,
+        player1_builder: Arc<dyn PlayerBuilder<Game>>,
+        player2_builder: Arc<dyn PlayerBuilder<Game>>,
         serializer: Arc<dyn DataSerializer<Game>>,
-        output_dir: String,
+        output_dir1: String,
+        output_dir2: String,
         data_entries_prefix: String,
+        results: Arc<GamesResults>,
         start_idx: u32,
         end_idx: u32,
     ) -> Self {
         Self {
-            player_builder: player_builder,
+            player1_builder: player1_builder,
+            player2_builder: player2_builder,
             serializer: serializer,
-            output_dir: output_dir,
+            output_dir1: output_dir1,
+            output_dir2: output_dir2,
             data_entries_prefix: data_entries_prefix,
+            results: results,
             start_idx: start_idx,
             end_idx: end_idx,
         }
     }
 
     fn generate_data(&self) -> std::io::Result<()> {
-        let mut player = self.player_builder.new_player();
+        let mut player1 = self.player1_builder.new_player();
+        let mut player2 = self.player2_builder.new_player();
         for game_idx in self.start_idx..self.end_idx {
             // if games_num < 10 || game_idx % (games_num / 10) == 0 {
             //     let percentage = (((game_idx as f32) / games_num as f32) * 100.0) as u32;
@@ -156,6 +201,10 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             let mut pos_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> = Vec::new();
 
             while !game.is_over() {
+                let player = match game.get_position().get_turn() {
+                    GameColor::Player1 => &mut player1,
+                    GameColor::Player2 => &mut player2,
+                };
                 /* Generate probabilities from MCTS player */
                 let moves = player.calc_moves_probabilities(game.get_position());
                 player.clear();
@@ -171,17 +220,28 @@ impl<Game: IGame> SelfPlayWorker<Game> {
 
             let mut pos_idx = 0;
             for (pos, probs) in pos_probs_pairs {
+                let output_dir = match pos.get_turn() {
+                    GameColor::Player1 => &self.output_dir1,
+                    GameColor::Player2 => &self.output_dir2,
+                };
                 self.serializer.serialize_data_entry(
                     pos,
                     probs,
                     winner,
                     format!(
                         "{}/{}{:#08}_{:#03}.json",
-                        self.output_dir, self.data_entries_prefix, game_idx, pos_idx
+                        output_dir, self.data_entries_prefix, game_idx, pos_idx
                     ),
                 )?;
                 pos_idx += 1;
             }
+
+            match winner {
+                Some(GameColor::Player1) => &self.results.w1,
+                Some(GameColor::Player2) => &self.results.w2,
+                None => &self.results.d,
+            }
+            .fetch_add(1, Ordering::Relaxed);
         }
         return Ok(());
     }

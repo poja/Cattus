@@ -38,7 +38,6 @@ def run_test():
                 "self_play": {
                     "iterations": 2,
                     "games_num": 3,
-                    "exec": SELF_PLAY_RUNNER,
                 },
                 "model": {
                     "base": "[none]",

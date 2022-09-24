@@ -8,7 +8,6 @@
     "self_play": {
         "iterations": 5,
         "games_num": 100,
-        "exec": "{}_self_play_runner",
         "threads": 8
     },
     "model": {
@@ -25,7 +24,6 @@
             "games_num": 20,
             "switching_winning_threshold": 0.55,
             "warning_losing_threshold": 0.55,
-            "exec": "{}_player_comparator",
             "threads": 8
         }
     },
