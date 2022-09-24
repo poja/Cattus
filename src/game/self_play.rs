@@ -88,6 +88,10 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
         data_entries_prefix: &String,
         result_file: &String,
     ) -> std::io::Result<()> {
+        if games_num % 2 != 0 {
+            panic!("Games num should be a multiple of 2");
+        }
+
         /* Create output dir if doesn't exists */
         for output_dir in [output_dir1, output_dir2] {
             if !path::Path::new(output_dir).is_dir() {
@@ -192,6 +196,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
     fn generate_data(&self) -> std::io::Result<()> {
         let mut player1 = self.player1_builder.new_player();
         let mut player2 = self.player2_builder.new_player();
+
         for game_idx in self.start_idx..self.end_idx {
             // if games_num < 10 || game_idx % (games_num / 10) == 0 {
             //     let percentage = (((game_idx as f32) / games_num as f32) * 100.0) as u32;
@@ -201,10 +206,11 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             let mut pos_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> = Vec::new();
 
             while !game.is_over() {
-                let player = match game.get_position().get_turn() {
-                    GameColor::Player1 => &mut player1,
-                    GameColor::Player2 => &mut player2,
-                };
+                let player = &mut match game.get_position().get_turn() {
+                    GameColor::Player1 => [&mut player1, &mut player2],
+                    GameColor::Player2 => [&mut player2, &mut player1],
+                }[(game_idx % 2) as usize];
+
                 /* Generate probabilities from MCTS player */
                 let moves = player.calc_moves_probabilities(game.get_position());
                 player.clear();
@@ -220,10 +226,11 @@ impl<Game: IGame> SelfPlayWorker<Game> {
 
             let mut pos_idx = 0;
             for (pos, probs) in pos_probs_pairs {
-                let output_dir = match pos.get_turn() {
-                    GameColor::Player1 => &self.output_dir1,
-                    GameColor::Player2 => &self.output_dir2,
-                };
+                let output_dir = &match pos.get_turn() {
+                    GameColor::Player1 => [&self.output_dir1, &self.output_dir2],
+                    GameColor::Player2 => [&self.output_dir2, &self.output_dir1],
+                }[(game_idx % 2) as usize];
+
                 self.serializer.serialize_data_entry(
                     pos,
                     probs,
@@ -237,9 +244,14 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             }
 
             match winner {
-                Some(GameColor::Player1) => &self.results.w1,
-                Some(GameColor::Player2) => &self.results.w2,
                 None => &self.results.d,
+                Some(p) => {
+                    let res = match p {
+                        GameColor::Player1 => [&self.results.w1, &self.results.w2],
+                        GameColor::Player2 => [&self.results.w2, &self.results.w1],
+                    };
+                    res[(game_idx % 2) as usize]
+                }
             }
             .fetch_add(1, Ordering::Relaxed);
         }
