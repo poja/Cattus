@@ -90,7 +90,8 @@ class TrainProcess:
             games_gen_idx += 1
 
             # Train latest model from training data
-            latest_model = self._train(latest_model, games_dir)
+            latest_model, _metrics = self._train(latest_model, games_dir)
+            # TODO log metrics into file
 
             # Compare latest model to the current best, and switch if better
             best_model = self._compare_models(
@@ -129,9 +130,20 @@ class TrainProcess:
         train_dataset = train_dataset.prefetch(4)
 
         logging.info("Fitting new model...")
-        model.fit(train_dataset, epochs=1, verbose=0)
+        history = model.fit(train_dataset, epochs=1, verbose=0).history
+        metrics = {
+            "value loss": history["value_head_loss"][0],
+            "policy loss": history["policy_head_loss"][0],
+            "value accuracy": history["value_head_value_head_accuracy"][0],
+            "policy accuracy": history["policy_head_policy_head_accuracy"][0],
+        }
 
-        return self._save_model(model)
+        print("Value loss {:.4f}".format(metrics["value loss"]),
+              "Policy loss {:.4f}".format(metrics["policy loss"]))
+        print("Value accuracy {:.4f}".format(metrics["value accuracy"]),
+              "Policy accuracy {:.4f}".format(metrics["policy accuracy"]))
+
+        return (self._save_model(model), metrics)
 
     def _compare_models(self, best_model, latest_model, games_dir, games_gen_idx):
         tmp_dirpath = tempfile.mkdtemp()
