@@ -25,6 +25,7 @@ fn err_to_str(err: chess::Error) -> String {
 pub struct ChessMove {
     m: chess::ChessMove,
 }
+
 impl ChessMove {
     pub fn new(m: chess::ChessMove) -> Self {
         Self { m: m }
@@ -185,13 +186,25 @@ fn chess_color_to_game_color(c: chess::Color) -> GameColor {
 
 impl PartialEq for ChessPosition {
     fn eq(&self, other: &Self) -> bool {
-        self.board == other.board
+        let b1 = &self.board;
+        let b2 = &other.board;
+        return b1.color_combined(chess::Color::White) == b2.color_combined(chess::Color::White)
+            && b1.color_combined(chess::Color::Black) == b2.color_combined(chess::Color::Black)
+            && b1.pieces(chess::Piece::Pawn) == b2.pieces(chess::Piece::Pawn)
+            && b1.pieces(chess::Piece::Knight) == b2.pieces(chess::Piece::Knight)
+            && b1.pieces(chess::Piece::Bishop) == b2.pieces(chess::Piece::Bishop)
+            && b1.pieces(chess::Piece::Rook) == b2.pieces(chess::Piece::Rook)
+            && b1.pieces(chess::Piece::Queen) == b2.pieces(chess::Piece::Queen)
+            && b1.pieces(chess::Piece::King) == b2.pieces(chess::Piece::King)
+            && b1.castle_rights(chess::Color::White) == b2.castle_rights(chess::Color::Black)
+            && b1.en_passant() == b2.en_passant()
+            && b1.side_to_move() == b2.side_to_move();
     }
 }
 impl Eq for ChessPosition {}
 impl Hash for ChessPosition {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.board.hash(state);
+        self.board.get_hash().hash(state);
     }
 }
 
