@@ -11,7 +11,7 @@ struct SelfPlayArgs {
     model1_path: String,
     #[clap(long)]
     model2_path: String,
-    #[clap(long, default_value = "10")]
+    #[clap(long)]
     games_num: u32,
     #[clap(long)]
     out_dir1: String,
