@@ -104,3 +104,12 @@ class DataParser:
 
     def get_parse_func(self):
         return functools.partial(DataParser._parse_func, self)
+
+    def _after_batch_reshape_func(self, planes, probs, winner):
+        planes = tf.squeeze(planes, axis=1)
+        probs = tf.squeeze(probs, axis=1)
+        winner = tf.squeeze(winner, axis=1)
+        return planes, probs, winner
+
+    def get_after_batch_reshape_func(self):
+        return functools.partial(DataParser._after_batch_reshape_func, self)
