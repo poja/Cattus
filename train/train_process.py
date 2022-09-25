@@ -15,6 +15,7 @@ import shutil
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import tensorflow as tf
+import keras
 
 from hex import Hex
 from tictactoe import TicTacToe
@@ -25,6 +26,32 @@ import net_utils
 
 TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 RL_TOP = os.path.abspath(os.path.join(TRAIN_DIR, ".."))
+
+
+class LearningRateScheduler:
+    def __init__(self, cfg):
+        cfg = cfg["training"]["learning_rate"]
+        assert len(cfg) > 0
+
+        thresholds = []
+        for (idx, elm) in enumerate(cfg[:-1]):
+            assert len(elm) == 2
+            if idx > 0:
+                # assert the steps thresholds are ordered
+                assert elm[0] > cfg[idx - 1][0]
+            thresholds.append((elm[0], elm[1]))
+        self.thresholds = thresholds
+
+        # last elm, no step threshold
+        final_lr = cfg[-1]
+        assert len(final_lr) == 1
+        self.final_lr = final_lr[0]
+
+    def get_lr(self, training_step):
+        for (threshold, lr) in self.thresholds:
+            if training_step < threshold:
+                return lr
+        return self.final_lr
 
 
 class TrainProcess:
@@ -81,6 +108,7 @@ class TrainProcess:
         best_model = self.base_model_path
         latest_model = self.base_model_path
         games_gen_idx = 0
+        lr_scheduler = LearningRateScheduler(self.cfg)
 
         for iter_num in range(self.cfg["self_play"]["iterations"]):
             logging.info(f"Training iteration {iter_num}")
@@ -90,7 +118,9 @@ class TrainProcess:
             games_gen_idx += 1
 
             # Train latest model from training data
-            latest_model, _metrics = self._train(latest_model, games_dir)
+            lr = lr_scheduler.get_lr(
+                iter_num * self.cfg["training"]["iteration_data_entries"])
+            latest_model, _metrics = self._train(latest_model, games_dir, lr)
             # TODO log metrics into file
 
             # Compare latest model to the current best, and switch if better
@@ -114,7 +144,7 @@ class TrainProcess:
             "--threads", str(self.cfg["self_play"]["threads"])],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
 
-    def _train(self, model_path, training_games_dir):
+    def _train(self, model_path, training_games_dir, lr):
         logging.debug("Loading current model")
         model = self.game.load_model(model_path, self.net_type)
 
@@ -128,6 +158,9 @@ class TrainProcess:
         train_dataset = train_dataset.map(
             parser.get_after_batch_reshape_func())
         train_dataset = train_dataset.prefetch(4)
+
+        logging.debug("Training with learning rate %f", lr)
+        keras.backend.set_value(model.optimizer.learning_rate, lr)
 
         logging.info("Fitting new model...")
         history = model.fit(train_dataset, epochs=1, verbose=0).history

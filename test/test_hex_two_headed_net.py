@@ -49,6 +49,9 @@ def run_test():
                     "latest_data_entries": 1024,
                     "iteration_data_entries": 128,
                     "batch_size": 4,
+                    "learning_rate": [
+                        [0.001]
+                    ],
                     "compare": {
                         "games_num": 4,
                         "switching_winning_threshold": 0.55,
