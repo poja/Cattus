@@ -10,6 +10,7 @@ use crate::game::common::{GameColor, GamePlayer, GamePosition, IGame, PlayerRand
 
 /// Monte Carlo Tree Search (MCTS) implementation
 
+#[derive(Clone, Copy)]
 struct MCTSNode<Position: GamePosition> {
     position: Position,
 
@@ -38,7 +39,7 @@ impl<Position: GamePosition> MCTSNode<Position> {
 
 pub struct MCTSPlayer<Game: IGame> {
     search_tree: DiGraph<MCTSNode<Game::Position>, Game::Move>,
-
+    root: Option<NodeIndex>,
     exploration_param_c: f32,
     simulations_per_move: u32,
     value_func: Box<dyn ValueFunction<Game>>,
@@ -52,6 +53,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
     ) -> Self {
         Self {
             search_tree: DiGraph::new(),
+            root: None,
             exploration_param_c: exploration_param_c,
             simulations_per_move: simulations_per_move,
             value_func: value_func,
@@ -81,10 +83,10 @@ impl<Game: IGame> MCTSPlayer<Game> {
         return false;
     }
 
-    fn develop_tree(&mut self, root_id: NodeIndex<u32>) -> () {
+    fn develop_tree(&mut self) -> () {
         for _ in 0..self.simulations_per_move {
             /* Select a leaf node */
-            let path_to_selection = self.select(root_id);
+            let path_to_selection = self.select();
 
             let repetition_reached = self.detect_repetition(&path_to_selection);
             let leaf_id: NodeIndex = *path_to_selection.last().unwrap();
@@ -111,10 +113,10 @@ impl<Game: IGame> MCTSPlayer<Game> {
     }
 
     /* Return path to selected leaf node */
-    fn select(&self, root_id: NodeIndex<u32>) -> Vec<NodeIndex<u32>> {
-        let mut path: Vec<NodeIndex<u32>> = vec![];
+    fn select(&self) -> Vec<NodeIndex> {
+        let mut path: Vec<NodeIndex> = vec![];
 
-        let mut node_id = root_id;
+        let mut node_id = self.root.unwrap();
         loop {
             path.push(node_id);
             let node = self.search_tree.node_weight(node_id).unwrap();
@@ -160,7 +162,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
     fn create_children(
         &mut self,
-        parent_id: NodeIndex<u32>,
+        parent_id: NodeIndex,
         per_move_init_score: Vec<(Game::Move, f32)>,
     ) {
         let parent_pos = self.search_tree.node_weight(parent_id).unwrap().position;
@@ -188,7 +190,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         return self.value_func.evaluate(&position);
     }
 
-    fn backpropagate(&mut self, path: &Vec<NodeIndex<u32>>, score: f32) {
+    fn backpropagate(&mut self, path: &Vec<NodeIndex>, score: f32) {
         for node_id in path {
             let mut node = self.search_tree.node_weight_mut(*node_id).unwrap();
             node.simulations_n += 1;
@@ -207,22 +209,92 @@ impl<Game: IGame> MCTSPlayer<Game> {
         }
     }
 
+    fn find_node_with_position(
+        &self,
+        position: &Game::Position,
+        depth_limit: u32,
+    ) -> Option<NodeIndex> {
+        let mut layer = vec![self.root.unwrap()];
+
+        for _ in 0..depth_limit {
+            let mut next_layer = Vec::new();
+
+            for node in layer {
+                if &self.search_tree.node_weight(node).unwrap().position == position {
+                    return Some(node);
+                }
+                // Add children to next layer
+                for edge in self.search_tree.edges(node).into_iter() {
+                    next_layer.push(edge.target())
+                }
+            }
+            layer = next_layer;
+        }
+        return None;
+    }
+
+    fn remove_all_but_subtree(&mut self, sub_tree_root: NodeIndex) {
+        if self.root.unwrap() == sub_tree_root {
+            return;
+        }
+
+        // In petgraph, when you remove a node, the indices of the other nodes
+        // change. So instead of removing nodes from the current tree, we copy
+        // the sub tree to a new graph
+        let mut new_tree = DiGraph::new();
+        let new_root = new_tree.add_node(*self.search_tree.node_weight(sub_tree_root).unwrap());
+        let mut nodes = vec![(sub_tree_root, new_root)];
+
+        while !nodes.is_empty() {
+            let (parent_old, parent_new) = nodes.pop().unwrap();
+
+            for edge in self.search_tree.edges(parent_old).into_iter() {
+                let child_old = edge.target();
+                let child_data = self.search_tree.node_weight(child_old).unwrap();
+                let child_new = new_tree.add_node(*child_data);
+                new_tree.add_edge(parent_new, child_new, *edge.weight());
+
+                nodes.push((child_old, child_new));
+            }
+        }
+
+        self.search_tree = new_tree;
+        self.root = Some(new_root);
+    }
+
     pub fn calc_moves_probabilities(
         &mut self,
         position: &Game::Position,
     ) -> Vec<(Game::Move, f32)> {
-        // Init search tree with one root node
-        assert!(self.search_tree.node_count() == 0);
-        let root = MCTSNode::from_position(*position, 1.0);
-        let root_id = self.search_tree.add_node(root);
+        if self.root.is_some() {
+            // Tree was saved from the last search
+            // Look for the position in the first three layers of the tree
+            // TODO consider increasing depth limit
+            match self.find_node_with_position(position, 3) {
+                Some(node) => {
+                    self.remove_all_but_subtree(node);
+                }
+                None => {
+                    self.search_tree.clear();
+                    self.root = None;
+                }
+            }
+        }
 
-        // Develop tree
-        self.develop_tree(root_id);
+        if self.root.is_none() {
+            // Init search tree with one root node
+            let root = MCTSNode::from_position(*position, 1.0);
+            self.root = Some(self.search_tree.add_node(root));
+        }
+        assert!(position == &self.search_tree.node_weight(self.root.unwrap()).unwrap().position);
+
+        // Run all simulations
+        self.develop_tree();
 
         // create moves vector (move, sim_count)
         let moves_and_simcounts = self
             .search_tree
-            .edges(root_id)
+            .edges(self.root.unwrap())
             .into_iter()
             .map(|edge| {
                 let child = self.search_tree.node_weight(edge.target()).unwrap();
@@ -239,10 +311,6 @@ impl<Game: IGame> MCTSPlayer<Game> {
             .iter()
             .map(|&(m, simcount)| (*m, (simcount as f64 / simcount_total as f64) as f32))
             .collect_vec();
-    }
-
-    pub fn clear(&mut self) {
-        self.search_tree.clear();
     }
 
     pub fn choose_move_from_probabilities(
@@ -271,7 +339,6 @@ impl<Game: IGame> MCTSPlayer<Game> {
 impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
         let moves = self.calc_moves_probabilities(position);
-        self.clear();
         return self.choose_move_from_probabilities(&moves);
     }
 }
