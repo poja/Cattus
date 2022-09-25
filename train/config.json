@@ -21,6 +21,11 @@
         "latest_data_entries": 16384,
         "iteration_data_entries": 1024,
         "batch_size": 32,
+        "learning_rate": [
+            [40960, 0.01],
+            [61440, 0.001],
+            [       0.0001]
+        ],
         "compare": {
             "games_num": 20,
             "switching_winning_threshold": 0.55,

@@ -12,8 +12,6 @@ import keras
 from trainable_game import TrainableGame
 import net_utils
 
-_LEARNING_RATE = 0.001
-
 
 class HexNetType:
     SimpleTwoHeaded = "simple_two_headed"
@@ -60,7 +58,8 @@ class Hex(TrainableGame):
         head_probs = Dense(units=self.MOVE_NUM, name="policy_head")(x)
         model = Model(inputs=inputs, outputs=[head_val, head_probs])
 
-        opt = optimizers.Adam(learning_rate=_LEARNING_RATE)
+        # lr doesn't matter, will be set by train process
+        opt = optimizers.Adam(learning_rate=0.001)
         model.compile(
             optimizer=opt,
             loss={'value_head': tf.keras.losses.MeanSquaredError(),
@@ -82,7 +81,8 @@ class Hex(TrainableGame):
             cpu=cfg["cpu"])
         model = Model(inputs=inputs, outputs=outputs)
 
-        opt = optimizers.Adam(learning_rate=_LEARNING_RATE)
+        # lr doesn't matter, will be set by train process
+        opt = optimizers.Adam(learning_rate=0.001)
         model.compile(
             optimizer=opt,
             loss={'value_head': tf.keras.losses.MeanSquaredError(),
