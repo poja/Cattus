@@ -213,7 +213,6 @@ impl<Game: IGame> SelfPlayWorker<Game> {
 
                 /* Generate probabilities from MCTS player */
                 let moves = player.calc_moves_probabilities(game.get_position());
-                player.clear();
                 let next_move = player.choose_move_from_probabilities(&moves).unwrap();
 
                 /* Store probabilities */
