@@ -1,13 +1,14 @@
 {
     "game": "tictactoe",
-    "working_area": "{RL_TOP}/workarea/",
+    "working_area": "{RL_TOP}/workarea_nettest/",
     "mcts": {
-        "sim_count": 140,
+        "sim_count": 1000,
         "explore_factor": 1.41421
     },
     "self_play": {
-        "iterations": 5,
-        "games_num": 100,
+        "iterations": 1,
+        "games_num": 10000,
+        "exec": "{}_self_play_runner",
         "threads": 8
     },
     "model": {
@@ -18,13 +19,12 @@
         "l2reg": 0.00005
     },
     "training": {
-        "latest_data_entries": 16384,
-        "iteration_data_entries": 1024,
-        "batch_size": 32,
+        "entries_count": 10000,
         "compare": {
             "games_num": 20,
             "switching_winning_threshold": 0.55,
             "warning_losing_threshold": 0.55,
+            "exec": "{}_player_comparator",
             "threads": 8
         }
     },

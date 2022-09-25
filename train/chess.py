@@ -9,8 +9,8 @@ from keras.layers import Dense
 from keras.models import Model
 import keras
 
-from trainable_game import TrainableGame
-import net_utils
+from train.trainable_game import TrainableGame
+import train.net_utils
 
 _LEARNING_RATE = 0.001
 

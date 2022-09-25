@@ -16,11 +16,11 @@ import shutil
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import tensorflow as tf
 
-from hex import Hex
-from tictactoe import TicTacToe
-from chess import Chess
-from data_parser import DataParser
-import net_utils
+from train.hex import Hex
+from train.tictactoe import TicTacToe
+from train.chess import Chess
+from train.data_parser import DataParser
+from train import net_utils
 
 
 TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
