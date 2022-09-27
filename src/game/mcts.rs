@@ -286,7 +286,14 @@ impl<Game: IGame> MCTSPlayer<Game> {
             let root = MCTSNode::from_position(*position, 1.0);
             self.root = Some(self.search_tree.add_node(root));
         }
-        assert!(position == &self.search_tree.node_weight(self.root.unwrap()).unwrap().position);
+        assert!(
+            position
+                == &self
+                    .search_tree
+                    .node_weight(self.root.unwrap())
+                    .unwrap()
+                    .position
+        );
 
         // Run all simulations
         self.develop_tree();

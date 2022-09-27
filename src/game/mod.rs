@@ -1,3 +1,4 @@
+pub mod cache;
 pub mod common;
 pub mod mcts;
 pub mod net;

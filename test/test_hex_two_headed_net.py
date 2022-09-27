@@ -34,6 +34,7 @@ def run_test():
                 "mcts": {
                     "sim_count": 10,
                     "explore_factor": 1.41421,
+                    "cache_size": 1000,
                 },
                 "self_play": {
                     "iterations": 2,
