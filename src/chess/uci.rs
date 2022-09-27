@@ -1,16 +1,13 @@
 use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
 use crate::game::common::{GamePlayer, GamePosition};
 use crate::game::mcts::MCTSPlayer;
+use crate::utils::Builder;
 use itertools::Itertools;
 use std::collections::HashMap;
 // use std::fs::{File, OpenOptions};
 use std::io;
 // use std::io::prelude::*;
 // use std::path::Path;
-
-pub trait Builder<T>: Sync + Send {
-    fn build(&self) -> T;
-}
 
 struct GoParams {
     searchmoves: Vec<String>,

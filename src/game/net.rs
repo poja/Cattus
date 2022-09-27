@@ -1,16 +1,19 @@
+use crate::game::cache::ValueFuncCache;
 use crate::game::common::{Bitboard, GameColor, GameMove, GamePosition, IGame};
 use itertools::Itertools;
+use std::sync::Arc;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
-pub struct TwoHeadedNetBase {
+pub struct TwoHeadedNetBase<Game: IGame> {
     bundle: SavedModelBundle,
     input_op: Operation,
     value_head: Operation,
     policy_head: Operation,
+    cache: Option<Arc<ValueFuncCache<Game>>>,
 }
 
-impl TwoHeadedNetBase {
-    pub fn new(model_path: &String) -> Self {
+impl<Game: IGame> TwoHeadedNetBase<Game> {
+    pub fn new(model_path: &String, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
         // Load saved model bundle (session state + meta_graph data)
         let mut graph = Graph::new();
         let bundle =
@@ -44,6 +47,7 @@ impl TwoHeadedNetBase {
             input_op: input_op,
             value_head: value_head,
             policy_head: policy_head,
+            cache: cache,
         }
     }
 
@@ -72,21 +76,37 @@ impl TwoHeadedNetBase {
         return (val, moves_scores);
     }
 
-    pub fn evaluate<Game: IGame, B: Bitboard, const BOARD_SIZE: usize>(
+    pub fn evaluate<B: Bitboard, const BOARD_SIZE: usize>(
         &mut self,
         position: &Game::Position,
         to_planes: impl Fn(&Game::Position) -> Vec<B>,
     ) -> (f32, Vec<(Game::Move, f32)>) {
-        let (flipped_pos, is_flipped) = flip_pos_if_needed(*position);
+        let (position, is_flipped) = flip_pos_if_needed(*position);
 
-        let planes = to_planes(&flipped_pos);
+        let res = if let Some(cache) = &self.cache {
+            cache.get_or_compute(&position, |pos| {
+                self.evaluate_impl::<B, BOARD_SIZE>(pos, &to_planes)
+            })
+        } else {
+            self.evaluate_impl::<B, BOARD_SIZE>(&position, &to_planes)
+        };
+
+        return flip_score_if_needed(res, is_flipped);
+    }
+
+    fn evaluate_impl<B: Bitboard, const BOARD_SIZE: usize>(
+        &self,
+        pos: &Game::Position,
+        to_planes: &impl Fn(&Game::Position) -> Vec<B>,
+    ) -> (f32, Vec<(Game::Move, f32)>) {
+        let planes = to_planes(pos);
         let input = planes_to_tensor::<B, BOARD_SIZE>(planes);
         let (val, move_scores) = self.run_net(input);
 
-        let moves = flipped_pos.get_legal_moves();
-        let moves_probs = TwoHeadedNetBase::calc_moves_probs(moves, &move_scores);
+        let moves = pos.get_legal_moves();
+        let moves_probs = TwoHeadedNetBase::<Game>::calc_moves_probs(moves, &move_scores);
 
-        return flip_score_if_needed((val, moves_probs), is_flipped);
+        return (val, moves_probs);
     }
 
     pub fn calc_moves_probs<M: GameMove>(moves: Vec<M>, move_scores: &Vec<f32>) -> Vec<(M, f32)> {

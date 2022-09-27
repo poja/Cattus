@@ -1,8 +1,11 @@
 use crate::game::common::IGame;
 use crate::game::mcts::{MCTSPlayer, ValueFunction};
-use crate::game::self_play::{DataSerializer, PlayerBuilder, SelfPlayRunner};
+use crate::game::self_play::{DataSerializer, SelfPlayRunner};
+use crate::utils::Builder;
 use clap::Parser;
 use std::sync::Arc;
+
+use super::cache::ValueFuncCache;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -27,65 +30,87 @@ struct SelfPlayArgs {
     explore_factor: f32,
     #[clap(long, default_value = "1")]
     threads: u32,
+    #[clap(long, default_value = "100000")]
+    cache_size: usize,
 }
 
-pub trait ValueFunctionBuilder<Game: IGame>: Sync + Send {
-    fn new_value_func(&self, model_path: &String) -> Box<dyn ValueFunction<Game>>;
+pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
+    fn build_net(
+        &self,
+        model_path: &String,
+        cache: Arc<ValueFuncCache<Game>>,
+    ) -> Box<dyn ValueFunction<Game>>;
 }
 
-struct PlayerBuilderImpl<Game: IGame> {
-    value_func_builder: Arc<dyn ValueFunctionBuilder<Game>>,
+struct PlayerBuilder<Game: IGame> {
+    network_builder: Arc<dyn INNetworkBuilder<Game>>,
     model_path: String,
     sim_count: u32,
     explore_factor: f32,
+    cache: Arc<ValueFuncCache<Game>>,
 }
 
-impl<Game: IGame> PlayerBuilderImpl<Game> {
+impl<Game: IGame> PlayerBuilder<Game> {
     fn new(
-        value_func_builder: Arc<dyn ValueFunctionBuilder<Game>>,
+        network_builder: Arc<dyn INNetworkBuilder<Game>>,
         model_path: String,
         sim_count: u32,
         explore_factor: f32,
+        cache_size: usize,
     ) -> Self {
         Self {
-            value_func_builder: value_func_builder,
+            network_builder,
             model_path: model_path,
             sim_count: sim_count,
             explore_factor: explore_factor,
+            cache: Arc::new(ValueFuncCache::new(cache_size)),
         }
     }
 }
 
-impl<Game: IGame> PlayerBuilder<Game> for PlayerBuilderImpl<Game> {
-    fn new_player(&self) -> MCTSPlayer<Game> {
-        let value_func: Box<dyn ValueFunction<Game>> =
-            self.value_func_builder.new_value_func(&self.model_path);
+impl<Game: IGame> Builder<MCTSPlayer<Game>> for PlayerBuilder<Game> {
+    fn build(&self) -> MCTSPlayer<Game> {
+        let value_func: Box<dyn ValueFunction<Game>> = self
+            .network_builder
+            .build_net(&self.model_path, Arc::clone(&self.cache));
         return MCTSPlayer::new_custom(self.sim_count, self.explore_factor, value_func);
     }
 }
 
 pub fn run_main<Game: IGame + 'static>(
-    value_func_builder: Box<dyn ValueFunctionBuilder<Game>>,
+    network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {
     let args = SelfPlayArgs::parse();
+    let network_builder = Arc::from(network_builder);
 
-    let value_func_builder = Arc::from(value_func_builder);
-    let player1_builder = Box::new(PlayerBuilderImpl::new(
-        Arc::clone(&value_func_builder),
+    let player1_builder = Arc::new(PlayerBuilder::new(
+        Arc::clone(&network_builder),
         args.model1_path,
         args.sim_count,
         args.explore_factor,
-    ));
-    let player2_builder = Box::new(PlayerBuilderImpl::new(
-        Arc::clone(&value_func_builder),
-        args.model2_path,
-        args.sim_count,
-        args.explore_factor,
+        args.cache_size,
     ));
 
-    let self_player =
-        SelfPlayRunner::new(player1_builder, player2_builder, serializer, args.threads);
+    let player2_builder;
+    if args.model2_path == args.model2_path {
+        player2_builder = Arc::clone(&player1_builder);
+    } else {
+        player2_builder = Arc::new(PlayerBuilder::new(
+            Arc::clone(&network_builder),
+            args.model2_path,
+            args.sim_count,
+            args.explore_factor,
+            args.cache_size,
+        ));
+    };
+
+    let self_player = SelfPlayRunner::new(
+        player1_builder,
+        player2_builder,
+        Arc::from(serializer),
+        args.threads,
+    );
     return self_player.generate_data(
         args.games_num,
         &args.out_dir1,

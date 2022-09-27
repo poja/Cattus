@@ -3,7 +3,8 @@
     "working_area": "{RL_TOP}/workarea/",
     "mcts": {
         "sim_count": 140,
-        "explore_factor": 1.41421
+        "explore_factor": 1.41421,
+        "cache_size": 100000
     },
     "self_play": {
         "iterations": 5,

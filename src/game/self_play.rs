@@ -1,15 +1,12 @@
 use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
 use crate::game::mcts::MCTSPlayer;
+use crate::utils::Builder;
 use itertools::Itertools;
 use std::fs;
 use std::path;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::thread;
-
-pub trait PlayerBuilder<Game: IGame>: Sync + Send {
-    fn new_player(&self) -> MCTSPlayer<Game>;
-}
 
 pub trait DataSerializer<Game: IGame>: Sync + Send {
     fn serialize_data_entry(
@@ -58,24 +55,24 @@ struct GamesResults {
 }
 
 pub struct SelfPlayRunner<Game: IGame> {
-    player1_builder: Arc<dyn PlayerBuilder<Game>>,
-    player2_builder: Arc<dyn PlayerBuilder<Game>>,
+    player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+    player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
     serializer: Arc<dyn DataSerializer<Game>>,
     thread_num: u32,
 }
 
 impl<Game: IGame + 'static> SelfPlayRunner<Game> {
     pub fn new(
-        player1_builder: Box<dyn PlayerBuilder<Game>>,
-        player2_builder: Box<dyn PlayerBuilder<Game>>,
-        serializer: Box<dyn DataSerializer<Game>>,
+        player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+        player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+        serializer: Arc<dyn DataSerializer<Game>>,
         thread_num: u32,
     ) -> Self {
         assert!(thread_num > 0);
         Self {
-            player1_builder: Arc::from(player1_builder),
-            player2_builder: Arc::from(player2_builder),
-            serializer: Arc::from(serializer),
+            player1_builder: player1_builder,
+            player2_builder: player2_builder,
+            serializer: serializer,
             thread_num: thread_num,
         }
     }
@@ -157,8 +154,8 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
 }
 
 struct SelfPlayWorker<Game: IGame> {
-    player1_builder: Arc<dyn PlayerBuilder<Game>>,
-    player2_builder: Arc<dyn PlayerBuilder<Game>>,
+    player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+    player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
     serializer: Arc<dyn DataSerializer<Game>>,
     output_dir1: String,
     output_dir2: String,
@@ -170,8 +167,8 @@ struct SelfPlayWorker<Game: IGame> {
 
 impl<Game: IGame> SelfPlayWorker<Game> {
     fn new(
-        player1_builder: Arc<dyn PlayerBuilder<Game>>,
-        player2_builder: Arc<dyn PlayerBuilder<Game>>,
+        player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+        player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
         serializer: Arc<dyn DataSerializer<Game>>,
         output_dir1: String,
         output_dir2: String,
@@ -194,8 +191,8 @@ impl<Game: IGame> SelfPlayWorker<Game> {
     }
 
     fn generate_data(&self) -> std::io::Result<()> {
-        let mut player1 = self.player1_builder.new_player();
-        let mut player2 = self.player2_builder.new_player();
+        let mut player1 = self.player1_builder.build();
+        let mut player2 = self.player2_builder.build();
 
         for game_idx in self.start_idx..self.end_idx {
             // if games_num < 10 || game_idx % (games_num / 10) == 0 {

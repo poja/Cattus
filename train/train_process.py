@@ -141,7 +141,8 @@ class TrainProcess:
             "--data-entries-prefix", "i{0:04d}_".format(iter_num),
             "--sim-count", str(self.cfg["mcts"]["sim_count"]),
             "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
-            "--threads", str(self.cfg["self_play"]["threads"])],
+            "--threads", str(self.cfg["self_play"]["threads"]),
+            "--cache-size", str(self.cfg["mcts"]["cache_size"])],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
 
     def _train(self, model_path, training_games_dir, lr):

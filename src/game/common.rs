@@ -1,4 +1,7 @@
-use std::{hash::Hash, fmt::{Debug, Display}};
+use std::{
+    fmt::{Debug, Display},
+    hash::Hash,
+};
 
 use rand::Rng;
 
@@ -42,7 +45,7 @@ pub trait IGame {
     fn get_repetition_limit() -> Option<u32>;
 }
 
-pub trait GamePosition: Clone + Copy + Eq + Hash {
+pub trait GamePosition: Clone + Copy + Eq + Hash + Send + Sync {
     type Game: IGame<Position = Self>;
 
     fn new() -> Self;
@@ -55,7 +58,7 @@ pub trait GamePosition: Clone + Copy + Eq + Hash {
     fn print(&self);
 }
 
-pub trait GameMove: Clone + Copy + Eq + Eq + Hash + Display + Debug {
+pub trait GameMove: Clone + Copy + Eq + Hash + Display + Debug + Send + Sync {
     type Game: IGame<Move = Self>;
 
     fn get_flip(&self) -> Self;
