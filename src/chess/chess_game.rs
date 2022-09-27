@@ -310,7 +310,8 @@ impl PartialEq for ChessPosition {
             && b1.pieces(chess::Piece::Rook) == b2.pieces(chess::Piece::Rook)
             && b1.pieces(chess::Piece::Queen) == b2.pieces(chess::Piece::Queen)
             && b1.pieces(chess::Piece::King) == b2.pieces(chess::Piece::King)
-            && b1.castle_rights(chess::Color::White) == b2.castle_rights(chess::Color::Black)
+            && b1.castle_rights(chess::Color::White) == b2.castle_rights(chess::Color::White)
+            && b1.castle_rights(chess::Color::Black) == b2.castle_rights(chess::Color::Black)
             && b1.en_passant() == b2.en_passant()
             && b1.side_to_move() == b2.side_to_move();
     }
