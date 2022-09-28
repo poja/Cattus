@@ -17,7 +17,7 @@ pub trait DataSerializer<Game: IGame>: Sync + Send {
         pos: Game::Position,
         probs: Vec<(Game::Move, f32)>,
         winner: Option<GameColor>,
-        filename: String,
+        filename: &String,
     ) -> std::io::Result<()>;
 }
 
@@ -28,7 +28,7 @@ impl SerializerBase {
         planes: Vec<u64>,
         probs: Vec<(Game::Move, f32)>,
         winner: f32,
-        filename: String,
+        filename: &String,
     ) -> std::io::Result<()> {
         /* Use -1 for illegal moves */
         let mut probs_vec = vec![-1.0f32; MOVES_NUM];
@@ -235,7 +235,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                     pos,
                     probs,
                     winner,
-                    format!(
+                    &format!(
                         "{}/{}{:#08}_{:#03}.json",
                         output_dir, self.data_entries_prefix, game_idx, pos_idx
                     ),

@@ -157,6 +157,36 @@ impl HexPosition {
         return s;
     }
 
+    pub fn from_str(s: &String) -> Self {
+        if s.chars().count() != BOARD_SIZE * BOARD_SIZE + 1 {
+            panic!("unexpected string length")
+        }
+
+        let mut board_red = HexBitboard::new();
+        let mut board_blue = HexBitboard::new();
+        let mut turn = None;
+        for (idx, c) in s.chars().enumerate() {
+            if idx < BOARD_SIZE * BOARD_SIZE {
+                match c {
+                    'e' => {}
+                    'r' => board_red.set(idx, true),
+                    'b' => board_blue.set(idx, true),
+                    _ => panic!("unknown board char: {:?}", c),
+                };
+            } else if idx == BOARD_SIZE * BOARD_SIZE {
+                turn = Some(match c {
+                    'r' => GameColor::Player1,
+                    'b' => GameColor::Player2,
+                    _ => panic!("unknown turn char: {:?}", c),
+                });
+            } else {
+                panic!("Too many chars in position string");
+            }
+        }
+
+        return Self::new_from_board(board_red, board_blue, turn.unwrap());
+    }
+
     pub fn flip_of(pos: &HexPosition) -> Self {
         Self {
             board_red: pos.board_blue.flip(),

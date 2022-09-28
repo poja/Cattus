@@ -18,7 +18,7 @@ impl DataSerializer<ChessGame> for ChessSerializer {
         pos: ChessPosition,
         probs: Vec<(ChessMove, f32)>,
         winner: Option<GameColor>,
-        filename: String,
+        filename: &String,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(winner) as f32;
