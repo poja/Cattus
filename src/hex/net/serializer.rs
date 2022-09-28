@@ -18,7 +18,7 @@ impl DataSerializer<HexGame> for HexSerializer {
         pos: HexPosition,
         probs: Vec<(HexMove, f32)>,
         winner: Option<GameColor>,
-        filename: String,
+        filename: &String,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(winner) as f32;

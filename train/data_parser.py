@@ -41,35 +41,45 @@ class DataParser:
         for filename in filenames_gen:
             yield self.game.load_data_entry(filename)
 
+    @staticmethod
+    def unpack_planes(packed_entry, game, cpu):
+        planes, probs, winner = packed_entry
+        assert planes.dtype == np.uint32 and len(
+            planes) == game.PLANES_NUM
+        plane_size = game.BOARD_SIZE * game.BOARD_SIZE
+        planes = [np.frombuffer(plane, dtype=np.uint8) for plane in planes]
+        planes = [np.unpackbits(
+            plane, count=plane_size, bitorder='little') for plane in planes]
+        planes = np.array(planes, dtype=np.float32)
+        planes = np.reshape(
+            planes, (game.PLANES_NUM, game.BOARD_SIZE, game.BOARD_SIZE))
+        if cpu:
+            planes = np.transpose(planes, (1, 2, 0))
+        return planes, probs, winner
+
     def _unpack_planes_gen(self, nparr_packed_gen):
-        for (planes, probs, winner) in nparr_packed_gen:
-            assert planes.dtype == np.uint32 and len(
-                planes) == self.game.PLANES_NUM
-            plane_size = self.game.BOARD_SIZE * self.game.BOARD_SIZE
-            planes = [np.frombuffer(plane, dtype=np.uint8) for plane in planes]
-            planes = [np.unpackbits(
-                plane, count=plane_size, bitorder='little') for plane in planes]
-            planes = np.array(planes, dtype=np.float32)
-            planes = np.reshape(
-                planes, (self.game.PLANES_NUM, self.game.BOARD_SIZE, self.game.BOARD_SIZE))
-            if self.cpu:
-                planes = np.transpose(planes, (1, 2, 0))
-            yield (planes, probs, winner)
+        for packed_entry in nparr_packed_gen:
+            yield DataParser.unpack_planes(packed_entry, self.game, self.cpu)
+
+    @staticmethod
+    def serialize(nparr_entry, game):
+        planes, probs, winner = nparr_entry
+        f32size = np.dtype(np.float32).itemsize
+        planes = planes.tobytes()
+        plane_size = game.BOARD_SIZE * game.BOARD_SIZE
+        assert len(planes) == (game.PLANES_NUM * plane_size * f32size)
+
+        probs = probs.astype('f').tobytes()
+        assert len(probs) == game.MOVE_NUM * f32size
+
+        winner = struct.pack('f', winner)
+        assert len(winner) == 1 * f32size
+
+        return planes, probs, winner
 
     def _serialize_gen(self, nparr_gen):
-        f32size = np.dtype(np.float32).itemsize
-        for (planes, probs, winner) in nparr_gen:
-            planes = planes.tobytes()
-            plane_size = self.game.BOARD_SIZE * self.game.BOARD_SIZE
-            assert len(planes) == (self.game.PLANES_NUM * plane_size * f32size)
-
-            probs = probs.astype('f').tobytes()
-            assert len(probs) == self.game.MOVE_NUM * f32size
-
-            winner = struct.pack('f', winner)
-            assert len(winner) == 1 * f32size
-
-            yield (planes, probs, winner)
+        for nparr_entry in nparr_gen:
+            yield DataParser.serialize(nparr_entry, self.game)
 
     def generator(self):
         # choose entries
@@ -83,24 +93,29 @@ class DataParser:
 
         yield from bytes_gen
 
-    def _parse_func(self, planes, probs, winner):
+    @staticmethod
+    def bytes_entry_to_tensor(bytes_entry, game, cpu):
         """
         Convert unpacked record to tensors for tensorflow training
         """
+        planes, probs, winner = bytes_entry
         planes = tf.io.decode_raw(planes, tf.float32)
         probs = tf.io.decode_raw(probs, tf.float32)
         winner = tf.io.decode_raw(winner, tf.float32)
 
-        planes_shape_cpu = (1, self.game.BOARD_SIZE,
-                            self.game.BOARD_SIZE, self.game.PLANES_NUM)
-        planes_shape_gpu = (1, self.game.PLANES_NUM,
-                            self.game.BOARD_SIZE, self.game.BOARD_SIZE)
-        planes_shape = planes_shape_cpu if self.cpu else planes_shape_gpu
+        planes_shape_cpu = (1, game.BOARD_SIZE,
+                            game.BOARD_SIZE, game.PLANES_NUM)
+        planes_shape_gpu = (1, game.PLANES_NUM,
+                            game.BOARD_SIZE, game.BOARD_SIZE)
+        planes_shape = planes_shape_cpu if cpu else planes_shape_gpu
         planes = tf.reshape(planes, planes_shape)
-        probs = tf.reshape(probs, (1, self.game.MOVE_NUM))
+        probs = tf.reshape(probs, (1, game.MOVE_NUM))
         winner = tf.reshape(winner, (1, 1))
 
         return (planes, probs, winner)
+
+    def _parse_func(self, planes, probs, winner):
+        return DataParser.bytes_entry_to_tensor((planes, probs, winner), self.game, self.cpu)
 
     def get_parse_func(self):
         return functools.partial(DataParser._parse_func, self)

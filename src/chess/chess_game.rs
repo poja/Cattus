@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use std::str::FromStr;
 
 use crate::game::common::Bitboard;
 use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
@@ -127,6 +128,10 @@ impl ChessPosition {
             board: board,
             fifth_rule_count: 0,
         }
+    }
+
+    pub fn from_str(s: &String) -> Self {
+        Self::new_from_board(chess::Board::from_str(s).unwrap())
     }
 
     pub fn flip_of(pos: &ChessPosition) -> Self {

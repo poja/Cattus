@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
+
 import json
 import logging
 import os
 import shutil
 import subprocess
 
+
 DEBUG = True
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 RL_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
-TMP_DIR = os.path.join(TESTS_DIR, "tmp", "hex_two_headed_net_test")
+TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_hex_two_headed_net")
 CONFIG_FILE = os.path.join(TMP_DIR, "config.json")
-BIN_DIR = os.path.join(RL_TOP, "target", "debug" if DEBUG else "release")
-SELF_PLAY_RUNNER = "{}_self_play_runner"
 PYTHON_MAIN = os.path.join(RL_TOP, "train", "main.py")
 
 

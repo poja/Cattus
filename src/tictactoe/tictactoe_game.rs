@@ -92,6 +92,34 @@ pub struct TicTacToePosition {
 }
 
 impl TicTacToePosition {
+    pub fn from_str(s: &String) -> Self {
+        if s.chars().count() != BOARD_SIZE * BOARD_SIZE + 1 {
+            panic!("unexpected string length")
+        }
+
+        let mut pos = Self::new();
+        for (idx, c) in s.chars().enumerate() {
+            if idx < BOARD_SIZE * BOARD_SIZE {
+                match c {
+                    'x' => pos.board_x.set(idx, true),
+                    'o' => pos.board_o.set(idx, true),
+                    '_' => {}
+                    _ => panic!("unknown board char: {:?}", c),
+                }
+            } else if idx == BOARD_SIZE * BOARD_SIZE {
+                pos.turn = match c {
+                    'x' => GameColor::Player1,
+                    'o' => GameColor::Player2,
+                    _ => panic!("unknown turn char: {:?}", c),
+                };
+            } else {
+                panic!("too many turn chars: {:?}", c);
+            }
+        }
+        pos.check_winner();
+        return pos;
+    }
+
     pub fn pieces_x(&self) -> TtoBitboard {
         self.board_x
     }
