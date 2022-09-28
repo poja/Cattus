@@ -89,7 +89,6 @@ pub struct TicTacToePosition {
     board_o: TtoBitboard,
     turn: GameColor,
     winner: Option<GameColor>,
-    num_empty_tiles: u8,
 }
 
 impl TicTacToePosition {
@@ -123,7 +122,6 @@ impl TicTacToePosition {
         }
         .set(m.to_idx(), true);
 
-        self.num_empty_tiles -= 1;
         self.turn = self.turn.opposite();
         self.check_winner();
     }
@@ -163,7 +161,6 @@ impl TicTacToePosition {
             board_x: pos.board_o,
             board_o: pos.board_x,
             turn: pos.turn.opposite(),
-            num_empty_tiles: pos.num_empty_tiles,
             winner: match pos.winner {
                 Some(w) => Some(w.opposite()),
                 None => None,
@@ -181,7 +178,6 @@ impl GamePosition for TicTacToePosition {
             board_o: Bitboard::new(),
             turn: GameColor::Player1,
             winner: None,
-            num_empty_tiles: (BOARD_SIZE * BOARD_SIZE) as u8,
         }
     }
 
@@ -213,7 +209,7 @@ impl GamePosition for TicTacToePosition {
     }
 
     fn is_over(&self) -> bool {
-        self.winner != None || self.num_empty_tiles == 0
+        self.winner != None || ((self.board_x.get_raw() | self.board_o.get_raw()) == ((1 << 9) - 1))
     }
 
     fn get_winner(&self) -> Option<GameColor> {
