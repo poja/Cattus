@@ -1,29 +1,8 @@
-use crate::game::common::{Bitboard, GameColor, GamePosition, IGame};
-use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToePosition, TtoBitboard, BOARD_SIZE};
+use crate::game::common::Bitboard;
+use crate::tictactoe::tictactoe_game::{TicTacToePosition, TtoBitboard, BOARD_SIZE};
 
 pub const PLANES_NUM: usize = 3;
 pub const MOVES_NUM: usize = BOARD_SIZE * BOARD_SIZE;
-
-pub fn flip_pos_if_needed(pos: TicTacToePosition) -> (TicTacToePosition, bool) {
-    if pos.get_turn() == GameColor::Player1 {
-        return (pos, false);
-    } else {
-        return (TicTacToePosition::flip_of(&pos), true);
-    }
-}
-
-pub fn flip_score_if_needed(
-    net_res: (f32, Vec<(<TicTacToeGame as IGame>::Move, f32)>),
-    pos_flipped: bool,
-) -> (f32, Vec<(<TicTacToeGame as IGame>::Move, f32)>) {
-    if !pos_flipped {
-        return net_res;
-    } else {
-        let (val, moves_probs) = net_res;
-        let val = -val;
-        return (val, moves_probs);
-    }
-}
 
 pub fn position_to_planes(pos: &TicTacToePosition) -> Vec<TtoBitboard> {
     let mut planes = Vec::new();

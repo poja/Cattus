@@ -1,49 +1,8 @@
-use crate::chess::chess_game::{ChessBitboard, ChessGame, ChessMove, ChessPosition};
-use crate::game::common::{Bitboard, GameColor, GamePosition, IGame};
-use itertools::Itertools;
+use crate::chess::chess_game::{ChessBitboard, ChessPosition};
+use crate::game::common::Bitboard;
 
 pub const PLANES_NUM: usize = 18;
 pub const MOVES_NUM: usize = 1880;
-
-pub fn flip_pos_if_needed(pos: ChessPosition) -> (ChessPosition, bool) {
-    if pos.get_turn() == GameColor::Player1 {
-        return (pos, false);
-    } else {
-        return (ChessPosition::flip_of(&pos), true);
-    }
-}
-
-pub fn flip_score_if_needed(
-    net_res: (f32, Vec<(<ChessGame as IGame>::Move, f32)>),
-    pos_flipped: bool,
-) -> (f32, Vec<(<ChessGame as IGame>::Move, f32)>) {
-    if !pos_flipped {
-        return net_res;
-    } else {
-        let (val, moves_probs) = net_res;
-
-        /* Flip scalar value */
-        let val = -val;
-
-        /* Flip moves */
-        let flip_rank = |r: chess::Rank| chess::Rank::from_index(7 - r.to_index());
-        let flip_file = |f: chess::File| f;
-        let flip_square = |s: chess::Square| {
-            chess::Square::make_square(flip_rank(s.get_rank()), flip_file(s.get_file()))
-        };
-        let moves_probs = moves_probs
-            .iter()
-            .map(|(m, p)| {
-                let s = flip_square(m.get_raw().get_source());
-                let d = flip_square(m.get_raw().get_dest());
-                let promotion = m.get_raw().get_promotion();
-                (ChessMove::new(chess::ChessMove::new(s, d, promotion)), *p)
-            })
-            .collect_vec();
-
-        return (val, moves_probs);
-    }
-}
 
 pub fn position_to_planes(pos: &ChessPosition) -> Vec<ChessBitboard> {
     let mut planes = Vec::new();

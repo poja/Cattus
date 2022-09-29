@@ -41,6 +41,10 @@ impl TicTacToeMove {
 impl GameMove for TicTacToeMove {
     type Game = TicTacToeGame;
 
+    fn get_flip(&self) -> Self {
+        return *self;
+    }
+
     fn to_nn_idx(&self) -> usize {
         self.idx as usize
     }
@@ -183,18 +187,6 @@ impl TicTacToePosition {
         }
         self.winner = None;
     }
-
-    pub fn flip_of(pos: &TicTacToePosition) -> Self {
-        Self {
-            board_x: pos.board_o,
-            board_o: pos.board_x,
-            turn: pos.turn.opposite(),
-            winner: match pos.winner {
-                Some(w) => Some(w.opposite()),
-                None => None,
-            },
-        }
-    }
 }
 
 impl GamePosition for TicTacToePosition {
@@ -225,11 +217,7 @@ impl GamePosition for TicTacToePosition {
         return moves;
     }
 
-    fn get_moved_position(
-        &self,
-        m: <Self::Game as IGame>::Move,
-    ) -> <Self::Game as IGame>::Position {
-        // TODO this is duplicated from hex_game
+    fn get_moved_position(&self, m: <Self::Game as IGame>::Move) -> Self {
         assert!(self.is_valid_move(m));
         let mut res = self.clone();
         res.make_move(m);
@@ -243,6 +231,18 @@ impl GamePosition for TicTacToePosition {
     fn get_winner(&self) -> Option<GameColor> {
         assert!(self.is_over());
         self.winner
+    }
+
+    fn get_flip(&self) -> Self {
+        Self {
+            board_x: self.board_o,
+            board_o: self.board_x,
+            turn: self.turn.opposite(),
+            winner: match self.winner {
+                Some(w) => Some(w.opposite()),
+                None => None,
+            },
+        }
     }
 
     fn print(&self) -> () {
@@ -268,8 +268,6 @@ impl TicTacToeGame {}
 impl IGame for TicTacToeGame {
     type Position = TicTacToePosition;
     type Move = TicTacToeMove;
-
-    // TODO this is duplicated from hex_game
 
     fn new() -> Self {
         Self {

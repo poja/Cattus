@@ -1,4 +1,5 @@
 use crate::game::common::{GameColor, GamePosition};
+use crate::game::net;
 use crate::game::self_play::{DataSerializer, SerializerBase};
 use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 use crate::hex::net::common::{self, MOVES_NUM};
@@ -22,8 +23,8 @@ impl DataSerializer<HexGame> for HexSerializer {
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(winner) as f32;
-        let (pos, is_flipped) = common::flip_pos_if_needed(pos);
-        let (winner, probs) = common::flip_score_if_needed((winner, probs), is_flipped);
+        let (pos, is_flipped) = net::flip_pos_if_needed(pos);
+        let (winner, probs) = net::flip_score_if_needed((winner, probs), is_flipped);
         assert!(pos.get_turn() == GameColor::Player1);
 
         let planes = common::position_to_planes(&pos)
