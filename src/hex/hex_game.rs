@@ -33,6 +33,10 @@ impl HexMove {
 impl GameMove for HexMove {
     type Game = HexGame;
 
+    fn get_flip(&self) -> Self {
+        HexMove::new(self.column(), self.row())
+    }
+
     fn to_nn_idx(&self) -> usize {
         self.idx as usize
     }
@@ -187,21 +191,6 @@ impl HexPosition {
         return Self::new_from_board(board_red, board_blue, turn.unwrap());
     }
 
-    pub fn flip_of(pos: &HexPosition) -> Self {
-        Self {
-            board_red: pos.board_blue.flip(),
-            board_blue: pos.board_red.flip(),
-            turn: pos.turn.opposite(),
-            left_red_reach: pos.top_blue_reach.flip(),
-            top_blue_reach: pos.left_red_reach.flip(),
-            number_of_empty_tiles: pos.number_of_empty_tiles,
-            winner: match pos.winner {
-                Some(w) => Some(w.opposite()),
-                None => None,
-            },
-        }
-    }
-
     pub fn pieces_red(&self) -> HexBitboard {
         self.board_red
     }
@@ -328,10 +317,7 @@ impl GamePosition for HexPosition {
         return moves;
     }
 
-    fn get_moved_position(
-        &self,
-        m: <Self::Game as IGame>::Move,
-    ) -> <Self::Game as IGame>::Position {
+    fn get_moved_position(&self, m: <Self::Game as IGame>::Move) -> Self {
         assert!(self.is_valid_move(m));
         let mut res = self.clone();
         res.make_move(m);
@@ -347,8 +333,22 @@ impl GamePosition for HexPosition {
         self.winner
     }
 
+    fn get_flip(&self) -> Self {
+        Self {
+            board_red: self.board_blue.flip(),
+            board_blue: self.board_red.flip(),
+            turn: self.turn.opposite(),
+            left_red_reach: self.top_blue_reach.flip(),
+            top_blue_reach: self.left_red_reach.flip(),
+            number_of_empty_tiles: self.number_of_empty_tiles,
+            winner: match self.winner {
+                Some(w) => Some(w.opposite()),
+                None => None,
+            },
+        }
+    }
+
     fn print(&self) -> () {
-        // TODO there's a RUST way to print
         for r in 0..BOARD_SIZE {
             let row_characters: Vec<String> = (0..BOARD_SIZE)
                 .map(|c| {

@@ -44,20 +44,21 @@ pub trait IGame {
 
 pub trait GamePosition: Clone + Copy + Eq + Hash {
     type Game: IGame<Position = Self>;
+
     fn new() -> Self;
     fn get_turn(&self) -> GameColor;
-    // TODO change get_legal_moves to return iterator
     fn get_legal_moves(&self) -> Vec<<Self::Game as IGame>::Move>;
-    fn get_moved_position(&self, m: <Self::Game as IGame>::Move)
-        -> <Self::Game as IGame>::Position;
+    fn get_moved_position(&self, m: <Self::Game as IGame>::Move) -> Self;
     fn is_over(&self) -> bool;
     fn get_winner(&self) -> Option<GameColor>;
+    fn get_flip(&self) -> Self;
     fn print(&self);
 }
 
 pub trait GameMove: Clone + Copy + Eq + std::cmp::Eq + std::hash::Hash + std::fmt::Debug {
     type Game: IGame<Move = Self>;
 
+    fn get_flip(&self) -> Self;
     fn to_nn_idx(&self) -> usize;
 }
 

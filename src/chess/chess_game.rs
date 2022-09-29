@@ -66,6 +66,18 @@ impl ChessMove {
 impl GameMove for ChessMove {
     type Game = ChessGame;
 
+    fn get_flip(&self) -> Self {
+        let flip_rank = |r: chess::Rank| chess::Rank::from_index(7 - r.to_index());
+        let flip_file = |f: chess::File| f;
+        let flip_square = |s: chess::Square| {
+            chess::Square::make_square(flip_rank(s.get_rank()), flip_file(s.get_file()))
+        };
+        let s = flip_square(self.m.get_source());
+        let d = flip_square(self.m.get_dest());
+        let promotion = self.m.get_promotion();
+        return ChessMove::new(chess::ChessMove::new(s, d, promotion));
+    }
+
     fn to_nn_idx(&self) -> usize {
         MOVE_TO_NN_INDEX[self.to_idx()] as usize
     }
@@ -134,45 +146,6 @@ impl ChessPosition {
         Self::new_from_board(chess::Board::from_str(s).unwrap())
     }
 
-    pub fn flip_of(pos: &ChessPosition) -> Self {
-        let b = &pos.board;
-
-        let flip_rank = |r: chess::Rank| chess::Rank::from_index(7 - r.to_index());
-        let flip_file = |f: chess::File| f;
-        let flip_square = |s: chess::Square| {
-            chess::Square::make_square(flip_rank(s.get_rank()), flip_file(s.get_file()))
-        };
-
-        let pieces = b
-            .combined()
-            .into_iter()
-            .map(|square| {
-                (
-                    flip_square(square),
-                    b.piece_on(square).unwrap(),
-                    !b.color_on(square).unwrap(),
-                )
-            })
-            .collect_vec();
-
-        let board = chess::Board::try_from(chess::BoardBuilder::setup(
-            pieces.iter(),
-            !b.side_to_move(),
-            b.castle_rights(chess::Color::Black),
-            b.castle_rights(chess::Color::White),
-            match b.en_passant() {
-                None => None,
-                Some(square) => Some(flip_file(square.get_file())),
-            },
-        ))
-        .expect("unable to flip board");
-
-        return Self {
-            board: board,
-            fifth_rule_count: pos.fifth_rule_count,
-        };
-    }
-
     pub fn is_valid_move(&self, m: ChessMove) -> bool {
         !self.is_over() && self.board.legal(m.m)
     }
@@ -229,10 +202,7 @@ impl GamePosition for ChessPosition {
             .collect_vec()
     }
 
-    fn get_moved_position(
-        &self,
-        m: <Self::Game as IGame>::Move,
-    ) -> <Self::Game as IGame>::Position {
+    fn get_moved_position(&self, m: <Self::Game as IGame>::Move) -> Self {
         assert!(self.is_valid_move(m));
 
         let mut next_board = ChessPosition::new_from_board(self.board.make_move_new(m.m));
@@ -272,6 +242,45 @@ impl GamePosition for ChessPosition {
                 // looks valid according to https://docs.rs/chess/latest/src/chess/game.rs.html#98-105
                 Some(self.get_turn().opposite())
             }
+        };
+    }
+
+    fn get_flip(&self) -> Self {
+        let b = &self.board;
+
+        let flip_rank = |r: chess::Rank| chess::Rank::from_index(7 - r.to_index());
+        let flip_file = |f: chess::File| f;
+        let flip_square = |s: chess::Square| {
+            chess::Square::make_square(flip_rank(s.get_rank()), flip_file(s.get_file()))
+        };
+
+        let pieces = b
+            .combined()
+            .into_iter()
+            .map(|square| {
+                (
+                    flip_square(square),
+                    b.piece_on(square).unwrap(),
+                    !b.color_on(square).unwrap(),
+                )
+            })
+            .collect_vec();
+
+        let board = chess::Board::try_from(chess::BoardBuilder::setup(
+            pieces.iter(),
+            !b.side_to_move(),
+            b.castle_rights(chess::Color::Black),
+            b.castle_rights(chess::Color::White),
+            match b.en_passant() {
+                None => None,
+                Some(square) => Some(flip_file(square.get_file())),
+            },
+        ))
+        .expect("unable to flip board");
+
+        return Self {
+            board: board,
+            fifth_rule_count: self.fifth_rule_count,
         };
     }
 

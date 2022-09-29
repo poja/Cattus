@@ -5,7 +5,7 @@ use itertools::Itertools;
 use rl::chess::chess_game::{self, ChessBitboard, ChessPosition};
 use rl::chess::net::serializer::ChessSerializer;
 use rl::game::common::{GameColor, GamePosition, IGame};
-use rl::game::net::TwoHeadedNetBase;
+use rl::game::net;
 use rl::game::self_play::DataSerializer;
 use rl::hex::hex_game::{self, HexBitboard, HexPosition};
 use rl::hex::net::serializer::HexSerializer;
@@ -44,8 +44,7 @@ fn test_tictactoe(args: Args) -> std::io::Result<()> {
     let pos = TicTacToePosition::from_str(&args.position);
 
     let planes = tictactoe::net::common::position_to_planes(&pos);
-    let tensor =
-        TwoHeadedNetBase::planes_to_tensor::<TtoBitboard, { tictactoe_game::BOARD_SIZE }>(planes);
+    let tensor = net::planes_to_tensor::<TtoBitboard, { tictactoe_game::BOARD_SIZE }>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
     let serializer = TicTacToeSerializer::new();
@@ -56,8 +55,7 @@ fn test_hex(args: Args) -> std::io::Result<()> {
     let pos = HexPosition::from_str(&args.position);
 
     let planes = hex::net::common::position_to_planes(&pos);
-    let tensor =
-        TwoHeadedNetBase::planes_to_tensor::<HexBitboard, { hex_game::BOARD_SIZE }>(planes);
+    let tensor = net::planes_to_tensor::<HexBitboard, { hex_game::BOARD_SIZE }>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
     let serializer = HexSerializer::new();
@@ -68,8 +66,7 @@ fn test_chess(args: Args) -> std::io::Result<()> {
     let pos = ChessPosition::from_str(&args.position);
 
     let planes = chess::net::common::position_to_planes(&pos);
-    let tensor =
-        TwoHeadedNetBase::planes_to_tensor::<ChessBitboard, { chess_game::BOARD_SIZE }>(planes);
+    let tensor = net::planes_to_tensor::<ChessBitboard, { chess_game::BOARD_SIZE }>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
     let serializer = ChessSerializer::new();
