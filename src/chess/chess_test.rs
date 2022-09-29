@@ -28,7 +28,7 @@ mod tests {
     }
 
     #[test]
-    fn fifth_rule_count() {
+    fn fifty_rule_count() {
         let mut pos = ChessPosition::new();
 
         let moves = vec![
