@@ -131,14 +131,14 @@ impl Bitboard for ChessBitboard {
 #[derive(Copy, Clone)]
 pub struct ChessPosition {
     board: chess::Board,
-    fifth_rule_count: u8,
+    fifty_rule_count: u8,
 }
 
 impl ChessPosition {
     fn new_from_board(board: chess::Board) -> Self {
         Self {
             board: board,
-            fifth_rule_count: 0,
+            fifty_rule_count: 0,
         }
     }
 
@@ -211,26 +211,26 @@ impl GamePosition for ChessPosition {
         let is_pawn = piece.is_some() && piece.unwrap() == chess::Piece::Pawn;
         let is_atk = self.board.piece_on(m.m.get_dest()).is_some();
 
-        next_board.fifth_rule_count = if is_pawn || is_atk {
+        next_board.fifty_rule_count = if is_pawn || is_atk {
             0
         } else if self.get_turn() == GameColor::Player1 {
             /* The move count is incremented only once per white+black move */
-            self.fifth_rule_count + 1
+            self.fifty_rule_count + 1
         } else {
-            self.fifth_rule_count
+            self.fifty_rule_count
         };
 
         return next_board;
     }
 
     fn is_over(&self) -> bool {
-        self.board.status() != chess::BoardStatus::Ongoing || self.fifth_rule_count >= 50
+        self.board.status() != chess::BoardStatus::Ongoing || self.fifty_rule_count >= 50
     }
 
     fn get_winner(&self) -> Option<GameColor> {
         return match self.board.status() {
             chess::BoardStatus::Ongoing => {
-                if self.fifth_rule_count >= 50 {
+                if self.fifty_rule_count >= 50 {
                     return None;
                 } else {
                     panic!("Game is not over")
@@ -280,7 +280,7 @@ impl GamePosition for ChessPosition {
 
         return Self {
             board: board,
-            fifth_rule_count: self.fifth_rule_count,
+            fifty_rule_count: self.fifty_rule_count,
         };
     }
 
