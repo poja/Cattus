@@ -116,4 +116,26 @@ mod tests {
         );
         assert!(!pos.is_over());
     }
+
+    #[test]
+    fn flip() {
+        let pos = HexPosition::from_str(
+            &"eebeeeeeeer\
+        eeeeeeeeeee\
+        eeeebeeeree\
+        eeeeeeereee\
+        eeeeeereeee\
+        eeeeereeeee\
+        eeeerebeeee\
+        eeereeeeeee\
+        eereeereeee\
+        ereeeeeeeee\
+        reeeeebeeee\
+        b"
+            .to_string(),
+        );
+        assert!(pos.get_turn() == GameColor::Player2);
+        assert!(pos.get_flip().get_turn() == GameColor::Player1);
+        assert!(pos.get_flip().get_flip() == pos);
+    }
 }
