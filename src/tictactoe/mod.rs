@@ -1,3 +1,5 @@
+pub mod cmd_player;
 pub mod net;
 pub mod tictactoe_game;
-pub mod cmd_player;
+
+mod ttt_test;

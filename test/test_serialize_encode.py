@@ -38,7 +38,14 @@ def run_test():
             "game_name": "tictactoe",
             "game_obj": TicTacToe(),
             "positions": [
-                "xo__x_xoox"
+                "___x__o_ox",
+                "oox__oo_xo",
+                "o_xx_x__ox",
+                "o__xo__xxx",
+                "o___x_o__x",
+                "_o___xx__o",
+                "oo__x____x",
+                "oo__o__oxx",
             ]
         },
         {
