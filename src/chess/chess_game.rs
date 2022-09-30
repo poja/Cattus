@@ -153,6 +153,109 @@ impl ChessPosition {
     pub fn get_raw_board(&self) -> &chess::Board {
         &self.board
     }
+
+    pub fn fen(&self) -> String {
+        let b = &self.board;
+        let mut s = String::default();
+
+        for reverse_rnk in 0..8 {
+            let mut blanks = 0;
+            let rank = 7 - reverse_rnk;
+
+            if reverse_rnk != 0 {
+                s.push('/');
+            }
+
+            for file in 0..8 {
+                let sq = chess::Square::make_square(
+                    chess::Rank::from_index(rank),
+                    chess::File::from_index(file),
+                );
+                match b.piece_on(sq) {
+                    Some(piece) => {
+                        if blanks != 0 {
+                            s.push(char::from_digit(blanks, 10).unwrap());
+                            blanks = 0;
+                        }
+                        let mut c = match piece {
+                            chess::Piece::Pawn => 'P',
+                            chess::Piece::Knight => 'N',
+                            chess::Piece::Bishop => 'B',
+                            chess::Piece::Rook => 'R',
+                            chess::Piece::Queen => 'Q',
+                            chess::Piece::King => 'K',
+                        };
+                        if b.color_on(sq).unwrap() == chess::Color::Black {
+                            c = c.to_lowercase().into_iter().next().unwrap();
+                        }
+                        s.push(c);
+                    }
+                    None => blanks += 1,
+                }
+            }
+            if blanks != 0 {
+                s.push(char::from_digit(blanks, 10).unwrap());
+            }
+        }
+
+        s.push(' ');
+        // current turn
+        s.push(match b.side_to_move() {
+            chess::Color::White => 'w',
+            chess::Color::Black => 'b',
+        });
+        s.push(' ');
+
+        // Castling State
+        let cr_w = b.castle_rights(chess::Color::White);
+        let cr_b = b.castle_rights(chess::Color::Black);
+        let cr_str =
+            if cr_w == chess::CastleRights::NoRights && cr_b == chess::CastleRights::NoRights {
+                "-".to_string()
+            } else {
+                let mut s = String::default();
+                if cr_w.has_kingside() {
+                    s.push('K');
+                }
+                if cr_w.has_queenside() {
+                    s.push('Q');
+                }
+
+                if cr_b.has_kingside() {
+                    s.push('k');
+                }
+
+                if cr_b.has_queenside() {
+                    s.push('q');
+                }
+                assert!(!s.is_empty());
+                s
+            };
+        s.push_str(&cr_str);
+        s.push(' ');
+
+        // EP Square
+        match b.en_passant() {
+            Some(sq) => {
+                let rank_idx = (sq.get_rank().to_index() as i64
+                    /* The 'chess' library return the square of the pawn, while FEN */
+                    /* include the square over which a pawn has just passed */
+                    + match b.side_to_move() {
+                        chess::Color::White => 1,
+                        chess::Color::Black => -1,
+                    }) as usize;
+                s.push(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'][sq.get_file().to_index()]);
+                s.push(['1', '2', '3', '4', '5', '6', '7', '8'][rank_idx]);
+            }
+            None => s.push('-'),
+        }
+        // s.push(' ');
+        // s.push_str(&format!("{}", self.rule_50()));
+        // s.push(' ');
+        // s.push_str(&format!("{}", (self.half_moves / 2) + 1));
+
+        return s;
+    }
 }
 
 fn chess_color_to_game_color(c: chess::Color) -> GameColor {
