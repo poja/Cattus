@@ -1,6 +1,6 @@
 use rl::chess::chess_game::ChessGame;
 use rl::chess::net::serializer::ChessSerializer;
-use rl::chess::net::two_headed_net::TwoHeadedNet;
+use rl::chess::net::net_tf_two_headed::TwoHeadedNet;
 use rl::game::mcts::ValueFunction;
 use rl::game::self_play_cmd::{run_main, ValueFunctionBuilder};
 

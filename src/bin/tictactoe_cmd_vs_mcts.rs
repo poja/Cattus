@@ -14,14 +14,15 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let mut player2 = TttPlayerCmd::new();
 
     let value_func = Box::new(TwoHeadedNet::new(&args.model_path));
-    let mut mcts_player = MCTSPlayer::new_custom(1000, 1.41421, value_func);
+    let mut player1 = MCTSPlayer::new_custom(1000, 1.41421, value_func);
+
+    let mut player2 = TttPlayerCmd::new();
 
     let mut game = TicTacToeGame::new();
 
-    let (final_pos, winner) = game.play_until_over(&mut mcts_player, &mut player2);
+    let (final_pos, winner) = game.play_until_over(&mut player1, &mut player2);
     println!("The winner is: {}, details below:", color_to_str(winner));
     final_pos.print();
 }

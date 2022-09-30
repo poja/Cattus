@@ -47,7 +47,7 @@ impl TwoHeadedNetBase {
         }
     }
 
-    fn run_net(&self, input: Tensor<f32>) -> (f32, Tensor<f32>) {
+    fn run_net(&self, input: Tensor<f32>) -> (f32, Vec<f32>) {
         let mut args = SessionRunArgs::new();
         args.add_feed(&self.input_op, 0, &input);
         let output_scalar = args.request_fetch(&self.value_head, 1);
@@ -63,12 +63,11 @@ impl TwoHeadedNetBase {
             val = 0.0;
         }
 
-        let mut moves_scores: Tensor<f32> = args.fetch(output_moves_scores).unwrap();
-        for idx in 0..moves_scores.len() {
-            if moves_scores[idx].is_nan() {
-                moves_scores[idx] = f32::MIN;
-            }
-        }
+        let moves_scores: Tensor<f32> = args.fetch(output_moves_scores).unwrap();
+        let moves_scores = moves_scores
+            .into_iter()
+            .map(|s| if s.is_nan() { f32::MIN } else { *s })
+            .collect_vec();
 
         return (val, moves_scores);
     }
@@ -85,12 +84,12 @@ impl TwoHeadedNetBase {
         let (val, move_scores) = self.run_net(input);
 
         let moves = flipped_pos.get_legal_moves();
-        let moves_probs = TwoHeadedNetBase::calc_moves_probs(moves, move_scores);
+        let moves_probs = TwoHeadedNetBase::calc_moves_probs(moves, &move_scores);
 
         return flip_score_if_needed((val, moves_probs), is_flipped);
     }
 
-    fn calc_moves_probs<M: GameMove>(moves: Vec<M>, move_scores: Tensor<f32>) -> Vec<(M, f32)> {
+    pub fn calc_moves_probs<M: GameMove>(moves: Vec<M>, move_scores: &Vec<f32>) -> Vec<(M, f32)> {
         let moves_scores = moves
             .iter()
             .map(|m| move_scores[m.to_nn_idx()])
