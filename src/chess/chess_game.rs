@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::{self, Display};
 use std::hash::{Hash, Hasher};
 use std::str::FromStr;
 
@@ -32,11 +33,37 @@ impl ChessMove {
         Self { m: m }
     }
 
-    pub fn from_str(pos: &ChessPosition, move_text: &str) -> Result<Self, String> {
-        return match chess::ChessMove::from_san(&pos.board, move_text) {
+    pub fn from_san(pos: &ChessPosition, move_str: &str) -> Result<Self, String> {
+        return match chess::ChessMove::from_san(&pos.board, move_str) {
             Ok(m) => Ok(Self::new(m)),
             Err(e) => Err(err_to_str(e)),
         };
+    }
+
+    pub fn from_lan(move_str: &str) -> Result<Self, String> {
+        if !(move_str.len() == 4 || move_str.len() == 5) {
+            return Err("Invalid LAN length".to_string());
+        }
+        let sf = chess::File::from_index(move_str.chars().nth(0).unwrap() as usize - 'a' as usize);
+        let sr = chess::Rank::from_index(move_str.chars().nth(1).unwrap() as usize - '1' as usize);
+        let df = chess::File::from_index(move_str.chars().nth(2).unwrap() as usize - 'a' as usize);
+        let dr = chess::Rank::from_index(move_str.chars().nth(3).unwrap() as usize - '1' as usize);
+        let source = chess::Square::make_square(sr, sf);
+        let dest = chess::Square::make_square(dr, df);
+        let promotion = if move_str.len() == 5 {
+            Some(match move_str.chars().nth(4).unwrap() {
+                'q' => chess::Piece::Queen,
+                'k' => chess::Piece::Knight,
+                'r' => chess::Piece::Rook,
+                'b' => chess::Piece::Bishop,
+                c => return Err(format!("Unknown promotion char: {:?}", c)),
+            })
+        } else {
+            None
+        };
+        return Ok(ChessMove::new(chess::ChessMove::new(
+            source, dest, promotion,
+        )));
     }
 
     pub fn get_raw(&self) -> &chess::ChessMove {
@@ -80,6 +107,12 @@ impl GameMove for ChessMove {
 
     fn to_nn_idx(&self) -> usize {
         MOVE_TO_NN_INDEX[self.to_idx()] as usize
+    }
+}
+
+impl Display for ChessMove {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.m.fmt(f)
     }
 }
 
@@ -662,27 +695,7 @@ static NN_INDEX_TO_MOVE: Lazy<Vec<ChessMove>> = Lazy::new(|| {
         "h7g8r", "h7g8b", "h7g8k", "h7h8q", "h7h8r", "h7h8b", "h7h8k",
     ]
     .into_iter()
-    .map(|s| {
-        assert!(s.len() == 4 || s.len() == 5);
-        let sf = chess::File::from_index(s.chars().nth(0).unwrap() as usize - 'a' as usize);
-        let sr = chess::Rank::from_index(s.chars().nth(1).unwrap() as usize - '1' as usize);
-        let df = chess::File::from_index(s.chars().nth(2).unwrap() as usize - 'a' as usize);
-        let dr = chess::Rank::from_index(s.chars().nth(3).unwrap() as usize - '1' as usize);
-        let source = chess::Square::make_square(sr, sf);
-        let dest = chess::Square::make_square(dr, df);
-        let promotion = if s.len() == 5 {
-            Some(match s.chars().nth(4).unwrap() {
-                'q' => chess::Piece::Queen,
-                'k' => chess::Piece::Knight,
-                'r' => chess::Piece::Rook,
-                'b' => chess::Piece::Bishop,
-                c => panic!("unknown char: {:?}", c),
-            })
-        } else {
-            None
-        };
-        return ChessMove::new(chess::ChessMove::new(source, dest, promotion));
-    })
+    .map(|s| ChessMove::from_lan(s).unwrap())
     .collect_vec()
 });
 
