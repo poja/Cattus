@@ -18,7 +18,7 @@ impl GamePlayer<ChessGame> for ChessPlayerCmd {
                 .read_line(&mut line)
                 .expect("failed to read input");
 
-            match ChessMove::from_str(position, line.trim()) {
+            match ChessMove::from_san(position, line.trim()) {
                 Err(e) => {
                     println!("invalid number: {}", e);
                     return None;

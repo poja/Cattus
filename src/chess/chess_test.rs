@@ -13,7 +13,7 @@ mod tests {
         ];
         for move_str in moves {
             assert!(!pos.is_over());
-            let m = match ChessMove::from_str(&pos, move_str) {
+            let m = match ChessMove::from_san(&pos, move_str) {
                 Ok(m) => m,
                 Err(msg) => {
                     println!("failed: {}", msg);
@@ -61,7 +61,7 @@ mod tests {
         ];
         for move_str in moves {
             assert!(!pos.is_over());
-            let m = match ChessMove::from_str(&pos, move_str) {
+            let m = match ChessMove::from_san(&pos, move_str) {
                 Ok(m) => m,
                 Err(msg) => {
                     println!("failed: {}", msg);

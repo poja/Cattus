@@ -1,4 +1,5 @@
 use crate::game::common::{Bitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
+use std::fmt::{self, Display};
 
 pub const BOARD_SIZE: usize = 3;
 
@@ -47,6 +48,12 @@ impl GameMove for TicTacToeMove {
 
     fn to_nn_idx(&self) -> usize {
         self.idx as usize
+    }
+}
+
+impl Display for TicTacToeMove {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {})", self.row(), self.column())
     }
 }
 

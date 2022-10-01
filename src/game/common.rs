@@ -1,4 +1,4 @@
-use std::hash::Hash;
+use std::{hash::Hash, fmt::{Debug, Display}};
 
 use rand::Rng;
 
@@ -55,7 +55,7 @@ pub trait GamePosition: Clone + Copy + Eq + Hash {
     fn print(&self);
 }
 
-pub trait GameMove: Clone + Copy + Eq + std::cmp::Eq + std::hash::Hash + std::fmt::Debug {
+pub trait GameMove: Clone + Copy + Eq + Eq + Hash + Display + Debug {
     type Game: IGame<Move = Self>;
 
     fn get_flip(&self) -> Self;
