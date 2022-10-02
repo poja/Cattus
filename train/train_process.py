@@ -130,7 +130,7 @@ class TrainProcess:
         train_dataset = train_dataset.prefetch(4)
 
         logging.info("Fitting new model...")
-        history = model.fit(train_dataset, epochs=1, verbose=0).history
+        history = model.fit(train_dataset, epochs=30, verbose=2).history
         metrics = {
             "value loss": history["value_head_loss"][0],
             "policy loss": history["policy_head_loss"][0],

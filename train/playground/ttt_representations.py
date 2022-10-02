@@ -7,25 +7,31 @@ class Ttt:
         self.board = [ ' ' ] * 9
      
     @classmethod   
-    def from_planes(cls, planes):
+    def from_planes(cls, planes, cpu):
+        assert cpu == True
+        planes = np.transpose(planes, (2, 0, 1))
+        
         t = cls()
         planes = planes.reshape((27,))
-        for i in planes[:9]:
-            if planes[i] == 1:
-                t.board = 'X'
+        for i, c in enumerate(planes[:9]):
+            if c == 1:
+                t.board[i] = 'X'
                 
-        for i in planes[9:18]:
-            if planes[9+i] == 1:
-                t.board = 'O'
+        for i, c in enumerate(planes[9:18]):
+            if c == 1:
+                assert t.board[i] == ' '
+                t.board[i] = 'O'
         
         return t    
     
-    def to_planes(self):
-        return np.array(
+    def to_planes(self, cpu):
+        assert cpu == True
+        planes = np.array(
             [int(c == 'X') for c in self.board] +
             [int(c == 'O') for c in self.board] +
             [1] * 9
         ).reshape((1,3,3,3))
+        return np.transpose(planes, (0, 2, 3, 1))
 
     
     @classmethod
@@ -44,7 +50,6 @@ class Ttt:
             i += 1
         return t
     
-    @classmethod
     def __str__(self):
         b = self.board
         return f'{b[0]}{b[1]}{b[2]}\n{b[3]}{b[4]}{b[5]}\n{b[6]}{b[7]}{b[8]}' 

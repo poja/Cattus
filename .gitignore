@@ -7,3 +7,8 @@ __pycache__/
 output/
 venv/
 workarea/
+.DS_Store
+workarea_nettest
+workarea_nettest2
+workarea_nettest3
+

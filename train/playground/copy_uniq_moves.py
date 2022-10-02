@@ -3,15 +3,16 @@ from pathlib import Path
 import shutil
 
 
-WORKDIR = Path(r'/Users/yishai/work/RL/workarea_nettest/')
+WORKDIR = Path(r'/Users/yishai/work/RL/workarea_nettest3/')
 
 def get_all_moves():
-    training_iteration : Path = WORKDIR / 'games' / '220924_154327_00000_11915216593680640006'
+    training_iteration : Path = WORKDIR / 'games' / '221002_171659_00000_4418645149476772613'
     for f in training_iteration.iterdir():
         yield f
         
 def main():
     dest_folder = WORKDIR / 'uniq_moves'
+    dest_folder.mkdir(exist_ok=True)
     all_seen_moves = set()
     for f in get_all_moves():
         content = open(f, 'rb').read()

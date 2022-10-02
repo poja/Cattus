@@ -1,7 +1,9 @@
 
 import copy
 import json
+import os
 from pathlib import Path
+import shutil
 from train.hex import Hex
 from train.tictactoe import TicTacToe
 
@@ -11,8 +13,8 @@ from train.train_process import TrainProcess
 WORKDIR = Path(r'/Users/yishai/work/RL/workarea_nettest/')
 TRAIN_DATA_DIR = WORKDIR / 'uniq_moves'
 CFG = Path('/Users/yishai/work/RL/train/config_nettest.json')
-BASE_MODEL_PATH = WORKDIR / 'models' / 'model_220924_154327'
-OUTPUT = WORKDIR / 'models' / 'myfit'
+# BASE_MODEL_PATH = WORKDIR / 'models' / 'model_220924_154327'
+OUTPUT = WORKDIR / 'models' / 'myfit2'
 
 
 class PlainTrain(TrainProcess):
@@ -22,11 +24,17 @@ class PlainTrain(TrainProcess):
         
         self.game = TicTacToe()
         self.net_type = self.cfg["model"]["type"]
+        self.cfg['models_dir'] = WORKDIR / 'models'
 
         
     def train(self):
-        output_model = self._train(BASE_MODEL_PATH, TRAIN_DATA_DIR)
-        output_model.save(OUTPUT, save_format='tf')
+        base_model = self.game.create_model(self.net_type, self.cfg)
+        base_model_path = WORKDIR / 'models' / 'base'
+        base_model.save(base_model_path, save_format='tf')
+
+        output_path, _ = self._train(base_model_path, TRAIN_DATA_DIR)
+        shutil.rmtree(OUTPUT)
+        shutil.copytree(output_path, OUTPUT)
 
         
 

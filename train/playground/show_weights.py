@@ -10,11 +10,7 @@ custom_objects = {
                 "policy_head_accuracy": net_utils.policy_head_accuracy}
 model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
 
-def check(s):
-    output = model(Ttt.from_str(s).to_planes(True))
-    print(output)
-
-
-check('.........')
-import IPython; IPython.embed()
-
+for layer in model.layers:
+    weights = layer.get_weights() # list of numpy arrays
+    print(weights)
+    

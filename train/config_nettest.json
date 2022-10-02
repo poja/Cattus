@@ -8,7 +8,6 @@
     "self_play": {
         "iterations": 1,
         "games_num": 10000,
-        "exec": "{}_self_play_runner",
         "threads": 8
     },
     "model": {
@@ -19,12 +18,13 @@
         "l2reg": 0.00005
     },
     "training": {
-        "entries_count": 10000,
+        "latest_data_entries": 16384,
+        "iteration_data_entries": 1024,
+        "batch_size": 32,
         "compare": {
             "games_num": 20,
             "switching_winning_threshold": 0.55,
             "warning_losing_threshold": 0.55,
-            "exec": "{}_player_comparator",
             "threads": 8
         }
     },

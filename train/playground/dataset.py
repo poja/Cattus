@@ -2,8 +2,6 @@ from train.data_parser import DataParser
 import tensorflow as tf
 from train.tictactoe import TicTacToe
 
-tf.config.run_functions_eagerly(True)
-
 training_games_dir = '/Users/yishai/work/RL/workarea_nettest/uniq_moves'
 game = TicTacToe()
 parser = DataParser(game, training_games_dir, 10000)
