@@ -25,7 +25,10 @@ def loss_cross_entropy(target, output):
     target, output = mask_illegal_moves(target, output)
     policy_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
         labels=tf.stop_gradient(target), logits=output)
-    return tf.reduce_mean(input_tensor=policy_cross_entropy)
+    return tf.reduce_mean(input_tensor=policy_cross_entropy) * 1e-12
+
+def loss_const_0(target, output):
+    return tf.constant(0.0)
 
 
 def policy_head_accuracy(target, output):

@@ -23,9 +23,10 @@ train_dataset = train_dataset.prefetch(4)
 
 model_path = '/Users/yishai/work/RL/workarea_nettest/models/myfit2'
 custom_objects = {
-                # "loss_const_0": net_utils.loss_const_0,
+                "loss_const_0": net_utils.loss_const_0,
                 "loss_cross_entropy": net_utils.loss_cross_entropy,
-                "policy_head_accuracy": net_utils.policy_head_accuracy}
+                "policy_head_accuracy": net_utils.policy_head_accuracy,
+                "value_head_accuracy": net_utils.value_head_accuracy}
 model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
 
 
@@ -33,8 +34,8 @@ model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
 hashable_dataset = [(np.array(pl).tobytes(), w) for pl, w in train_dataset]
 hashable_dataset.sort()
 winners_per_board = dict()
-for board_planes, board_data in groupby(hashable_dataset, key=lambda x: x[0]):
-    winners_per_board[board_planes] = [x[1] for x in board_data]
+for board_planes, board_planes_and_data in groupby(hashable_dataset, key=lambda x: x[0]):
+    winners_per_board[board_planes] = [x[1][0] for x in board_planes_and_data]
 
 def overfitter(pl):
     pl_bytes = np.array(pl).tobytes() 
@@ -43,9 +44,9 @@ def overfitter(pl):
 
 
 truth, predictions, overfitter_predictions = [], [], []
-for (board_planes, winner) in train_dataset:
+for (board_planes, (winner, _)) in train_dataset:
     truth.append(float(winner))
-    predictions.append(float(model(board_planes)[0]))
+    predictions.append(float(model(board_planes)[0][0]))
     overfitter_predictions.append(overfitter(board_planes))
     
     # print(model(planes)[0])

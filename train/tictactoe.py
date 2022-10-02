@@ -57,21 +57,23 @@ class TicTacToe(TrainableGame):
         flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
         head_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
         # alternative 1:
-        # head_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(head_val)
-        # head_val = Dense(units=1, activation="tanh", name="value_head", kernel_regularizer=l2reg)(head_val)
-        # head_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
-        # head_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(head_probs)
-        # head_probs = Dense(units=self.MOVE_NUM, name="policy_head", kernel_regularizer=l2reg)(head_probs)
-        # model = Model(inputs=inputs, outputs=[head_val, head_probs])
-        # alternative 2:
+        head_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(head_val)
         head_val = Dense(units=1, activation="tanh", name="value_head", kernel_regularizer=l2reg)(head_val)
-        model = Model(inputs=inputs, outputs=[head_val])
+        head_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        head_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(head_probs)
+        head_probs = Dense(units=self.MOVE_NUM, name="policy_head", kernel_regularizer=l2reg)(head_probs)
+        model = Model(inputs=inputs, outputs=[head_val, head_probs])
+        # alternative 2:
+        # head_val = Dense(units=1, activation="tanh", name="value_head", kernel_regularizer=l2reg)(head_val)
+        # model = Model(inputs=inputs, outputs=[head_val])
         
         opt = optimizers.Adam(learning_rate=_LEARNING_RATE)
         model.compile(
             optimizer=opt,
-            loss=tf.keras.losses.MeanSquaredError(),
-            metrics=tf.keras.metrics.MeanSquaredError())
+            loss={'value_head': tf.keras.losses.MeanSquaredError(),
+                  'policy_head': net_utils.loss_cross_entropy},
+            metrics={'value_head': net_utils.value_head_accuracy,
+                     'policy_head': net_utils.policy_head_accuracy})
         return model
 
     def _create_model_convnetv1(self, cfg):
@@ -107,6 +109,7 @@ class TicTacToe(TrainableGame):
     def load_model(self, path: str, net_type: str) -> keras.Model:
         if net_type == TtoNetType.SimpleTwoHeaded or net_type == TtoNetType.ConvNetV1:
             custom_objects = {
+                "loss_const_0": net_utils.loss_const_0,
                 "loss_cross_entropy": net_utils.loss_cross_entropy,
                 "policy_head_accuracy": net_utils.policy_head_accuracy,
                 "value_head_accuracy": net_utils.value_head_accuracy}
