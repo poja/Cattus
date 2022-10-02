@@ -112,7 +112,7 @@ class DataParser:
         probs = tf.reshape(probs, (1, game.MOVE_NUM))
         winner = tf.reshape(winner, (1, 1))
 
-        return (planes, probs, winner)
+        return (planes, winner)
 
     def _parse_func(self, planes, probs, winner):
         return DataParser.bytes_entry_to_tensor((planes, probs, winner), self.game, self.cpu)

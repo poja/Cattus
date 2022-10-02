@@ -46,23 +46,32 @@ class TicTacToe(TrainableGame):
         return shape_cpu if cfg["cpu"] else shape_gpu
 
     def _create_model_simple_two_headed(self, cfg):
+        l2reg = tf.keras.regularizers.l2(l=1e-6)
+
         inputs = Input(
             shape=self._get_input_shape(cfg),
             name="input_planes")
         flow = tf.keras.layers.Flatten()(inputs)
-        flow = Dense(units=9, activation="relu")(flow)
-        head_val = Dense(
-            units=1, activation="tanh", name="value_head")(flow)
-        head_probs = Dense(units=self.MOVE_NUM, name="policy_head")(flow)
-        model = Model(inputs=inputs, outputs=[head_val, head_probs])
-
+        flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        head_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        # alternative 1:
+        # head_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(head_val)
+        # head_val = Dense(units=1, activation="tanh", name="value_head", kernel_regularizer=l2reg)(head_val)
+        # head_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        # head_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(head_probs)
+        # head_probs = Dense(units=self.MOVE_NUM, name="policy_head", kernel_regularizer=l2reg)(head_probs)
+        # model = Model(inputs=inputs, outputs=[head_val, head_probs])
+        # alternative 2:
+        head_val = Dense(units=1, activation="tanh", name="value_head", kernel_regularizer=l2reg)(head_val)
+        model = Model(inputs=inputs, outputs=[head_val])
+        
         opt = optimizers.Adam(learning_rate=_LEARNING_RATE)
         model.compile(
             optimizer=opt,
-            loss={'value_head': tf.keras.losses.MeanSquaredError(),
-                  'policy_head': net_utils.loss_cross_entropy},
-            metrics={'value_head': net_utils.value_head_accuracy,
-                     'policy_head': net_utils.policy_head_accuracy})
+            loss=tf.keras.losses.MeanSquaredError(),
+            metrics=tf.keras.metrics.MeanSquaredError())
         return model
 
     def _create_model_convnetv1(self, cfg):

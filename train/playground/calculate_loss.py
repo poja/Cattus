@@ -11,8 +11,9 @@ from train.tictactoe import TicTacToe
 
 
 training_games_dir = '/Users/yishai/work/RL/workarea_nettest/uniq_moves'
+cfg = json.load(open('/Users/yishai/work/RL/train/config_nettest.json'))
 game = TicTacToe()
-parser = DataParser(game, training_games_dir, 10000)
+parser = DataParser(game, training_games_dir, cfg)
 train_dataset = tf.data.Dataset.from_generator(
     parser.generator, output_types=(tf.string, tf.string, tf.string))
 train_dataset = train_dataset.map(parser.get_parse_func())
@@ -22,7 +23,7 @@ train_dataset = train_dataset.prefetch(4)
 
 model_path = '/Users/yishai/work/RL/workarea_nettest/models/myfit2'
 custom_objects = {
-                "loss_const_0": net_utils.loss_const_0,
+                # "loss_const_0": net_utils.loss_const_0,
                 "loss_cross_entropy": net_utils.loss_cross_entropy,
                 "policy_head_accuracy": net_utils.policy_head_accuracy}
 model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)

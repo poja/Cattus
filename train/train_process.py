@@ -123,25 +123,26 @@ class TrainProcess:
         train_dataset = tf.data.Dataset.from_generator(
             parser.generator, output_types=(tf.string, tf.string, tf.string))
         train_dataset = train_dataset.map(parser.get_parse_func())
-        train_dataset = train_dataset.batch(
-            self.cfg["training"]["batch_size"], drop_remainder=True)
-        train_dataset = train_dataset.map(
-            parser.get_after_batch_reshape_func())
+        # train_dataset = train_dataset.batch(
+        #     self.cfg["training"]["batch_size"], drop_remainder=True)
+        # train_dataset = train_dataset.map(
+        #     parser.get_after_batch_reshape_func())
         train_dataset = train_dataset.prefetch(4)
 
         logging.info("Fitting new model...")
         history = model.fit(train_dataset, epochs=30, verbose=2).history
-        metrics = {
-            "value loss": history["value_head_loss"][0],
-            "policy loss": history["policy_head_loss"][0],
-            "value accuracy": history["value_head_value_head_accuracy"][0],
-            "policy accuracy": history["policy_head_policy_head_accuracy"][0],
-        }
+        metrics = dict()
+        # metrics = {
+        #     "value loss": history["value_head_loss"][0],
+        #     "policy loss": history["policy_head_loss"][0],
+        #     "value accuracy": history["value_head_value_head_accuracy"][0],
+        #     "policy accuracy": history["policy_head_policy_head_accuracy"][0],
+        # }
 
-        print("Value loss {:.4f}".format(metrics["value loss"]),
-              "Policy loss {:.4f}".format(metrics["policy loss"]))
-        print("Value accuracy {:.4f}".format(metrics["value accuracy"]),
-              "Policy accuracy {:.4f}".format(metrics["policy accuracy"]))
+        # print("Value loss {:.4f}".format(metrics["value loss"]),
+        #       "Policy loss {:.4f}".format(metrics["policy loss"]))
+        # print("Value accuracy {:.4f}".format(metrics["value accuracy"]),
+        #       "Policy accuracy {:.4f}".format(metrics["policy accuracy"]))
 
         return (self._save_model(model), metrics)
 
