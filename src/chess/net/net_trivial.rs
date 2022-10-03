@@ -1,4 +1,4 @@
-use crate::chess::chess_game::{ChessGame, ChessPosition, BOARD_SIZE};
+use crate::chess::chess_game::{ChessGame, ChessPosition};
 use crate::game::common::{GamePosition, IGame};
 use crate::game::mcts::ValueFunction;
 use crate::game::net::{self, TwoHeadedNetBase};
@@ -71,7 +71,7 @@ impl ValueFunction<ChessGame> for TrivialNet {
     }
 }
 
-fn dot_product(bitmap: chess::BitBoard, weights: [f32; BOARD_SIZE * BOARD_SIZE]) -> f32 {
+fn dot_product(bitmap: chess::BitBoard, weights: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE]) -> f32 {
     let mut res = 0.0;
     for idx in bitmap {
         res += weights[idx.to_int() as usize];
@@ -351,7 +351,7 @@ const POLICY: Lazy<Vec<f32>> = Lazy::new(|| {vec![
     -0.0,     -0.0,     -0.0,     -0.0
 ]});
 
-const PAWNS: [f32; BOARD_SIZE * BOARD_SIZE] = [
+const PAWNS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     -0.00000, -0.00000, -0.00000, -0.00000, 0.00000,  -0.00000, 0.00000,
     -0.00000, 0.06662,  0.09583,  0.06643,  0.05536,  0.02236,  0.04939,
     0.09071,  0.09352,  0.08847,  0.08068,  0.07738,  0.05534,  0.06063,
@@ -364,7 +364,7 @@ const PAWNS: [f32; BOARD_SIZE * BOARD_SIZE] = [
     -0.00000
 ];
 
-const KNIGHTS: [f32; BOARD_SIZE * BOARD_SIZE] = [
+const KNIGHTS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.12549, 0.05358, 0.06001, 0.08798, 0.09084, 0.07007, 0.05983,
     0.07110, 0.03532, 0.08703, 0.13308, 0.07691, 0.11283, 0.06292,
     0.08848, 0.05982, 0.07493, 0.10743, 0.10747, 0.12312, 0.11972,
@@ -377,7 +377,7 @@ const KNIGHTS: [f32; BOARD_SIZE * BOARD_SIZE] = [
     0.20774,
 ];
 
-const BISHOPS: [f32; BOARD_SIZE * BOARD_SIZE] = [
+const BISHOPS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.08299, 0.11050, 0.11387, 0.12347, 0.13993, 0.10414, 0.18594,
     0.06085, 0.10235, 0.15733, 0.13970, 0.13631, 0.10189, 0.17399,
     0.14002, 0.10948, 0.14439, 0.13286, 0.15316, 0.13379, 0.13762,
@@ -390,7 +390,7 @@ const BISHOPS: [f32; BOARD_SIZE * BOARD_SIZE] = [
     0.14240,
 ];
 
-const ROOKS: [f32; BOARD_SIZE * BOARD_SIZE] = [
+const ROOKS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.19343, 0.22010, 0.19814, 0.20439, 0.20660, 0.20584, 0.19275,
     0.20042, 0.18159, 0.19006, 0.19286, 0.19677, 0.22751, 0.22487,
     0.19256, 0.16757, 0.19102, 0.23716, 0.21167, 0.19747, 0.23355,
@@ -403,7 +403,7 @@ const ROOKS: [f32; BOARD_SIZE * BOARD_SIZE] = [
     0.21579,
 ];
 
-const QUEENS: [f32; BOARD_SIZE * BOARD_SIZE] = [
+const QUEENS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.23063, 0.23157, 0.25371, 0.27579, 0.27878, 0.23600, 0.29552,
     0.29963, 0.27729, 0.29837, 0.29026, 0.25105, 0.27772, 0.28502,
     0.29344, 0.24009, 0.29366, 0.28859, 0.27538, 0.27713, 0.26159,
@@ -416,7 +416,7 @@ const QUEENS: [f32; BOARD_SIZE * BOARD_SIZE] = [
     0.28824,
 ];
 
-const KINGS: [f32; BOARD_SIZE * BOARD_SIZE] = [
+const KINGS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.02852,  0.00453,  -0.05309, -0.02416, -0.14581, -0.01472, -0.02206,
     0.02207,  0.03712,  0.02324,  -0.02501, -0.06653, -0.07605, -0.01135,
     0.03666,  -0.02999, 0.00700,  -0.02668, -0.06998, -0.02305, -0.03816,
@@ -429,7 +429,7 @@ const KINGS: [f32; BOARD_SIZE * BOARD_SIZE] = [
     0.00145,
 ];
 
-const KINGS_ENDGAME: [f32; BOARD_SIZE * BOARD_SIZE] = [
+const KINGS_ENDGAME: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     -0.03908, -0.02837, -0.02194, -0.03649, -0.04754, -0.03390, -0.03172,
     0.02852,  -0.02071, -0.01429, -0.02296, -0.01087, -0.02774, -0.01505,
     -0.00469, -0.03894, -0.03979, 0.02244,  -0.00705, -0.01847, -0.00316,

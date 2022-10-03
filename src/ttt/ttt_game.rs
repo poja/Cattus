@@ -1,7 +1,5 @@
-use crate::game::common::{Bitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
+use crate::game::common::{GameBitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
 use std::fmt::{self, Display};
-
-pub const BOARD_SIZE: usize = 3;
 
 pub fn color_to_str(c: Option<GameColor>) -> String {
     match c {
@@ -12,17 +10,17 @@ pub fn color_to_str(c: Option<GameColor>) -> String {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct TicTacToeMove {
+pub struct TttMove {
     idx: u8,
 }
 
-impl TicTacToeMove {
+impl TttMove {
     pub fn new(r: usize, c: usize) -> Self {
-        TicTacToeMove::from_idx(r * BOARD_SIZE + c)
+        TttMove::from_idx(r * TttGame::BOARD_SIZE + c)
     }
 
     pub fn from_idx(idx: usize) -> Self {
-        assert!(idx < BOARD_SIZE * BOARD_SIZE);
+        assert!(idx < TttGame::BOARD_SIZE * TttGame::BOARD_SIZE);
         Self { idx: idx as u8 }
     }
 
@@ -31,16 +29,16 @@ impl TicTacToeMove {
     }
 
     pub fn row(&self) -> usize {
-        self.idx as usize / BOARD_SIZE
+        self.idx as usize / TttGame::BOARD_SIZE
     }
 
     pub fn column(&self) -> usize {
-        self.idx as usize % BOARD_SIZE
+        self.idx as usize % TttGame::BOARD_SIZE
     }
 }
 
-impl GameMove for TicTacToeMove {
-    type Game = TicTacToeGame;
+impl GameMove for TttMove {
+    type Game = TttGame;
 
     fn get_flip(&self) -> Self {
         return *self;
@@ -51,24 +49,26 @@ impl GameMove for TicTacToeMove {
     }
 }
 
-impl Display for TicTacToeMove {
+impl Display for TttMove {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({}, {})", self.row(), self.column())
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TtoBitboard {
+pub struct TttBitboard {
     bitmap: u16,
 }
 
-impl TtoBitboard {
+impl TttBitboard {
     pub fn get_raw(&self) -> u16 {
         self.bitmap
     }
 }
 
-impl Bitboard for TtoBitboard {
+impl GameBitboard for TttBitboard {
+    type Game = TttGame;
+
     fn new() -> Self {
         Self { bitmap: 0 }
     }
@@ -80,12 +80,12 @@ impl Bitboard for TtoBitboard {
     }
 
     fn get(&self, idx: usize) -> bool {
-        assert!(idx < BOARD_SIZE * BOARD_SIZE);
+        assert!(idx < TttGame::BOARD_SIZE * TttGame::BOARD_SIZE);
         return (self.bitmap & (1u16 << idx)) != 0;
     }
 
     fn set(&mut self, idx: usize, val: bool) {
-        assert!(idx < BOARD_SIZE * BOARD_SIZE);
+        assert!(idx < TttGame::BOARD_SIZE * TttGame::BOARD_SIZE);
         if val {
             self.bitmap |= 1u16 << idx;
         } else {
@@ -95,29 +95,29 @@ impl Bitboard for TtoBitboard {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TicTacToePosition {
-    board_x: TtoBitboard,
-    board_o: TtoBitboard,
+pub struct TttPosition {
+    board_x: TttBitboard,
+    board_o: TttBitboard,
     turn: GameColor,
     winner: Option<GameColor>,
 }
 
-impl TicTacToePosition {
+impl TttPosition {
     pub fn from_str(s: &String) -> Self {
-        if s.chars().count() != BOARD_SIZE * BOARD_SIZE + 1 {
+        if s.chars().count() != TttGame::BOARD_SIZE * TttGame::BOARD_SIZE + 1 {
             panic!("unexpected string length")
         }
 
         let mut pos = Self::new();
         for (idx, c) in s.chars().enumerate() {
-            if idx < BOARD_SIZE * BOARD_SIZE {
+            if idx < TttGame::BOARD_SIZE * TttGame::BOARD_SIZE {
                 match c {
                     'x' => pos.board_x.set(idx, true),
                     'o' => pos.board_o.set(idx, true),
                     '_' => {}
                     _ => panic!("unknown board char: {:?}", c),
                 }
-            } else if idx == BOARD_SIZE * BOARD_SIZE {
+            } else if idx == TttGame::BOARD_SIZE * TttGame::BOARD_SIZE {
                 pos.turn = match c {
                     'x' => GameColor::Player1,
                     'o' => GameColor::Player2,
@@ -131,17 +131,17 @@ impl TicTacToePosition {
         return pos;
     }
 
-    pub fn pieces_x(&self) -> TtoBitboard {
+    pub fn pieces_x(&self) -> TttBitboard {
         self.board_x
     }
 
-    pub fn pieces_o(&self) -> TtoBitboard {
+    pub fn pieces_o(&self) -> TttBitboard {
         self.board_o
     }
 
     pub fn get_tile(&self, r: usize, c: usize) -> Option<GameColor> {
-        assert!(r < BOARD_SIZE && c < BOARD_SIZE);
-        let idx = r * BOARD_SIZE + c;
+        assert!(r < TttGame::BOARD_SIZE && c < TttGame::BOARD_SIZE);
+        let idx = r * TttGame::BOARD_SIZE + c;
         if self.board_x.get(idx) {
             return Some(GameColor::Player1);
         }
@@ -151,7 +151,7 @@ impl TicTacToePosition {
         return None;
     }
 
-    pub fn make_move(&mut self, m: TicTacToeMove) {
+    pub fn make_move(&mut self, m: TttMove) {
         assert!(self.is_valid_move(m));
         assert!(!self.is_over());
 
@@ -165,7 +165,7 @@ impl TicTacToePosition {
         self.check_winner();
     }
 
-    pub fn is_valid_move(&self, m: TicTacToeMove) -> bool {
+    pub fn is_valid_move(&self, m: TttMove) -> bool {
         let idx = m.to_idx();
         return !self.board_x.get(idx) && !self.board_o.get(idx);
     }
@@ -196,13 +196,13 @@ impl TicTacToePosition {
     }
 }
 
-impl GamePosition for TicTacToePosition {
-    type Game = TicTacToeGame;
+impl GamePosition for TttPosition {
+    type Game = TttGame;
 
     fn new() -> Self {
-        TicTacToePosition {
-            board_x: Bitboard::new(),
-            board_o: Bitboard::new(),
+        TttPosition {
+            board_x: GameBitboard::new(),
+            board_o: GameBitboard::new(),
             turn: GameColor::Player1,
             winner: None,
         }
@@ -214,10 +214,10 @@ impl GamePosition for TicTacToePosition {
 
     fn get_legal_moves(&self) -> Vec<<Self::Game as IGame>::Move> {
         let mut moves = Vec::new();
-        for r in 0..BOARD_SIZE {
-            for c in 0..BOARD_SIZE {
+        for r in 0..TttGame::BOARD_SIZE {
+            for c in 0..TttGame::BOARD_SIZE {
                 if self.get_tile(r, c) == None {
-                    moves.push(TicTacToeMove::new(r, c));
+                    moves.push(TttMove::new(r, c));
                 }
             }
         }
@@ -253,8 +253,8 @@ impl GamePosition for TicTacToePosition {
     }
 
     fn print(&self) -> () {
-        for r in 0..BOARD_SIZE {
-            let row_characters: Vec<String> = (0..BOARD_SIZE)
+        for r in 0..TttGame::BOARD_SIZE {
+            let row_characters: Vec<String> = (0..TttGame::BOARD_SIZE)
                 .map(|c| match self.get_tile(r, c) {
                     None => String::from("_"),
                     Some(GameColor::Player1) => String::from("X"),
@@ -266,19 +266,21 @@ impl GamePosition for TicTacToePosition {
     }
 }
 
-pub struct TicTacToeGame {
-    pos: TicTacToePosition,
+pub struct TttGame {
+    pos: TttPosition,
 }
 
-impl TicTacToeGame {}
+impl TttGame {}
 
-impl IGame for TicTacToeGame {
-    type Position = TicTacToePosition;
-    type Move = TicTacToeMove;
+impl IGame for TttGame {
+    type Position = TttPosition;
+    type Move = TttMove;
+    type Bitboard = TttBitboard;
+    const BOARD_SIZE: usize = 3;
 
     fn new() -> Self {
         Self {
-            pos: TicTacToePosition::new(),
+            pos: TttPosition::new(),
         }
     }
 

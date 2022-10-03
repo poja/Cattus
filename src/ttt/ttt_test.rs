@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use crate::game::common::{GamePosition, GameColor};
-    use crate::tictactoe::tictactoe_game::TicTacToePosition;
+    use crate::game::common::{GameColor, GamePosition};
+    use crate::ttt::ttt_game::TttPosition;
 
     #[test]
     fn simple_game_and_mate() {
-        let to_pos = |s: &str| TicTacToePosition::from_str(&s.to_string());
+        let to_pos = |s: &str| TttPosition::from_str(&s.to_string());
         assert!(to_pos("xxxoo____o").get_winner() == Some(GameColor::Player1));
         assert!(to_pos("oo_xxx___o").get_winner() == Some(GameColor::Player1));
         assert!(to_pos("oo____xxxo").get_winner() == Some(GameColor::Player1));
@@ -28,7 +28,7 @@ mod tests {
             "__xx_x__ox",
         ]
         .into_iter()
-        .map(|s| TicTacToePosition::from_str(&s.to_string()))
+        .map(|s| TttPosition::from_str(&s.to_string()))
         {
             assert!(pos.get_turn().opposite() == pos.get_flip().get_turn());
             assert!(pos.get_flip().get_flip() == pos);

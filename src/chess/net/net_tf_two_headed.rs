@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::chess::chess_game::{ChessBitboard, ChessGame, ChessPosition, BOARD_SIZE};
+use crate::chess::chess_game::{ChessGame, ChessPosition};
 use crate::chess::net::common;
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::IGame;
@@ -30,8 +30,6 @@ impl ValueFunction<ChessGame> for TwoHeadedNet {
         &mut self,
         position: &ChessPosition,
     ) -> (f32, Vec<(<ChessGame as IGame>::Move, f32)>) {
-        return self
-            .base
-            .evaluate::<ChessBitboard, BOARD_SIZE>(position, common::position_to_planes);
+        return self.base.evaluate(position, common::position_to_planes);
     }
 }

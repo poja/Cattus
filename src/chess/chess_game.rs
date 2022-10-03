@@ -3,13 +3,11 @@ use std::fmt::{self, Display};
 use std::hash::{Hash, Hasher};
 use std::str::FromStr;
 
-use crate::game::common::Bitboard;
+use crate::game::common::GameBitboard;
 use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
 use chess;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
-
-pub const BOARD_SIZE: usize = 8;
 
 fn err_to_str(err: chess::Error) -> String {
     match err {
@@ -133,7 +131,8 @@ impl ChessBitboard {
     }
 }
 
-impl Bitboard for ChessBitboard {
+impl GameBitboard for ChessBitboard {
+    type Game = ChessGame;
     fn new() -> Self {
         Self {
             b: chess::BitBoard::new(0),
@@ -147,12 +146,12 @@ impl Bitboard for ChessBitboard {
     }
 
     fn get(&self, idx: usize) -> bool {
-        assert!(idx < BOARD_SIZE * BOARD_SIZE);
+        assert!(idx < ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE);
         return (self.b.0 & (1u64 << idx)) != 0;
     }
 
     fn set(&mut self, idx: usize, val: bool) {
-        assert!(idx < BOARD_SIZE * BOARD_SIZE);
+        assert!(idx < ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE);
         if val {
             self.b.0 |= 1u64 << idx;
         } else {
@@ -433,17 +432,18 @@ impl GamePosition for ChessPosition {
             }
         };
 
-        for rank in (0..BOARD_SIZE).rev() {
-            let row_chars: Vec<String> =
-                (0..BOARD_SIZE).map(|file| square_str(rank, file)).collect();
+        for rank in (0..ChessGame::BOARD_SIZE).rev() {
+            let row_chars: Vec<String> = (0..ChessGame::BOARD_SIZE)
+                .map(|file| square_str(rank, file))
+                .collect();
             println!("{} | {}", (rank + 1), row_chars.join(" "));
         }
 
         let files = vec!["A", "B", "C", "D", "E", "F", "G", "H"];
-        let files_indices: Vec<String> = (0..BOARD_SIZE)
+        let files_indices: Vec<String> = (0..ChessGame::BOARD_SIZE)
             .map(|file| files[file].to_string())
             .collect();
-        println!("    {}", "-".repeat(BOARD_SIZE * 2 - 1));
+        println!("    {}", "-".repeat(ChessGame::BOARD_SIZE * 2 - 1));
         println!("    {}", files_indices.join(" "));
     }
 }
@@ -457,6 +457,8 @@ pub struct ChessGame {
 impl IGame for ChessGame {
     type Position = ChessPosition;
     type Move = ChessMove;
+    type Bitboard = ChessBitboard;
+    const BOARD_SIZE: usize = 8;
 
     fn new() -> Self {
         Self::new_from_pos(Self::Position::new())

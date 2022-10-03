@@ -1,5 +1,5 @@
 use crate::game::cache::ValueFuncCache;
-use crate::game::common::{Bitboard, GameColor, GameMove, GamePosition, IGame};
+use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
 use itertools::Itertools;
 use std::sync::Arc;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
@@ -76,31 +76,29 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
         return (val, moves_scores);
     }
 
-    pub fn evaluate<B: Bitboard, const BOARD_SIZE: usize>(
+    pub fn evaluate(
         &mut self,
         position: &Game::Position,
-        to_planes: impl Fn(&Game::Position) -> Vec<B>,
+        to_planes: impl Fn(&Game::Position) -> Vec<Game::Bitboard>,
     ) -> (f32, Vec<(Game::Move, f32)>) {
         let (position, is_flipped) = flip_pos_if_needed(*position);
 
         let res = if let Some(cache) = &self.cache {
-            cache.get_or_compute(&position, |pos| {
-                self.evaluate_impl::<B, BOARD_SIZE>(pos, &to_planes)
-            })
+            cache.get_or_compute(&position, |pos| self.evaluate_impl(pos, &to_planes))
         } else {
-            self.evaluate_impl::<B, BOARD_SIZE>(&position, &to_planes)
+            self.evaluate_impl(&position, &to_planes)
         };
 
         return flip_score_if_needed(res, is_flipped);
     }
 
-    fn evaluate_impl<B: Bitboard, const BOARD_SIZE: usize>(
+    fn evaluate_impl(
         &self,
         pos: &Game::Position,
-        to_planes: &impl Fn(&Game::Position) -> Vec<B>,
+        to_planes: &impl Fn(&Game::Position) -> Vec<Game::Bitboard>,
     ) -> (f32, Vec<(Game::Move, f32)>) {
         let planes = to_planes(pos);
-        let input = planes_to_tensor::<B, BOARD_SIZE>(planes);
+        let input = planes_to_tensor::<Game>(planes);
         let (val, move_scores) = self.run_net(input);
 
         let moves = pos.get_legal_moves();
@@ -109,7 +107,10 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
         return (val, moves_probs);
     }
 
-    pub fn calc_moves_probs<M: GameMove>(moves: Vec<M>, move_scores: &Vec<f32>) -> Vec<(M, f32)> {
+    pub fn calc_moves_probs(
+        moves: Vec<Game::Move>,
+        move_scores: &Vec<f32>,
+    ) -> Vec<(Game::Move, f32)> {
         let moves_scores = moves
             .iter()
             .map(|m| move_scores[m.to_nn_idx()])
@@ -128,17 +129,17 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
     }
 }
 
-pub fn planes_to_tensor<B: Bitboard, const BOARD_SIZE: usize>(planes: Vec<B>) -> Tensor<f32> {
+pub fn planes_to_tensor<Game: IGame>(planes: Vec<Game::Bitboard>) -> Tensor<f32> {
     let cpu = true;
     let planes_num = planes.len();
 
-    let mut encoded_position = vec![0.0; planes_num * BOARD_SIZE * BOARD_SIZE];
+    let mut encoded_position = vec![0.0; planes_num * Game::BOARD_SIZE * Game::BOARD_SIZE];
     for (plane_idx, plane) in planes.into_iter().enumerate() {
-        for square in 0..(BOARD_SIZE * BOARD_SIZE) {
+        for square in 0..(Game::BOARD_SIZE * Game::BOARD_SIZE) {
             let idx = if cpu {
                 square * planes_num + plane_idx
             } else {
-                plane_idx * BOARD_SIZE * BOARD_SIZE + square
+                plane_idx * Game::BOARD_SIZE * Game::BOARD_SIZE + square
             };
             encoded_position[idx] = match plane.get(square) {
                 true => 1.0,
@@ -148,9 +149,19 @@ pub fn planes_to_tensor<B: Bitboard, const BOARD_SIZE: usize>(planes: Vec<B>) ->
     }
 
     let dims = if cpu {
-        [1, BOARD_SIZE as u64, BOARD_SIZE as u64, planes_num as u64]
+        [
+            1,
+            Game::BOARD_SIZE as u64,
+            Game::BOARD_SIZE as u64,
+            planes_num as u64,
+        ]
     } else {
-        [1, planes_num as u64, BOARD_SIZE as u64, BOARD_SIZE as u64]
+        [
+            1,
+            planes_num as u64,
+            Game::BOARD_SIZE as u64,
+            Game::BOARD_SIZE as u64,
+        ]
     };
     return Tensor::new(&dims)
         .with_values(&encoded_position)

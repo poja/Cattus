@@ -30,6 +30,8 @@ impl GameColor {
 pub trait IGame {
     type Position: GamePosition<Game = Self>;
     type Move: GameMove<Game = Self>;
+    type Bitboard: GameBitboard<Game = Self>;
+    const BOARD_SIZE: usize;
 
     fn new() -> Self;
     fn new_from_pos(pos: Self::Position) -> Self;
@@ -69,7 +71,9 @@ pub trait GamePlayer<Game: IGame> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move>;
 }
 
-pub trait Bitboard {
+pub trait GameBitboard {
+    type Game: IGame<Bitboard = Self>;
+
     fn new() -> Self;
     fn new_with_all(val: bool) -> Self;
     fn get(&self, idx: usize) -> bool;
