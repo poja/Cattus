@@ -1,5 +1,5 @@
 use crate::chess::chess_game::{ChessBitboard, ChessPosition};
-use crate::game::common::Bitboard;
+use crate::game::common::GameBitboard;
 
 pub const PLANES_NUM: usize = 18;
 pub const MOVES_NUM: usize = 1880;

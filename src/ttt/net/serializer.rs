@@ -1,23 +1,23 @@
 use crate::game::common::{GameColor, GamePosition};
 use crate::game::net;
 use crate::game::self_play::{DataSerializer, SerializerBase};
-use crate::tictactoe::net::common::{self, MOVES_NUM};
-use crate::tictactoe::tictactoe_game::{TicTacToeGame, TicTacToeMove, TicTacToePosition};
+use crate::ttt::net::common::{self, MOVES_NUM};
+use crate::ttt::ttt_game::{TttGame, TttMove, TttPosition};
 use itertools::Itertools;
 
-pub struct TicTacToeSerializer {}
+pub struct TttSerializer {}
 
-impl TicTacToeSerializer {
+impl TttSerializer {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl DataSerializer<TicTacToeGame> for TicTacToeSerializer {
+impl DataSerializer<TttGame> for TttSerializer {
     fn serialize_data_entry(
         &self,
-        pos: TicTacToePosition,
-        probs: Vec<(TicTacToeMove, f32)>,
+        pos: TttPosition,
+        probs: Vec<(TttMove, f32)>,
         winner: Option<GameColor>,
         filename: &String,
     ) -> std::io::Result<()> {
@@ -32,8 +32,6 @@ impl DataSerializer<TicTacToeGame> for TicTacToeSerializer {
             .map(|p| p.get_raw() as u64)
             .collect_vec();
 
-        return SerializerBase::write_entry::<TicTacToeGame, MOVES_NUM>(
-            planes, probs, winner, filename,
-        );
+        return SerializerBase::write_entry::<TttGame, MOVES_NUM>(planes, probs, winner, filename);
     }
 }

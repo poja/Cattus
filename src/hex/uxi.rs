@@ -1,5 +1,5 @@
-use crate::game::common::{Bitboard, GameColor, GamePlayer, GamePosition, IGame};
-use crate::hex::hex_game::{HexBitboard, HexGame, HexMove, HexPosition, BOARD_SIZE};
+use crate::game::common::{GameBitboard, GameColor, GamePlayer, GamePosition, IGame};
+use crate::hex::hex_game::{HexBitboard, HexGame, HexMove, HexPosition};
 use std::io::{BufRead, BufReader, Write};
 use std::string::String;
 use std::{io, process, thread, time};
@@ -173,7 +173,7 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
         &mut self,
         position: &<HexGame as IGame>::Position,
     ) -> Option<<HexGame as IGame>::Move> {
-        let mut command = String::with_capacity(10 + BOARD_SIZE * BOARD_SIZE + 3);
+        let mut command = String::with_capacity(10 + HexGame::BOARD_SIZE * HexGame::BOARD_SIZE + 3);
         command.push_str("next_move ");
         position_to_uxi(position, &mut command);
         self.send_command(command);
@@ -275,8 +275,8 @@ impl UXIEngine {
 }
 
 fn position_to_uxi(position: &HexPosition, s: &mut String) {
-    for r in 0..BOARD_SIZE {
-        for c in 0..BOARD_SIZE {
+    for r in 0..HexGame::BOARD_SIZE {
+        for c in 0..HexGame::BOARD_SIZE {
             s.push(match position.get_tile(r, c) {
                 None => 'e',
                 Some(GameColor::Player1) => 'r',
@@ -296,7 +296,7 @@ fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
     let mut board_blue = HexBitboard::new();
     let mut idx = 0;
     for tile in pos_str.chars() {
-        if idx >= BOARD_SIZE * BOARD_SIZE {
+        if idx >= HexGame::BOARD_SIZE * HexGame::BOARD_SIZE {
             eprintln!("Too many chars in position string");
             return None;
         }
@@ -311,7 +311,7 @@ fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
         };
         idx += 1;
     }
-    if idx != BOARD_SIZE * BOARD_SIZE {
+    if idx != HexGame::BOARD_SIZE * HexGame::BOARD_SIZE {
         eprintln!("Too few chars in position string");
         return None;
     }

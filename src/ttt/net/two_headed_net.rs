@@ -2,12 +2,12 @@ use crate::game::cache::ValueFuncCache;
 use crate::game::common::IGame;
 use crate::game::mcts::ValueFunction;
 use crate::game::net::TwoHeadedNetBase;
-use crate::hex::hex_game::{HexGame, HexPosition};
-use crate::hex::net::common;
+use crate::ttt::net::common;
+use crate::ttt::ttt_game::{TttGame, TttPosition};
 use std::sync::Arc;
 
 pub struct TwoHeadedNet {
-    base: TwoHeadedNetBase<HexGame>,
+    base: TwoHeadedNetBase<TttGame>,
 }
 
 impl TwoHeadedNet {
@@ -17,15 +17,15 @@ impl TwoHeadedNet {
         }
     }
 
-    pub fn with_cache(model_path: &String, cache: Arc<ValueFuncCache<HexGame>>) -> Self {
+    pub fn with_cache(model_path: &String, cache: Arc<ValueFuncCache<TttGame>>) -> Self {
         Self {
             base: TwoHeadedNetBase::new(model_path, Some(cache)),
         }
     }
 }
 
-impl ValueFunction<HexGame> for TwoHeadedNet {
-    fn evaluate(&mut self, position: &HexPosition) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
+impl ValueFunction<TttGame> for TwoHeadedNet {
+    fn evaluate(&mut self, position: &TttPosition) -> (f32, Vec<(<TttGame as IGame>::Move, f32)>) {
         return self.base.evaluate(position, common::position_to_planes);
     }
 }

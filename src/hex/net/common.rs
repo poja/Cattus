@@ -1,8 +1,8 @@
-use crate::game::common::Bitboard;
-use crate::hex::hex_game::{HexBitboard, HexPosition, BOARD_SIZE};
+use crate::game::common::{GameBitboard, IGame};
+use crate::hex::hex_game::{HexBitboard, HexGame, HexPosition};
 
 pub const PLANES_NUM: usize = 3;
-pub const MOVES_NUM: usize = BOARD_SIZE * BOARD_SIZE;
+pub const MOVES_NUM: usize = HexGame::BOARD_SIZE * HexGame::BOARD_SIZE;
 
 pub fn position_to_planes(pos: &HexPosition) -> Vec<HexBitboard> {
     let mut planes = Vec::new();

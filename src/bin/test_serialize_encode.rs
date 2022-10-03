@@ -2,16 +2,16 @@ use std::fs;
 
 use clap::Parser;
 use itertools::Itertools;
-use rl::chess::chess_game::{self, ChessBitboard, ChessPosition};
+use rl::chess::chess_game::{ChessGame, ChessPosition};
 use rl::chess::net::serializer::ChessSerializer;
 use rl::game::common::{GameColor, GamePosition, IGame};
 use rl::game::net;
 use rl::game::self_play::DataSerializer;
-use rl::hex::hex_game::{self, HexBitboard, HexPosition};
+use rl::hex::hex_game::{HexGame, HexPosition};
 use rl::hex::net::serializer::HexSerializer;
-use rl::tictactoe::net::serializer::TicTacToeSerializer;
-use rl::tictactoe::tictactoe_game::{self, TicTacToePosition, TtoBitboard};
-use rl::{chess, hex, tictactoe};
+use rl::ttt::net::serializer::TttSerializer;
+use rl::ttt::ttt_game::{TttGame, TttPosition};
+use rl::{chess, hex, ttt};
 use tensorflow::Tensor;
 
 #[derive(Parser, Debug)]
@@ -41,13 +41,13 @@ fn main() -> std::io::Result<()> {
 }
 
 fn test_tictactoe(args: Args) -> std::io::Result<()> {
-    let pos = TicTacToePosition::from_str(&args.position);
+    let pos = TttPosition::from_str(&args.position);
 
-    let planes = tictactoe::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<TtoBitboard, { tictactoe_game::BOARD_SIZE }>(planes);
+    let planes = ttt::net::common::position_to_planes(&pos);
+    let tensor = net::planes_to_tensor::<TttGame>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
-    let serializer = TicTacToeSerializer::new();
+    let serializer = TttSerializer::new();
     return serialize_position(pos, &serializer, &args.serialize_out);
 }
 
@@ -55,7 +55,7 @@ fn test_hex(args: Args) -> std::io::Result<()> {
     let pos = HexPosition::from_str(&args.position);
 
     let planes = hex::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<HexBitboard, { hex_game::BOARD_SIZE }>(planes);
+    let tensor = net::planes_to_tensor::<HexGame>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
     let serializer = HexSerializer::new();
@@ -66,7 +66,7 @@ fn test_chess(args: Args) -> std::io::Result<()> {
     let pos = ChessPosition::from_str(&args.position);
 
     let planes = chess::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<ChessBitboard, { chess_game::BOARD_SIZE }>(planes);
+    let tensor = net::planes_to_tensor::<ChessGame>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
     let serializer = ChessSerializer::new();

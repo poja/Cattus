@@ -1,9 +1,9 @@
 use clap::Parser;
 use rl::game::common::{GamePosition, IGame};
 use rl::game::mcts::MCTSPlayer;
-use rl::tictactoe::cmd_player::TttPlayerCmd;
-use rl::tictactoe::net::two_headed_net::TwoHeadedNet;
-use rl::tictactoe::tictactoe_game::{color_to_str, TicTacToeGame};
+use rl::ttt::cmd_player::TttPlayerCmd;
+use rl::ttt::net::two_headed_net::TwoHeadedNet;
+use rl::ttt::ttt_game::{color_to_str, TttGame};
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -20,7 +20,7 @@ fn main() {
 
     let mut player2 = TttPlayerCmd::new();
 
-    let mut game = TicTacToeGame::new();
+    let mut game = TttGame::new();
 
     let (final_pos, winner) = game.play_until_over(&mut player1, &mut player2);
     println!("The winner is: {}, details below:", color_to_str(winner));
