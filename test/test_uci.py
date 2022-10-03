@@ -10,7 +10,8 @@ UCI_EXE = os.path.join(EXE_DIR, "chess_uci.exe")
 
 
 def run_test():
-    engine = chess.engine.SimpleEngine.popen_uci(UCI_EXE)
+    engine = chess.engine.SimpleEngine.popen_uci(
+        [UCI_EXE, "--sim-count", "10000"])
 
     board = chess.Board()
     while not board.is_game_over() and not board.can_claim_draw():
@@ -26,7 +27,6 @@ def run_test():
             print()
         print()
         print()
-
 
     engine.quit()
 

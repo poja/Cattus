@@ -1,5 +1,4 @@
 use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
-use crate::chess::net::net_stockfish::StockfishNet;
 use crate::game::common::{GamePlayer, GamePosition};
 use crate::game::mcts::MCTSPlayer;
 use itertools::Itertools;
@@ -8,6 +7,10 @@ use std::collections::HashMap;
 use std::io;
 // use std::io::prelude::*;
 // use std::path::Path;
+
+pub trait Builder<T>: Sync + Send {
+    fn build(&self) -> T;
+}
 
 struct GoParams {
     searchmoves: Vec<String>,
@@ -41,6 +44,7 @@ impl GoParams {
 }
 
 struct Engine {
+    player_builder: Box<dyn Builder<MCTSPlayer<ChessGame>>>,
     options: HashMap<String, String>,
     player: Option<MCTSPlayer<ChessGame>>,
     position: Option<ChessPosition>,
@@ -48,8 +52,9 @@ struct Engine {
 }
 
 impl Engine {
-    pub fn new() -> Self {
+    pub fn new(player_builder: Box<dyn Builder<MCTSPlayer<ChessGame>>>) -> Self {
         Self {
+            player_builder: player_builder,
             options: HashMap::new(),
             player: None,
             position: None,
@@ -75,8 +80,7 @@ impl Engine {
     }
 
     pub fn cmd_ucinewgame(&mut self) {
-        let value_func = Box::new(StockfishNet::new());
-        self.player = Some(MCTSPlayer::new_custom(10000, 1.41421, value_func));
+        self.player = Some(self.player_builder.build());
     }
 
     pub fn cmd_position(&mut self, args: HashMap<String, String>) {
@@ -137,9 +141,9 @@ pub struct UCI {
 }
 
 impl UCI {
-    pub fn new() -> Self {
+    pub fn new(player_builder: Box<dyn Builder<MCTSPlayer<ChessGame>>>) -> Self {
         Self {
-            engine: Engine::new(),
+            engine: Engine::new(player_builder),
         }
     }
 
