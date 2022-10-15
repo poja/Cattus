@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::game::common::{GameBitboard, GameColor, GamePlayer, GamePosition, IGame};
 use crate::hex::hex_game::{HexBitboard, HexGame, HexMove, HexPosition};
 use std::io::{BufRead, BufReader, Write};
@@ -192,7 +194,7 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
                     eprintln!("[UXIPlayer] Expected \"move r,c\" format: \"{}\"", resp);
                     return None;
                 }
-                let m_str: Vec<_> = response[1].split(",").collect();
+                let m_str = response[1].split(",").collect_vec();
                 if m_str.len() != 2 {
                     eprintln!("[UXIPlayer] Expected \"move r,c\" format: \"{}\"", resp);
                     return None;

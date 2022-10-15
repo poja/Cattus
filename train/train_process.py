@@ -28,32 +28,6 @@ TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 RL_TOP = os.path.abspath(os.path.join(TRAIN_DIR, ".."))
 
 
-class LearningRateScheduler:
-    def __init__(self, cfg):
-        cfg = cfg["training"]["learning_rate"]
-        assert len(cfg) > 0
-
-        thresholds = []
-        for (idx, elm) in enumerate(cfg[:-1]):
-            assert len(elm) == 2
-            if idx > 0:
-                # assert the steps thresholds are ordered
-                assert elm[0] > cfg[idx - 1][0]
-            thresholds.append((elm[0], elm[1]))
-        self.thresholds = thresholds
-
-        # last elm, no step threshold
-        final_lr = cfg[-1]
-        assert len(final_lr) == 1
-        self.final_lr = final_lr[0]
-
-    def get_lr(self, training_step):
-        for (threshold, lr) in self.thresholds:
-            if training_step < threshold:
-                return lr
-        return self.final_lr
-
-
 class TrainProcess:
     def __init__(self, cfg):
         self.cfg = copy.deepcopy(cfg)
@@ -96,6 +70,11 @@ class TrainProcess:
                     "Model [latest] was requested, but no existing models were found.")
             base_model_path = sorted(all_models)[-1]
         self.base_model_path = base_model_path
+
+        self.cfg["self_play"]["temperature_policy_str"] = temperature_policy_to_str(
+            self.cfg["self_play"]["temperature_policy"])
+        self.cfg["training"]["compare"]["temperature_policy_str"] = temperature_policy_to_str(
+            self.cfg["training"]["compare"]["temperature_policy"])
 
         assert self.cfg["training"]["compare"]["switching_winning_threshold"] >= 0.5
         assert self.cfg["training"]["compare"]["warning_losing_threshold"] >= 0.5
@@ -141,6 +120,7 @@ class TrainProcess:
             "--data-entries-prefix", "i{0:04d}_".format(iter_num),
             "--sim-count", str(self.cfg["mcts"]["sim_count"]),
             "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
+            "--temperature-policy", self.cfg["self_play"]["temperature_policy_str"],
             "--threads", str(self.cfg["self_play"]["threads"]),
             "--cache-size", str(self.cfg["mcts"]["cache_size"])],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
@@ -200,6 +180,7 @@ class TrainProcess:
                 "--result-file", compare_res_file,
                 "--sim-count", str(self.cfg["mcts"]["sim_count"]),
                 "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
+                "--temperature-policy", self.cfg["training"]["compare"]["temperature_policy_str"],
                 "--threads", str(self.cfg["training"]["compare"]["threads"])],
                 stderr=sys.stderr, stdout=sys.stdout, check=True)
 
@@ -232,3 +213,53 @@ class TrainProcess:
             self.cfg["models_dir"], f"model_{model_time}")
         model.save(model_path, save_format='tf')
         return model_path
+
+
+class LearningRateScheduler:
+    def __init__(self, cfg):
+        cfg = cfg["training"]["learning_rate"]
+        assert len(cfg) > 0
+
+        thresholds = []
+        for (idx, elm) in enumerate(cfg[:-1]):
+            assert len(elm) == 2
+            if idx > 0:
+                # assert the steps thresholds are ordered
+                assert elm[0] > cfg[idx - 1][0]
+            thresholds.append((elm[0], elm[1]))
+        self.thresholds = thresholds
+
+        # last elm, no step threshold
+        final_lr = cfg[-1]
+        assert len(final_lr) == 1
+        self.final_lr = final_lr[0]
+
+    def get_lr(self, training_step):
+        for (threshold, lr) in self.thresholds:
+            if training_step < threshold:
+                return lr
+        return self.final_lr
+
+
+def temperature_policy_to_str(temperature_policy):
+    assert len(temperature_policy) > 0
+
+    thresholds = []
+    for (idx, elm) in enumerate(temperature_policy[:-1]):
+        assert len(elm) == 2
+        if idx > 0:
+            # assert the steps thresholds are ordered
+            assert elm[0] > temperature_policy[idx - 1][0]
+        assert elm[1] >= 0  # valid temperature
+        thresholds.append((elm[0], elm[1]))
+
+    # last elm, no step threshold
+    final_temp = temperature_policy[-1]
+    assert len(final_temp) == 1
+    final_temp = final_temp[0]
+
+    if len(thresholds) == 0:
+        return str(final_temp)
+    else:
+        thresholds = [f"{move_num},{temp}" for (move_num, temp) in thresholds]
+        return f"{','.join(thresholds)},{final_temp}"

@@ -28,6 +28,8 @@ struct SelfPlayArgs {
     sim_count: u32,
     #[clap(long, default_value = "1.41421")]
     explore_factor: f32,
+    #[clap(long, default_value = "1.0")]
+    temperature_policy: String,
     #[clap(long, default_value = "1")]
     threads: u32,
     #[clap(long, default_value = "100000")]
@@ -108,6 +110,7 @@ pub fn run_main<Game: IGame + 'static>(
     let self_player = SelfPlayRunner::new(
         player1_builder,
         player2_builder,
+        args.temperature_policy,
         Arc::from(serializer),
         args.threads,
     );

@@ -42,6 +42,7 @@ pub struct MCTSPlayer<Game: IGame> {
     root: Option<NodeIndex>,
     exploration_param_c: f32,
     simulations_per_move: u32,
+    temperature: f32,
     value_func: Box<dyn ValueFunction<Game>>,
 }
 
@@ -56,6 +57,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             root: None,
             exploration_param_c: exploration_param_c,
             simulations_per_move: simulations_per_move,
+            temperature: 1.0,
             value_func: value_func,
         }
     }
@@ -310,13 +312,13 @@ impl<Game: IGame> MCTSPlayer<Game> {
             .collect_vec();
 
         // normalize sim counts to create a valid distribution -> (move, simcount / simcount_total)
-        let simcount_total: u64 = moves_and_simcounts
+        let simcount_total: u32 = moves_and_simcounts
             .iter()
-            .map(|&(_, simcount)| simcount as u64)
+            .map(|&(_, simcount)| simcount)
             .sum();
         return moves_and_simcounts
-            .iter()
-            .map(|&(m, simcount)| (*m, (simcount as f64 / simcount_total as f64) as f32))
+            .into_iter()
+            .map(|(m, simcount)| (*m, simcount as f32 / simcount_total as f32))
             .collect_vec();
     }
 
@@ -328,18 +330,31 @@ impl<Game: IGame> MCTSPlayer<Game> {
             return None;
         }
 
-        /* prob -> prob^temperature */
-        let temperature = 1.0; /* TODO adjustable param */
-        let probabilities = moves_probs
-            .iter()
-            .map(|(_m, p)| (*p as f64).powf(1.0 / temperature))
-            .collect_vec();
+        if self.temperature == 0.0 {
+            let (m, _p) = moves_probs
+                .into_iter()
+                .max_by(|(_m1, p1), (_m2, p2)| p1.total_cmp(p2))
+                .unwrap();
+            return Some(*m);
+        } else {
+            /* prob -> prob^temperature */
+            assert!(self.temperature > 0.0);
+            let probabilities = moves_probs
+                .iter()
+                .map(|(_m, p)| p.powf(1.0 / self.temperature))
+                .collect_vec();
 
-        /* normalize, prob -> prob / (probs sum) */
-        let probs_sum: f64 = probabilities.iter().sum();
-        let probabilities = probabilities.iter().map(|p| p / probs_sum).collect_vec();
-        let distribution = WeightedIndex::new(&probabilities).unwrap();
-        return Some(moves_probs[distribution.sample(&mut rand::thread_rng())].0);
+            /* normalize, prob -> prob / (probs sum) */
+            let probs_sum: f32 = probabilities.iter().sum();
+            let probabilities = probabilities.iter().map(|p| p / probs_sum).collect_vec();
+            let distribution = WeightedIndex::new(&probabilities).unwrap();
+            return Some(moves_probs[distribution.sample(&mut rand::thread_rng())].0);
+        }
+    }
+
+    pub fn set_temperature(&mut self, temperature: f32) {
+        assert!(temperature >= 0.0);
+        self.temperature = temperature;
     }
 }
 
