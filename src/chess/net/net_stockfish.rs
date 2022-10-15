@@ -45,6 +45,8 @@ impl ValueFunction<ChessGame> for StockfishNet {
     }
 }
 
+/* Code copied from pleco github */
+
 const CENTER: BitBoard = BitBoard((FILE_D | FILE_E) & (RANK_4 | RANK_5));
 const QUEEN_SIDE: BitBoard = BitBoard(FILE_A | FILE_B | FILE_C | FILE_D);
 const CENTER_FILES: BitBoard = BitBoard(FILE_C | FILE_D | FILE_E | FILE_F);

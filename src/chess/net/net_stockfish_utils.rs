@@ -1,3 +1,5 @@
+/* Code copied from pleco github */
+
 use pleco::board::castle_rights::Castling;
 use pleco::core::masks::*;
 use pleco::core::mono_traits::*;
