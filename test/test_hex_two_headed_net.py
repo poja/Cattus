@@ -38,6 +38,9 @@ def run_test():
                 },
                 "self_play": {
                     "iterations": 2,
+                    "temperature_policy": [
+                        [       0.0]
+                    ],
                     "games_num": 8,
                     "threads": 1,
                 },
@@ -54,6 +57,9 @@ def run_test():
                         [0.001]
                     ],
                     "compare": {
+                        "temperature_policy": [
+                            [       0.0]
+                        ],
                         "games_num": 4,
                         "switching_winning_threshold": 0.55,
                         "warning_losing_threshold": 0.55,

@@ -57,6 +57,7 @@ struct GamesResults {
 pub struct SelfPlayRunner<Game: IGame> {
     player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
     player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+    temperature_policy: String,
     serializer: Arc<dyn DataSerializer<Game>>,
     thread_num: u32,
 }
@@ -65,6 +66,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
     pub fn new(
         player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
         player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+        temperature_policy: String,
         serializer: Arc<dyn DataSerializer<Game>>,
         thread_num: u32,
     ) -> Self {
@@ -72,6 +74,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
         Self {
             player1_builder: player1_builder,
             player2_builder: player2_builder,
+            temperature_policy: temperature_policy,
             serializer: serializer,
             thread_num: thread_num,
         }
@@ -109,6 +112,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
             let worker = SelfPlayWorker::new(
                 Arc::clone(&self.player1_builder),
                 Arc::clone(&self.player2_builder),
+                &self.temperature_policy,
                 Arc::clone(&self.serializer),
                 output_dir1.to_string(),
                 output_dir2.to_string(),
@@ -156,6 +160,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
 struct SelfPlayWorker<Game: IGame> {
     player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
     player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+    temperature_scheduler: TemperatureScheduler,
     serializer: Arc<dyn DataSerializer<Game>>,
     output_dir1: String,
     output_dir2: String,
@@ -169,6 +174,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
     fn new(
         player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
         player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+        temperature_policy: &String,
         serializer: Arc<dyn DataSerializer<Game>>,
         output_dir1: String,
         output_dir2: String,
@@ -180,6 +186,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         Self {
             player1_builder: player1_builder,
             player2_builder: player2_builder,
+            temperature_scheduler: TemperatureScheduler::from_str(temperature_policy),
             serializer: serializer,
             output_dir1: output_dir1,
             output_dir2: output_dir2,
@@ -202,6 +209,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             let mut game = Game::new();
             let mut pos_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> = Vec::new();
 
+            let mut half_move_num = 0;
             while !game.is_over() {
                 let player = &mut match game.get_position().get_turn() {
                     GameColor::Player1 => [&mut player1, &mut player2],
@@ -209,6 +217,10 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                 }[(game_idx % 2) as usize];
 
                 /* Generate probabilities from MCTS player */
+                player.set_temperature(
+                    self.temperature_scheduler
+                        .get_temperature((half_move_num / 2) as u32),
+                );
                 let moves = player.calc_moves_probabilities(game.get_position());
                 let next_move = player.choose_move_from_probabilities(&moves).unwrap();
 
@@ -217,12 +229,14 @@ impl<Game: IGame> SelfPlayWorker<Game> {
 
                 /* Advance game position */
                 game.play_single_turn(next_move);
+
+                half_move_num += 1;
             }
             let winner = game.get_winner();
 
             let mut pos_idx = 0;
             for (pos, probs) in pos_probs_pairs {
-                let output_dir = &match pos.get_turn() {
+                let output_dir = match pos.get_turn() {
                     GameColor::Player1 => [&self.output_dir1, &self.output_dir2],
                     GameColor::Player2 => [&self.output_dir2, &self.output_dir1],
                 }[(game_idx % 2) as usize];
@@ -252,5 +266,59 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             .fetch_add(1, Ordering::Relaxed);
         }
         return Ok(());
+    }
+}
+
+struct TemperatureScheduler {
+    temperatures: Vec<(u32, f32)>,
+    last_temperature: f32,
+}
+
+impl TemperatureScheduler {
+    /// Create a scheduler from a string describing the temperature policy
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - A string representing the temperature policy. The string should contain an odd number of numbers,
+    /// with a ',' between them.
+    /// The string will be split into pairs of two numbers, and a final number.
+    /// Each pair should be of the form (moves_num, temperature) and the final number is the final temperature.
+    /// Each pair represent an interval of moves number in which the corresponding temperature will be assigned.
+    /// The pairs should be ordered by the moves_num.
+    ///
+    /// # Examples
+    ///
+    /// "1.0" means a constant temperature of 1
+    /// "30,1.0,0.0" means a temperature of 1.0 for the first 30 moves, and temperature of zero after than
+    /// "15,2.0,30,0.5,0.1" means a temperature of 2.0 for the first 15 moves, 0.5 in the moves 16 up to 30, and 0.1
+    /// after that
+    fn from_str(s: &String) -> Self {
+        let s = s.split(",").collect_vec();
+        assert!(s.len() % 2 == 1);
+
+        let mut temperatures = Vec::new();
+        for i in 0..(((s.len() - 1) / 2) as usize) {
+            let threshold = s[i * 2].parse::<u32>().unwrap();
+            let temperature = s[i * 2 + 1].parse::<f32>().unwrap();
+            if temperatures.len() > 0 {
+                let (last_threshold, _last_temp) = temperatures.last().unwrap();
+                assert!(*last_threshold < threshold);
+            }
+            temperatures.push((threshold, temperature));
+        }
+        let last_temp = s.last().unwrap().parse::<f32>().unwrap();
+        Self {
+            temperatures: temperatures,
+            last_temperature: last_temp,
+        }
+    }
+
+    fn get_temperature(&self, move_num: u32) -> f32 {
+        for (threshold, temperature) in &self.temperatures {
+            if move_num < *threshold {
+                return *temperature;
+            }
+        }
+        return self.last_temperature;
     }
 }
