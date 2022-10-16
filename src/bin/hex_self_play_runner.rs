@@ -13,8 +13,13 @@ impl INNetworkBuilder<HexGame> for NNetworkBuilder {
         &self,
         model_path: &str,
         cache: Arc<ValueFuncCache<HexGame>>,
+        cpu: bool,
     ) -> Box<dyn ValueFunction<HexGame>> {
-        Box::new(TwoHeadedNet::with_cache(model_path, cache))
+        if cpu {
+            Box::new(TwoHeadedNet::<true>::with_cache(model_path, cache))
+        } else {
+            Box::new(TwoHeadedNet::<false>::with_cache(model_path, cache))
+        }
     }
 }
 

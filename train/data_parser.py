@@ -13,7 +13,6 @@ class DataParser:
         self.game = game
         self.data_dir = data_dir
         self.cfg = cfg
-        self.cpu = True
 
         assert self.cfg["training"]["latest_data_entries"] >= self.cfg["training"]["iteration_data_entries"]
 
@@ -59,7 +58,7 @@ class DataParser:
 
     def _unpack_planes_gen(self, nparr_packed_gen):
         for packed_entry in nparr_packed_gen:
-            yield DataParser.unpack_planes(packed_entry, self.game, self.cpu)
+            yield DataParser.unpack_planes(packed_entry, self.game, self.cfg["cpu"])
 
     @staticmethod
     def serialize(nparr_entry, game):
@@ -115,7 +114,7 @@ class DataParser:
         return (planes, probs, winner)
 
     def _parse_func(self, planes, probs, winner):
-        return DataParser.bytes_entry_to_tensor((planes, probs, winner), self.game, self.cpu)
+        return DataParser.bytes_entry_to_tensor((planes, probs, winner), self.game, self.cfg["cpu"])
 
     def get_parse_func(self):
         return functools.partial(DataParser._parse_func, self)

@@ -124,6 +124,7 @@ class TrainProcess:
             "--prior-noise-alpha", str(self.cfg["mcts"]["prior_noise_alpha"]),
             "--prior-noise-epsilon", str(self.cfg["mcts"]["prior_noise_epsilon"]),
             "--threads", str(self.cfg["self_play"]["threads"]),
+            "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU",
             "--cache-size", str(self.cfg["mcts"]["cache_size"])],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
 
@@ -185,7 +186,8 @@ class TrainProcess:
                 "--temperature-policy", self.cfg["training"]["compare"]["temperature_policy_str"],
                 "--prior-noise-alpha", str(self.cfg["mcts"]["prior_noise_alpha"]),
                 "--prior-noise-epsilon", str(self.cfg["mcts"]["prior_noise_epsilon"]),
-                "--threads", str(self.cfg["training"]["compare"]["threads"])],
+                "--threads", str(self.cfg["training"]["compare"]["threads"]),
+                "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU"],
                 stderr=sys.stderr, stdout=sys.stdout, check=True)
 
             with open(compare_res_file, "r") as res_file:

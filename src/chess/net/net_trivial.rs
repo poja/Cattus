@@ -1,7 +1,7 @@
 use crate::chess::chess_game::{ChessGame, ChessPosition};
 use crate::game::common::{GamePosition, IGame};
 use crate::game::mcts::ValueFunction;
-use crate::game::net::{self, TwoHeadedNetBase};
+use crate::game::net;
 use once_cell::sync::Lazy;
 
 /* Copied from https://github.com/LeelaChessZero/lc0/blob/master/src/neural/network_trivial.cc */
@@ -60,7 +60,7 @@ impl ValueFunction<ChessGame> for TrivialNet {
         val = 2.0 / (1.0 + (val * -10.0).exp()) - 1.0;
 
         let moves_probs =
-            TwoHeadedNetBase::<ChessGame>::calc_moves_probs(position.get_legal_moves(), &POLICY);
+            net::calc_moves_probs::<ChessGame>(position.get_legal_moves(), &POLICY);
 
         net::flip_score_if_needed((val, moves_probs), is_flipped)
     }

@@ -14,9 +14,12 @@ struct Args {
 }
 
 fn main() {
+    const CPU: bool = true;
+
     let args = Args::parse();
 
-    let value_func: Box<dyn ValueFunction<HexGame>> = Box::new(TwoHeadedNet::new(&args.model_path));
+    let value_func: Box<dyn ValueFunction<HexGame>> =
+        Box::new(TwoHeadedNet::<CPU>::new(&args.model_path));
     let player = Box::new(MCTSPlayer::new(args.sim_num, value_func));
     let mut engine = uxi::UXIEngine::new(player);
     engine.run();

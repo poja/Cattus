@@ -7,11 +7,11 @@ use crate::game::common::IGame;
 use crate::game::mcts::ValueFunction;
 use crate::game::net::TwoHeadedNetBase;
 
-pub struct TwoHeadedNet {
-    base: TwoHeadedNetBase<ChessGame>,
+pub struct TwoHeadedNet<const CPU: bool> {
+    base: TwoHeadedNetBase<ChessGame, CPU>,
 }
 
-impl TwoHeadedNet {
+impl<const CPU: bool> TwoHeadedNet<CPU> {
     pub fn new(model_path: &str) -> Self {
         Self {
             base: TwoHeadedNetBase::new(model_path, None),
@@ -25,7 +25,7 @@ impl TwoHeadedNet {
     }
 }
 
-impl ValueFunction<ChessGame> for TwoHeadedNet {
+impl<const CPU: bool> ValueFunction<ChessGame> for TwoHeadedNet<CPU> {
     fn evaluate(
         &mut self,
         position: &ChessPosition,

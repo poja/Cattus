@@ -13,8 +13,13 @@ impl INNetworkBuilder<TttGame> for NNetworkBuilder {
         &self,
         model_path: &str,
         cache: Arc<ValueFuncCache<TttGame>>,
+        cpu: bool,
     ) -> Box<dyn ValueFunction<TttGame>> {
-        Box::new(TwoHeadedNet::with_cache(model_path, cache))
+        if cpu {
+            Box::new(TwoHeadedNet::<true>::with_cache(model_path, cache))
+        } else {
+            Box::new(TwoHeadedNet::<false>::with_cache(model_path, cache))
+        }
     }
 }
 
