@@ -16,7 +16,7 @@ fn main() {
     let args = Args::parse();
 
     let value_func = Box::new(TwoHeadedNet::new(&args.model_path));
-    let mut player1 = MCTSPlayer::new_custom(1000, std::f32::consts::SQRT_2, value_func);
+    let mut player1 = MCTSPlayer::new(1000, value_func);
 
     let mut player2 = TttPlayerCmd {};
 

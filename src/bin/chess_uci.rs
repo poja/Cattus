@@ -9,16 +9,16 @@ use rl::utils::Builder;
 #[clap(about, long_about = None)]
 struct Args {
     #[clap(long)]
-    sim_count: u32,
+    sim_num: u32,
 }
 
 struct PlayerBuilder {
-    sim_count: u32,
+    sim_num: u32,
 }
 impl Builder<MCTSPlayer<ChessGame>> for PlayerBuilder {
     fn build(&self) -> MCTSPlayer<ChessGame> {
         let value_func = Box::new(StockfishNet {});
-        MCTSPlayer::new_custom(self.sim_count, std::f32::consts::SQRT_2, value_func)
+        MCTSPlayer::new(self.sim_num, value_func)
     }
 }
 
@@ -26,7 +26,7 @@ fn main() {
     let args = Args::parse();
 
     let builder = Box::new(PlayerBuilder {
-        sim_count: args.sim_count,
+        sim_num: args.sim_num,
     });
 
     let mut uci = UCI::new(builder);

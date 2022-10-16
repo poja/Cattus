@@ -2,8 +2,10 @@
     "game": "tictactoe",
     "working_area": "{RL_TOP}/workarea/",
     "mcts": {
-        "sim_count": 140,
+        "sim_num": 140,
         "explore_factor": 1.41421,
+        "prior_noise_alpha": 0.03,
+        "prior_noise_epsilon": 0.25,
         "cache_size": 100000
     },
     "self_play": {

@@ -8,9 +8,7 @@ use rl::hex::uxi;
 #[clap(about, long_about = None)]
 struct Args {
     #[clap(long, default_value = "100")]
-    sim_count: u32,
-    #[clap(long, default_value = "1.41421")]
-    explore_param_c: f32,
+    sim_num: u32,
     #[clap(long, default_value = "_NONE_")]
     model_path: String,
 }
@@ -19,11 +17,7 @@ fn main() {
     let args = Args::parse();
 
     let value_func: Box<dyn ValueFunction<HexGame>> = Box::new(TwoHeadedNet::new(&args.model_path));
-    let player = Box::new(MCTSPlayer::new_custom(
-        args.sim_count,
-        args.explore_param_c,
-        value_func,
-    ));
+    let player = Box::new(MCTSPlayer::new(args.sim_num, value_func));
     let mut engine = uxi::UXIEngine::new(player);
     engine.run();
 }

@@ -15,7 +15,7 @@ fn color_to_str(c: Option<GameColor>) -> String {
 fn main() {
     let mut player1 = ChessPlayerCmd {};
     let value_func = Box::new(StockfishNet {});
-    let mut player2 = MCTSPlayer::new_custom(100000, std::f32::consts::SQRT_2, value_func);
+    let mut player2 = MCTSPlayer::new(100000, value_func);
     let mut game = ChessGame::new();
 
     let (final_pos, winner) = game.play_until_over(&mut player2, &mut player1);

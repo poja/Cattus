@@ -32,9 +32,11 @@ def run_test():
                 "game": "hex",
                 "working_area": TMP_DIR,
                 "mcts": {
-                    "sim_count": 10,
+                    "sim_num": 10,
                     "explore_factor": 1.41421,
                     "cache_size": 1000,
+                    "prior_noise_alpha": 0.0,
+                    "prior_noise_epsilon": 0.0,
                 },
                 "self_play": {
                     "iterations": 2,
