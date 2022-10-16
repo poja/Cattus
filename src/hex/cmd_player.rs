@@ -4,12 +4,6 @@ use std::io;
 
 pub struct HexPlayerCmd {}
 
-impl HexPlayerCmd {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
 impl GamePlayer<HexGame> for HexPlayerCmd {
     fn next_move(&mut self, position: &HexPosition) -> Option<HexMove> {
         let read_usize = || -> Option<usize> {
@@ -20,11 +14,9 @@ impl GamePlayer<HexGame> for HexPlayerCmd {
             match line.trim().parse::<usize>() {
                 Err(e) => {
                     println!("invalid number: {}", e);
-                    return None;
+                    None
                 }
-                Ok(x) => {
-                    return Some(x);
-                }
+                Ok(x) => Some(x),
             }
         };
 

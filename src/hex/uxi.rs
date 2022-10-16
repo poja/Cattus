@@ -88,20 +88,20 @@ impl HexPlayerUXI {
             return false;
         }
         let resp = r.unwrap();
-        let response: Vec<_> = resp.split(" ").collect();
+        let response: Vec<_> = resp.split(' ').collect();
         if response.is_empty() {
             return false;
         }
         match response[0] {
-            "ready" => return true,
+            "ready" => true,
             _ => {
                 eprintln!(
                     "[UXIPlayer] Unexpected command: {:?} (expected ready)",
                     response
                 );
-                return false;
+                false
             }
-        };
+        }
     }
 
     pub fn stop(&mut self) {
@@ -126,9 +126,8 @@ impl HexPlayerUXI {
             };
             if kill_needed {
                 /* don't be nice */
-                match self.process.as_mut().unwrap().kill() {
-                    Err(error) => eprintln!("[UXIPlayer] Failed to kill process: {}", error),
-                    Ok(_) => {}
+                if let Err(error) = self.process.as_mut().unwrap().kill() {
+                    eprintln!("[UXIPlayer] Failed to kill process: {}", error);
                 }
             }
             self.process = None;
@@ -142,11 +141,9 @@ impl HexPlayerUXI {
         }
         let process = self.process.as_mut().unwrap();
         let engine_stdin = process.stdin.as_mut().unwrap();
-        match engine_stdin.write((String::from(cmd.trim()) + "\n").as_bytes()) {
-            Err(error) => eprintln!("[UXIPlayer] Failed to pass command: {}", error),
-            Ok(_) => {}
+        if let Err(error) = engine_stdin.write((String::from(cmd.trim()) + "\n").as_bytes()) {
+            eprintln!("[UXIPlayer] Failed to pass command: {}", error)
         }
-        drop(engine_stdin);
     }
 
     fn receive_command(&mut self) -> Option<String> {
@@ -161,11 +158,9 @@ impl HexPlayerUXI {
         match engine_stdout.read_line(&mut output_line) {
             Err(error) => {
                 eprintln!("[UXIPlayer] Failed to read output from engine: {}", error);
-                return None;
+                None
             }
-            Ok(_) => {
-                return Some(String::from(output_line.trim()));
-            }
+            Ok(_) => Some(String::from(output_line.trim())),
         }
     }
 }
@@ -179,12 +174,8 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
         command.push_str("next_move ");
         position_to_uxi(position, &mut command);
         self.send_command(command);
-        let r = self.receive_command();
-        if r.is_none() {
-            return None;
-        }
-        let resp = r.unwrap();
-        let response: Vec<_> = resp.split(" ").collect();
+        let resp = self.receive_command()?;
+        let response: Vec<_> = resp.split(' ').collect();
         if response.is_empty() {
             return None;
         }
@@ -194,7 +185,7 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
                     eprintln!("[UXIPlayer] Expected \"move r,c\" format: \"{}\"", resp);
                     return None;
                 }
-                let m_str = response[1].split(",").collect_vec();
+                let m_str = response[1].split(',').collect_vec();
                 if m_str.len() != 2 {
                     eprintln!("[UXIPlayer] Expected \"move r,c\" format: \"{}\"", resp);
                     return None;
@@ -213,13 +204,13 @@ impl GamePlayer<HexGame> for HexPlayerUXI {
                     }
                     Ok(column) => column,
                 };
-                return Some(HexMove::new(r, c));
+                Some(HexMove::new(r, c))
             }
             unknown_cmd => {
                 eprintln!("[UXIPlayer] Unknown command: {}", unknown_cmd);
-                return None;
+                None
             }
-        };
+        }
     }
 }
 
@@ -229,7 +220,7 @@ pub struct UXIEngine {
 
 impl UXIEngine {
     pub fn new(player: Box<dyn GamePlayer<HexGame>>) -> Self {
-        Self { player: player }
+        Self { player }
     }
 
     pub fn run(&mut self) {
@@ -325,5 +316,5 @@ fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<HexPosition> {
             return None;
         }
     };
-    return Some(HexPosition::new_from_board(board_red, board_blue, player));
+    Some(HexPosition::new_from_board(board_red, board_blue, player))
 }

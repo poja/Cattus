@@ -6,7 +6,7 @@ mod tests {
 
     #[test]
     fn basic_evaluate() {
-        let mut net = TrivialNet::new();
+        let mut net = TrivialNet {};
 
         let pos1 = ChessPosition::from_str(
             &"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string(),

@@ -39,7 +39,7 @@ struct SelfPlayArgs {
 pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
     fn build_net(
         &self,
-        model_path: &String,
+        model_path: &str,
         cache: Arc<ValueFuncCache<Game>>,
     ) -> Box<dyn ValueFunction<Game>>;
 }
@@ -62,9 +62,9 @@ impl<Game: IGame> PlayerBuilder<Game> {
     ) -> Self {
         Self {
             network_builder,
-            model_path: model_path,
-            sim_count: sim_count,
-            explore_factor: explore_factor,
+            model_path,
+            sim_count,
+            explore_factor,
             cache: Arc::new(ValueFuncCache::new(cache_size)),
         }
     }
@@ -75,7 +75,7 @@ impl<Game: IGame> Builder<MCTSPlayer<Game>> for PlayerBuilder<Game> {
         let value_func: Box<dyn ValueFunction<Game>> = self
             .network_builder
             .build_net(&self.model_path, Arc::clone(&self.cache));
-        return MCTSPlayer::new_custom(self.sim_count, self.explore_factor, value_func);
+        MCTSPlayer::new_custom(self.sim_count, self.explore_factor, value_func)
     }
 }
 
@@ -94,31 +94,30 @@ pub fn run_main<Game: IGame + 'static>(
         args.cache_size,
     ));
 
-    let player2_builder;
-    if args.model1_path == args.model2_path {
-        player2_builder = Arc::clone(&player1_builder);
+    let player2_builder = if args.model1_path == args.model2_path {
+        Arc::clone(&player1_builder)
     } else {
-        player2_builder = Arc::new(PlayerBuilder::new(
+        Arc::new(PlayerBuilder::new(
             Arc::clone(&network_builder),
             args.model2_path,
             args.sim_count,
             args.explore_factor,
             args.cache_size,
-        ));
+        ))
     };
 
-    let self_player = SelfPlayRunner::new(
+    SelfPlayRunner::new(
         player1_builder,
         player2_builder,
         args.temperature_policy,
         Arc::from(serializer),
         args.threads,
-    );
-    return self_player.generate_data(
+    )
+    .generate_data(
         args.games_num,
         &args.out_dir1,
         &args.out_dir2,
         &args.data_entries_prefix,
         &args.result_file,
-    );
+    )
 }

@@ -4,6 +4,7 @@ use crate::game::common::GameBitboard;
 pub const PLANES_NUM: usize = 18;
 pub const MOVES_NUM: usize = 1880;
 
+#[allow(clippy::vec_init_then_push)]
 pub fn position_to_planes(pos: &ChessPosition) -> Vec<ChessBitboard> {
     let mut planes = Vec::new();
     let b = pos.get_raw_board();
@@ -51,5 +52,5 @@ pub fn position_to_planes(pos: &ChessPosition) -> Vec<ChessBitboard> {
     planes.push(ChessBitboard::new_with_all(true));
 
     assert!(planes.len() == PLANES_NUM);
-    return planes;
+    planes
 }

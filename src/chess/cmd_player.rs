@@ -4,12 +4,6 @@ use std::io;
 
 pub struct ChessPlayerCmd {}
 
-impl ChessPlayerCmd {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
 impl GamePlayer<ChessGame> for ChessPlayerCmd {
     fn next_move(&mut self, position: &ChessPosition) -> Option<ChessMove> {
         let read_cmd_move = || -> Option<ChessMove> {
@@ -21,11 +15,9 @@ impl GamePlayer<ChessGame> for ChessPlayerCmd {
             match ChessMove::from_san(position, line.trim()) {
                 Err(e) => {
                     println!("invalid number: {}", e);
-                    return None;
+                    None
                 }
-                Ok(x) => {
-                    return Some(x);
-                }
+                Ok(x) => Some(x),
             }
         };
 

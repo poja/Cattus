@@ -7,19 +7,13 @@ use itertools::Itertools;
 
 pub struct HexSerializer {}
 
-impl HexSerializer {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
 impl DataSerializer<HexGame> for HexSerializer {
     fn serialize_data_entry(
         &self,
         pos: HexPosition,
         probs: Vec<(HexMove, f32)>,
         winner: Option<GameColor>,
-        filename: &String,
+        filename: &str,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(winner) as f32;
@@ -27,6 +21,7 @@ impl DataSerializer<HexGame> for HexSerializer {
         let (winner, probs) = net::flip_score_if_needed((winner, probs), is_flipped);
         assert!(pos.get_turn() == GameColor::Player1);
 
+        #[allow(clippy::identity_op)]
         let planes = common::position_to_planes(&pos)
             .into_iter()
             .flat_map(|p| {
@@ -39,6 +34,6 @@ impl DataSerializer<HexGame> for HexSerializer {
             .into_iter()
             .collect_vec();
 
-        return SerializerBase::write_entry::<HexGame, MOVES_NUM>(planes, probs, winner, filename);
+        SerializerBase::write_entry::<HexGame, MOVES_NUM>(planes, probs, winner, filename)
     }
 }

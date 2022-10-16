@@ -29,14 +29,11 @@ struct Args {
 
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
-    if args.game == "tictactoe" {
-        return test_tictactoe(args);
-    } else if args.game == "hex" {
-        return test_hex(args);
-    } else if args.game == "chess" {
-        return test_chess(args);
-    } else {
-        panic!("unknown game: {:?}", args.game);
+    match args.game.as_str() {
+        "tictactoe" => test_tictactoe(args),
+        "hex" => test_hex(args),
+        "chess" => test_chess(args),
+        unknown_game => panic!("unknown game: {:?}", unknown_game),
     }
 }
 
@@ -47,8 +44,8 @@ fn test_tictactoe(args: Args) -> std::io::Result<()> {
     let tensor = net::planes_to_tensor::<TttGame>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
-    let serializer = TttSerializer::new();
-    return serialize_position(pos, &serializer, &args.serialize_out);
+    let serializer = TttSerializer {};
+    serialize_position(pos, &serializer, &args.serialize_out)
 }
 
 fn test_hex(args: Args) -> std::io::Result<()> {
@@ -58,8 +55,8 @@ fn test_hex(args: Args) -> std::io::Result<()> {
     let tensor = net::planes_to_tensor::<HexGame>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
-    let serializer = HexSerializer::new();
-    return serialize_position(pos, &serializer, &args.serialize_out);
+    let serializer = HexSerializer {};
+    serialize_position(pos, &serializer, &args.serialize_out)
 }
 
 fn test_chess(args: Args) -> std::io::Result<()> {
@@ -69,28 +66,28 @@ fn test_chess(args: Args) -> std::io::Result<()> {
     let tensor = net::planes_to_tensor::<ChessGame>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
-    let serializer = ChessSerializer::new();
-    return serialize_position(pos, &serializer, &args.serialize_out);
+    let serializer = ChessSerializer {};
+    serialize_position(pos, &serializer, &args.serialize_out)
 }
 
 fn tensor_to_json(tensor: Tensor<f32>, filename: &String) -> std::io::Result<()> {
     let shape: Option<Vec<Option<i64>>> = tensor.shape().try_into().unwrap();
     let shape = shape.unwrap().into_iter().map(|d| d.unwrap()).collect_vec();
-    let data = tensor.into_iter().map(|d| *d).collect_vec();
-    return fs::write(
+    let data = tensor.iter().cloned().collect_vec();
+    fs::write(
         filename,
         json::object! {
             shape: shape,
             data: data,
         }
         .dump(),
-    );
+    )
 }
 
 fn serialize_position<Game: IGame>(
     pos: Game::Position,
     serializer: &dyn DataSerializer<Game>,
-    filename: &String,
+    filename: &str,
 ) -> std::io::Result<()> {
     let moves = pos.get_legal_moves();
     let moves_num = moves.len();
@@ -105,5 +102,5 @@ fn serialize_position<Game: IGame>(
         2 => None,
         _ => panic!("cant happen"),
     };
-    return serializer.serialize_data_entry(pos, probs, winner, filename);
+    serializer.serialize_data_entry(pos, probs, winner, filename)
 }

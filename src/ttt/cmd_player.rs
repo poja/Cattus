@@ -4,12 +4,6 @@ use std::io;
 
 pub struct TttPlayerCmd {}
 
-impl TttPlayerCmd {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
 impl GamePlayer<TttGame> for TttPlayerCmd {
     fn next_move(&mut self, position: &TttPosition) -> Option<TttMove> {
         let read_usize = || -> Option<usize> {
@@ -20,11 +14,9 @@ impl GamePlayer<TttGame> for TttPlayerCmd {
             match line.trim().parse::<usize>() {
                 Err(e) => {
                     println!("invalid number: {}", e);
-                    return None;
+                    None
                 }
-                Ok(x) => {
-                    return Some(x);
-                }
+                Ok(x) => Some(x),
             }
         };
 

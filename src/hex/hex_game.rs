@@ -1,5 +1,8 @@
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
-use std::fmt::{self, Display};
+use std::{
+    cmp::Ordering,
+    fmt::{self, Display},
+};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct HexMove {
@@ -8,7 +11,7 @@ pub struct HexMove {
 
 impl HexMove {
     pub fn new(r: usize, c: usize) -> Self {
-        return HexMove::from_idx(r * HexGame::BOARD_SIZE + c);
+        HexMove::from_idx(r * HexGame::BOARD_SIZE + c)
     }
 
     pub fn from_idx(idx: usize) -> Self {
@@ -66,7 +69,7 @@ impl HexBitboard {
                 f.set(idxf, self.get(idx));
             }
         }
-        return f;
+        f
     }
 
     fn is_empty(&self) -> bool {
@@ -88,7 +91,7 @@ impl GameBitboard for HexBitboard {
 
     fn get(&self, idx: usize) -> bool {
         assert!(idx < HexGame::BOARD_SIZE * HexGame::BOARD_SIZE);
-        return (self.bitmap & (1u128 << idx)) != 0;
+        (self.bitmap & (1u128 << idx)) != 0
     }
 
     fn set(&mut self, idx: usize, val: bool) {
@@ -138,9 +141,9 @@ impl HexPosition {
         turn: GameColor,
     ) -> Self {
         let mut s = Self {
-            board_red: board_red,
-            board_blue: board_blue,
-            turn: turn,
+            board_red,
+            board_blue,
+            turn,
             left_red_reach: HexBitboard::new(),
             top_blue_reach: HexBitboard::new(),
             number_of_empty_tiles: (HexGame::BOARD_SIZE * HexGame::BOARD_SIZE) as u8,
@@ -164,10 +167,11 @@ impl HexPosition {
                 }
             }
         }
-        return s;
+        s
     }
 
-    pub fn from_str(s: &String) -> Self {
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(s: &str) -> Self {
         if s.chars().count() != HexGame::BOARD_SIZE * HexGame::BOARD_SIZE + 1 {
             panic!("unexpected string length")
         }
@@ -176,25 +180,25 @@ impl HexPosition {
         let mut board_blue = HexBitboard::new();
         let mut turn = None;
         for (idx, c) in s.chars().enumerate() {
-            if idx < HexGame::BOARD_SIZE * HexGame::BOARD_SIZE {
-                match c {
+            match idx.cmp(&(HexGame::BOARD_SIZE * HexGame::BOARD_SIZE)) {
+                Ordering::Less => match c {
                     'e' => {}
                     'r' => board_red.set(idx, true),
                     'b' => board_blue.set(idx, true),
                     _ => panic!("unknown board char: {:?}", c),
-                };
-            } else if idx == HexGame::BOARD_SIZE * HexGame::BOARD_SIZE {
-                turn = Some(match c {
-                    'r' => GameColor::Player1,
-                    'b' => GameColor::Player2,
-                    _ => panic!("unknown turn char: {:?}", c),
-                });
-            } else {
-                panic!("Too many chars in position string");
+                },
+                Ordering::Equal => {
+                    turn = Some(match c {
+                        'r' => GameColor::Player1,
+                        'b' => GameColor::Player2,
+                        _ => panic!("unknown turn char: {:?}", c),
+                    })
+                }
+                Ordering::Greater => panic!("Too many chars in position string"),
             }
         }
 
-        return Self::new_from_board(board_red, board_blue, turn.unwrap());
+        Self::new_from_board(board_red, board_blue, turn.unwrap())
     }
 
     pub fn pieces_red(&self) -> HexBitboard {
@@ -207,9 +211,9 @@ impl HexPosition {
 
     pub fn is_valid_move(&self, m: HexMove) -> bool {
         let idx = m.to_idx();
-        return idx < HexGame::BOARD_SIZE * HexGame::BOARD_SIZE
+        idx < HexGame::BOARD_SIZE * HexGame::BOARD_SIZE
             && !self.board_red.get(idx)
-            && !self.board_blue.get(idx);
+            && !self.board_blue.get(idx)
     }
 
     pub fn get_tile(&self, r: usize, c: usize) -> Option<GameColor> {
@@ -221,7 +225,7 @@ impl HexPosition {
         if self.board_blue.get(idx) {
             return Some(GameColor::Player2);
         }
-        return None;
+        None
     }
 
     fn foreach_neighbor<OP: FnMut(usize, usize)>(r: usize, c: usize, mut op: OP) {
@@ -324,14 +328,14 @@ impl GamePosition for HexPosition {
                 moves.push(HexMove::from_idx(idx));
             }
         }
-        return moves;
+        moves
     }
 
     fn get_moved_position(&self, m: <Self::Game as IGame>::Move) -> Self {
         assert!(self.is_valid_move(m));
-        let mut res = self.clone();
+        let mut res = *self;
         res.make_move(m);
-        return res;
+        res
     }
 
     fn is_over(&self) -> bool {
@@ -351,14 +355,11 @@ impl GamePosition for HexPosition {
             left_red_reach: self.top_blue_reach.flip(),
             top_blue_reach: self.left_red_reach.flip(),
             number_of_empty_tiles: self.number_of_empty_tiles,
-            winner: match self.winner {
-                Some(w) => Some(w.opposite()),
-                None => None,
-            },
+            winner: self.winner.map(|w| w.opposite()),
         }
     }
 
-    fn print(&self) -> () {
+    fn print(&self) {
         for r in 0..HexGame::BOARD_SIZE {
             let row_characters: Vec<String> = (0..HexGame::BOARD_SIZE)
                 .map(|c| {
@@ -392,20 +393,20 @@ impl IGame for HexGame {
     }
 
     fn new_from_pos(pos: Self::Position) -> Self {
-        Self { pos: pos }
+        Self { pos }
     }
 
     fn get_position(&self) -> &Self::Position {
-        return &self.pos;
+        &self.pos
     }
 
     fn is_over(&self) -> bool {
-        return self.pos.is_over();
+        self.pos.is_over()
     }
 
     fn get_winner(&self) -> Option<GameColor> {
         assert!(self.is_over());
-        return self.pos.get_winner();
+        self.pos.get_winner()
     }
 
     fn play_single_turn(&mut self, next_move: Self::Move) {
@@ -426,10 +427,10 @@ impl IGame for HexGame {
             let next_move = player.next_move(&self.pos).unwrap();
             self.play_single_turn(next_move)
         }
-        return (self.pos, self.get_winner());
+        (self.pos, self.get_winner())
     }
 
     fn get_repetition_limit() -> Option<u32> {
-        return None;
+        None
     }
 }

@@ -4,6 +4,7 @@ use crate::ttt::ttt_game::{TttBitboard, TttGame, TttPosition};
 pub const PLANES_NUM: usize = 3;
 pub const MOVES_NUM: usize = TttGame::BOARD_SIZE * TttGame::BOARD_SIZE;
 
+#[allow(clippy::vec_init_then_push)]
 pub fn position_to_planes(pos: &TttPosition) -> Vec<TttBitboard> {
     let mut planes = Vec::new();
     /* x pieces plane */
@@ -14,5 +15,5 @@ pub fn position_to_planes(pos: &TttPosition) -> Vec<TttBitboard> {
     planes.push(TttBitboard::new_with_all(true));
 
     assert!(planes.len() == PLANES_NUM);
-    return planes;
+    planes
 }

@@ -12,13 +12,13 @@ fn comapre_engines(
     engine1_params: &Vec<String>,
     engine2_params: &Vec<String>,
     number_of_games: usize,
-    _working_dir: &String,
+    _working_dir: &str,
 ) {
     // let mut rng = rand::thread_rng();
     // let engine1_errfile = working_dir.join("errlog" + rng.gen::<u64>().to_string());
     // let engine2_errfile = working_dir.join("errlog" + rng.gen::<u64>().to_string());
-    let mut engine1 = HexPlayerUXI::new(&Path::new(engine1_filename) /*, engine1_errfile*/);
-    let mut engine2 = HexPlayerUXI::new(&Path::new(engine2_filename) /*, engine2_errfile*/);
+    let mut engine1 = HexPlayerUXI::new(Path::new(engine1_filename) /*, engine1_errfile*/);
+    let mut engine2 = HexPlayerUXI::new(Path::new(engine2_filename) /*, engine2_errfile*/);
 
     let engine1_started = engine1.start(engine1_params);
     let engine2_started = engine2.start(engine2_params);
@@ -128,19 +128,19 @@ fn main() {
     }
     let parse_engine_args = |engine_args_str0: String| -> Option<Vec<String>> {
         let mut engine_args_str = engine_args_str0;
-        if engine_args_str.len() == 0 {
+        if engine_args_str.is_empty() {
             return Some(vec![]);
         }
-        if engine_args_str.starts_with("\"") {
+        if engine_args_str.starts_with('\"') {
             engine_args_str = engine_args_str[1..engine_args_str.len()].to_string();
         }
-        if engine_args_str.ends_with("\"") {
+        if engine_args_str.ends_with('\"') {
             engine_args_str = engine_args_str[0..engine_args_str.len() - 1].to_string();
         }
         Some(
             engine_args_str
-                .split(" ")
-                .filter(|s| -> bool { s.len() > 0 })
+                .split(' ')
+                .filter(|s| -> bool { !s.is_empty() })
                 .map(|s| -> String { String::from(s) })
                 .collect(),
         )

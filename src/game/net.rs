@@ -13,7 +13,7 @@ pub struct TwoHeadedNetBase<Game: IGame> {
 }
 
 impl<Game: IGame> TwoHeadedNetBase<Game> {
-    pub fn new(model_path: &String, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
+    pub fn new(model_path: &str, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
         // Load saved model bundle (session state + meta_graph data)
         let mut graph = Graph::new();
         let bundle =
@@ -43,11 +43,11 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
             .unwrap();
 
         Self {
-            bundle: bundle,
-            input_op: input_op,
-            value_head: value_head,
-            policy_head: policy_head,
-            cache: cache,
+            bundle,
+            input_op,
+            value_head,
+            policy_head,
+            cache,
         }
     }
 
@@ -69,11 +69,11 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
 
         let moves_scores: Tensor<f32> = args.fetch(output_moves_scores).unwrap();
         let moves_scores = moves_scores
-            .into_iter()
+            .iter()
             .map(|s| if s.is_nan() { f32::MIN } else { *s })
             .collect_vec();
 
-        return (val, moves_scores);
+        (val, moves_scores)
     }
 
     pub fn evaluate(
@@ -89,7 +89,7 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
             self.evaluate_impl(&position, &to_planes)
         };
 
-        return flip_score_if_needed(res, is_flipped);
+        flip_score_if_needed(res, is_flipped)
     }
 
     fn evaluate_impl(
@@ -104,13 +104,10 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
         let moves = pos.get_legal_moves();
         let moves_probs = TwoHeadedNetBase::<Game>::calc_moves_probs(moves, &move_scores);
 
-        return (val, moves_probs);
+        (val, moves_probs)
     }
 
-    pub fn calc_moves_probs(
-        moves: Vec<Game::Move>,
-        move_scores: &Vec<f32>,
-    ) -> Vec<(Game::Move, f32)> {
+    pub fn calc_moves_probs(moves: Vec<Game::Move>, move_scores: &[f32]) -> Vec<(Game::Move, f32)> {
         let moves_scores = moves
             .iter()
             .map(|m| move_scores[m.to_nn_idx()])
@@ -125,7 +122,7 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
         let p_sum: f32 = scores.iter().sum();
         let probs = scores.into_iter().map(|p| p / p_sum).collect_vec();
 
-        return moves.into_iter().zip(probs.into_iter()).collect_vec();
+        moves.into_iter().zip(probs.into_iter()).collect_vec()
     }
 }
 
@@ -163,16 +160,16 @@ pub fn planes_to_tensor<Game: IGame>(planes: Vec<Game::Bitboard>) -> Tensor<f32>
             Game::BOARD_SIZE as u64,
         ]
     };
-    return Tensor::new(&dims)
+    Tensor::new(&dims)
         .with_values(&encoded_position)
-        .expect("Can't create input tensor");
+        .expect("Can't create input tensor")
 }
 
 pub fn flip_pos_if_needed<Position: GamePosition>(pos: Position) -> (Position, bool) {
     if pos.get_turn() == GameColor::Player1 {
-        return (pos, false);
+        (pos, false)
     } else {
-        return (pos.get_flip(), true);
+        (pos.get_flip(), true)
     }
 }
 
@@ -181,7 +178,7 @@ pub fn flip_score_if_needed<Move: GameMove>(
     pos_flipped: bool,
 ) -> (f32, Vec<(Move, f32)>) {
     if !pos_flipped {
-        return net_res;
+        net_res
     } else {
         let (val, moves_probs) = net_res;
 
@@ -194,6 +191,6 @@ pub fn flip_score_if_needed<Move: GameMove>(
             .map(|(m, p)| (m.get_flip(), p))
             .collect_vec();
 
-        return (val, moves_probs);
+        (val, moves_probs)
     }
 }

@@ -1,5 +1,8 @@
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
-use std::fmt::{self, Display};
+use std::{
+    cmp::Ordering,
+    fmt::{self, Display},
+};
 
 pub fn color_to_str(c: Option<GameColor>) -> String {
     match c {
@@ -41,7 +44,7 @@ impl GameMove for TttMove {
     type Game = TttGame;
 
     fn get_flip(&self) -> Self {
-        return *self;
+        *self
     }
 
     fn to_nn_idx(&self) -> usize {
@@ -81,7 +84,7 @@ impl GameBitboard for TttBitboard {
 
     fn get(&self, idx: usize) -> bool {
         assert!(idx < TttGame::BOARD_SIZE * TttGame::BOARD_SIZE);
-        return (self.bitmap & (1u16 << idx)) != 0;
+        (self.bitmap & (1u16 << idx)) != 0
     }
 
     fn set(&mut self, idx: usize, val: bool) {
@@ -103,32 +106,33 @@ pub struct TttPosition {
 }
 
 impl TttPosition {
-    pub fn from_str(s: &String) -> Self {
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(s: &str) -> Self {
         if s.chars().count() != TttGame::BOARD_SIZE * TttGame::BOARD_SIZE + 1 {
             panic!("unexpected string length")
         }
 
         let mut pos = Self::new();
         for (idx, c) in s.chars().enumerate() {
-            if idx < TttGame::BOARD_SIZE * TttGame::BOARD_SIZE {
-                match c {
+            match idx.cmp(&(TttGame::BOARD_SIZE * TttGame::BOARD_SIZE)) {
+                Ordering::Less => match c {
                     'x' => pos.board_x.set(idx, true),
                     'o' => pos.board_o.set(idx, true),
                     '_' => {}
                     _ => panic!("unknown board char: {:?}", c),
+                },
+                Ordering::Equal => {
+                    pos.turn = match c {
+                        'x' => GameColor::Player1,
+                        'o' => GameColor::Player2,
+                        _ => panic!("unknown turn char: {:?}", c),
+                    }
                 }
-            } else if idx == TttGame::BOARD_SIZE * TttGame::BOARD_SIZE {
-                pos.turn = match c {
-                    'x' => GameColor::Player1,
-                    'o' => GameColor::Player2,
-                    _ => panic!("unknown turn char: {:?}", c),
-                };
-            } else {
-                panic!("too many turn chars: {:?}", c);
+                Ordering::Greater => panic!("too many turn chars: {:?}", c),
             }
         }
         pos.check_winner();
-        return pos;
+        pos
     }
 
     pub fn pieces_x(&self) -> TttBitboard {
@@ -148,7 +152,7 @@ impl TttPosition {
         if self.board_o.get(idx) {
             return Some(GameColor::Player2);
         }
-        return None;
+        None
     }
 
     pub fn make_move(&mut self, m: TttMove) {
@@ -167,7 +171,7 @@ impl TttPosition {
 
     pub fn is_valid_move(&self, m: TttMove) -> bool {
         let idx = m.to_idx();
-        return !self.board_x.get(idx) && !self.board_o.get(idx);
+        !self.board_x.get(idx) && !self.board_o.get(idx)
     }
 
     pub fn check_winner(&mut self) {
@@ -221,14 +225,14 @@ impl GamePosition for TttPosition {
                 }
             }
         }
-        return moves;
+        moves
     }
 
     fn get_moved_position(&self, m: <Self::Game as IGame>::Move) -> Self {
         assert!(self.is_valid_move(m));
-        let mut res = self.clone();
+        let mut res = *self;
         res.make_move(m);
-        return res;
+        res
     }
 
     fn is_over(&self) -> bool {
@@ -245,14 +249,11 @@ impl GamePosition for TttPosition {
             board_x: self.board_o,
             board_o: self.board_x,
             turn: self.turn.opposite(),
-            winner: match self.winner {
-                Some(w) => Some(w.opposite()),
-                None => None,
-            },
+            winner: self.winner.map(|w| w.opposite()),
         }
     }
 
-    fn print(&self) -> () {
+    fn print(&self) {
         for r in 0..TttGame::BOARD_SIZE {
             let row_characters: Vec<String> = (0..TttGame::BOARD_SIZE)
                 .map(|c| match self.get_tile(r, c) {
@@ -285,20 +286,20 @@ impl IGame for TttGame {
     }
 
     fn new_from_pos(pos: Self::Position) -> Self {
-        Self { pos: pos }
+        Self { pos }
     }
 
     fn get_position(&self) -> &Self::Position {
-        return &self.pos;
+        &self.pos
     }
 
     fn is_over(&self) -> bool {
-        return self.pos.is_over();
+        self.pos.is_over()
     }
 
     fn get_winner(&self) -> Option<GameColor> {
         assert!(self.is_over());
-        return self.pos.get_winner();
+        self.pos.get_winner()
     }
 
     fn play_single_turn(&mut self, next_move: Self::Move) {
@@ -319,10 +320,10 @@ impl IGame for TttGame {
             let next_move = player.next_move(&self.pos).unwrap();
             self.play_single_turn(next_move)
         }
-        return (self.pos, self.get_winner());
+        (self.pos, self.get_winner())
     }
 
     fn get_repetition_limit() -> Option<u32> {
-        return None;
+        None
     }
 }

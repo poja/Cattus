@@ -17,8 +17,8 @@ struct PlayerBuilder {
 }
 impl Builder<MCTSPlayer<ChessGame>> for PlayerBuilder {
     fn build(&self) -> MCTSPlayer<ChessGame> {
-        let value_func = Box::new(StockfishNet::new());
-        return MCTSPlayer::new_custom(self.sim_count, 1.41421, value_func);
+        let value_func = Box::new(StockfishNet {});
+        MCTSPlayer::new_custom(self.sim_count, std::f32::consts::SQRT_2, value_func)
     }
 }
 

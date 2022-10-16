@@ -12,13 +12,13 @@ pub struct TwoHeadedNet {
 }
 
 impl TwoHeadedNet {
-    pub fn new(model_path: &String) -> Self {
+    pub fn new(model_path: &str) -> Self {
         Self {
             base: TwoHeadedNetBase::new(model_path, None),
         }
     }
 
-    pub fn with_cache(model_path: &String, cache: Arc<ValueFuncCache<ChessGame>>) -> Self {
+    pub fn with_cache(model_path: &str, cache: Arc<ValueFuncCache<ChessGame>>) -> Self {
         Self {
             base: TwoHeadedNetBase::new(model_path, Some(cache)),
         }
@@ -30,6 +30,6 @@ impl ValueFunction<ChessGame> for TwoHeadedNet {
         &mut self,
         position: &ChessPosition,
     ) -> (f32, Vec<(<ChessGame as IGame>::Move, f32)>) {
-        return self.base.evaluate(position, common::position_to_planes);
+        self.base.evaluate(position, common::position_to_planes)
     }
 }
