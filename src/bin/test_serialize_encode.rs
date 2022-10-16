@@ -41,7 +41,7 @@ fn test_tictactoe(args: Args) -> std::io::Result<()> {
     let pos = TttPosition::from_str(&args.position);
 
     let planes = ttt::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<TttGame>(planes);
+    let tensor = net::planes_to_tensor::<TttGame, true>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
     let serializer = TttSerializer {};
@@ -52,7 +52,7 @@ fn test_hex(args: Args) -> std::io::Result<()> {
     let pos = HexPosition::from_str(&args.position);
 
     let planes = hex::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<HexGame>(planes);
+    let tensor = net::planes_to_tensor::<HexGame, true>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
     let serializer = HexSerializer {};
@@ -63,7 +63,7 @@ fn test_chess(args: Args) -> std::io::Result<()> {
     let pos = ChessPosition::from_str(&args.position);
 
     let planes = chess::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<ChessGame>(planes);
+    let tensor = net::planes_to_tensor::<ChessGame, true>(planes);
     tensor_to_json(tensor, &args.encode_out)?;
 
     let serializer = ChessSerializer {};

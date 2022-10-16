@@ -36,6 +36,8 @@ struct SelfPlayArgs {
     prior_noise_epsilon: f32,
     #[clap(long, default_value = "1")]
     threads: u32,
+    #[clap(long, default_value = "CPU")]
+    processing_unit: String,
     #[clap(long, default_value = "100000")]
     cache_size: usize,
 }
@@ -45,6 +47,7 @@ pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
         &self,
         model_path: &str,
         cache: Arc<ValueFuncCache<Game>>,
+        cpu: bool,
     ) -> Box<dyn ValueFunction<Game>>;
 }
 
@@ -56,9 +59,11 @@ struct PlayerBuilder<Game: IGame> {
     prior_noise_alpha: f32,
     prior_noise_epsilon: f32,
     cache: Arc<ValueFuncCache<Game>>,
+    cpu: bool,
 }
 
 impl<Game: IGame> PlayerBuilder<Game> {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         network_builder: Arc<dyn INNetworkBuilder<Game>>,
         model_path: String,
@@ -67,6 +72,7 @@ impl<Game: IGame> PlayerBuilder<Game> {
         prior_noise_alpha: f32,
         prior_noise_epsilon: f32,
         cache_size: usize,
+        cpu: bool,
     ) -> Self {
         Self {
             network_builder,
@@ -76,15 +82,16 @@ impl<Game: IGame> PlayerBuilder<Game> {
             prior_noise_alpha,
             prior_noise_epsilon,
             cache: Arc::new(ValueFuncCache::new(cache_size)),
+            cpu,
         }
     }
 }
 
 impl<Game: IGame> Builder<MCTSPlayer<Game>> for PlayerBuilder<Game> {
     fn build(&self) -> MCTSPlayer<Game> {
-        let value_func: Box<dyn ValueFunction<Game>> = self
-            .network_builder
-            .build_net(&self.model_path, Arc::clone(&self.cache));
+        let value_func: Box<dyn ValueFunction<Game>> =
+            self.network_builder
+                .build_net(&self.model_path, Arc::clone(&self.cache), self.cpu);
         MCTSPlayer::new_custom(
             self.sim_num,
             self.explore_factor,
@@ -102,6 +109,12 @@ pub fn run_main<Game: IGame + 'static>(
     let args = SelfPlayArgs::parse();
     let network_builder = Arc::from(network_builder);
 
+    let cpu = match args.processing_unit.to_uppercase().as_str() {
+        "CPU" => true,
+        "GPU" => false,
+        unknown_pu => panic!("unknown processing unit '{unknown_pu}'"),
+    };
+
     let player1_builder = Arc::new(PlayerBuilder::new(
         Arc::clone(&network_builder),
         args.model1_path.clone(),
@@ -110,6 +123,7 @@ pub fn run_main<Game: IGame + 'static>(
         args.prior_noise_alpha,
         args.prior_noise_epsilon,
         args.cache_size,
+        cpu,
     ));
 
     let player2_builder = if args.model1_path == args.model2_path {
@@ -123,6 +137,7 @@ pub fn run_main<Game: IGame + 'static>(
             args.prior_noise_alpha,
             args.prior_noise_epsilon,
             args.cache_size,
+            cpu,
         ))
     };
 

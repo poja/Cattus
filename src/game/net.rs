@@ -4,7 +4,7 @@ use itertools::Itertools;
 use std::sync::Arc;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
-pub struct TwoHeadedNetBase<Game: IGame> {
+pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
     bundle: SavedModelBundle,
     input_op: Operation,
     value_head: Operation,
@@ -12,7 +12,7 @@ pub struct TwoHeadedNetBase<Game: IGame> {
     cache: Option<Arc<ValueFuncCache<Game>>>,
 }
 
-impl<Game: IGame> TwoHeadedNetBase<Game> {
+impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
     pub fn new(model_path: &str, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
         // Load saved model bundle (session state + meta_graph data)
         let mut graph = Graph::new();
@@ -98,42 +98,44 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
         to_planes: &impl Fn(&Game::Position) -> Vec<Game::Bitboard>,
     ) -> (f32, Vec<(Game::Move, f32)>) {
         let planes = to_planes(pos);
-        let input = planes_to_tensor::<Game>(planes);
+        let input = planes_to_tensor::<Game, CPU>(planes);
         let (val, move_scores) = self.run_net(input);
 
         let moves = pos.get_legal_moves();
-        let moves_probs = TwoHeadedNetBase::<Game>::calc_moves_probs(moves, &move_scores);
+        let moves_probs = calc_moves_probs::<Game>(moves, &move_scores);
 
         (val, moves_probs)
     }
-
-    pub fn calc_moves_probs(moves: Vec<Game::Move>, move_scores: &[f32]) -> Vec<(Game::Move, f32)> {
-        let moves_scores = moves
-            .iter()
-            .map(|m| move_scores[m.to_nn_idx()])
-            .collect_vec();
-
-        // Softmax normalization
-        let max_p = moves_scores.iter().cloned().fold(f32::MIN, f32::max);
-        let scores = moves_scores
-            .into_iter()
-            .map(|p| (p - max_p).exp())
-            .collect_vec();
-        let p_sum: f32 = scores.iter().sum();
-        let probs = scores.into_iter().map(|p| p / p_sum).collect_vec();
-
-        moves.into_iter().zip(probs.into_iter()).collect_vec()
-    }
 }
 
-pub fn planes_to_tensor<Game: IGame>(planes: Vec<Game::Bitboard>) -> Tensor<f32> {
-    let cpu = true;
+pub fn calc_moves_probs<Game: IGame>(
+    moves: Vec<Game::Move>,
+    move_scores: &[f32],
+) -> Vec<(Game::Move, f32)> {
+    let moves_scores = moves
+        .iter()
+        .map(|m| move_scores[m.to_nn_idx()])
+        .collect_vec();
+
+    // Softmax normalization
+    let max_p = moves_scores.iter().cloned().fold(f32::MIN, f32::max);
+    let scores = moves_scores
+        .into_iter()
+        .map(|p| (p - max_p).exp())
+        .collect_vec();
+    let p_sum: f32 = scores.iter().sum();
+    let probs = scores.into_iter().map(|p| p / p_sum).collect_vec();
+
+    moves.into_iter().zip(probs.into_iter()).collect_vec()
+}
+
+pub fn planes_to_tensor<Game: IGame, const CPU: bool>(planes: Vec<Game::Bitboard>) -> Tensor<f32> {
     let planes_num = planes.len();
 
     let mut encoded_position = vec![0.0; planes_num * Game::BOARD_SIZE * Game::BOARD_SIZE];
     for (plane_idx, plane) in planes.into_iter().enumerate() {
         for square in 0..(Game::BOARD_SIZE * Game::BOARD_SIZE) {
-            let idx = if cpu {
+            let idx = if CPU {
                 square * planes_num + plane_idx
             } else {
                 plane_idx * Game::BOARD_SIZE * Game::BOARD_SIZE + square
@@ -145,7 +147,7 @@ pub fn planes_to_tensor<Game: IGame>(planes: Vec<Game::Bitboard>) -> Tensor<f32>
         }
     }
 
-    let dims = if cpu {
+    let dims = if CPU {
         [
             1,
             Game::BOARD_SIZE as u64,
