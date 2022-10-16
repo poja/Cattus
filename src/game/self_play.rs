@@ -14,7 +14,7 @@ pub trait DataSerializer<Game: IGame>: Sync + Send {
         pos: Game::Position,
         probs: Vec<(Game::Move, f32)>,
         winner: Option<GameColor>,
-        filename: &String,
+        filename: &str,
     ) -> std::io::Result<()>;
 }
 
@@ -25,7 +25,7 @@ impl SerializerBase {
         planes: Vec<u64>,
         probs: Vec<(Game::Move, f32)>,
         winner: f32,
-        filename: &String,
+        filename: &str,
     ) -> std::io::Result<()> {
         /* Use -1 for illegal moves */
         let mut probs_vec = vec![-1.0f32; MOVES_NUM];
@@ -36,7 +36,7 @@ impl SerializerBase {
         }
 
         /* Write to file */
-        return fs::write(
+        fs::write(
             filename,
             json::object! {
                 planes: planes,
@@ -44,7 +44,7 @@ impl SerializerBase {
                 winner: winner
             }
             .dump(),
-        );
+        )
     }
 }
 
@@ -72,11 +72,11 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
     ) -> Self {
         assert!(thread_num > 0);
         Self {
-            player1_builder: player1_builder,
-            player2_builder: player2_builder,
-            temperature_policy: temperature_policy,
-            serializer: serializer,
-            thread_num: thread_num,
+            player1_builder,
+            player2_builder,
+            temperature_policy,
+            serializer,
+            thread_num,
         }
     }
 
@@ -122,10 +122,10 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
                 end_idx,
             );
 
-            return move || match worker.generate_data() {
+            move || match worker.generate_data() {
                 Ok(_) => {}
                 Err(e) => panic!("{:?}", e),
-            };
+            }
         };
 
         /* Spawn thread_num-1 to jobs [1..thread_num-1] */
@@ -153,7 +153,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
             )?;
         }
 
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -171,10 +171,11 @@ struct SelfPlayWorker<Game: IGame> {
 }
 
 impl<Game: IGame> SelfPlayWorker<Game> {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
         player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
-        temperature_policy: &String,
+        temperature_policy: &str,
         serializer: Arc<dyn DataSerializer<Game>>,
         output_dir1: String,
         output_dir2: String,
@@ -184,16 +185,16 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         end_idx: u32,
     ) -> Self {
         Self {
-            player1_builder: player1_builder,
-            player2_builder: player2_builder,
+            player1_builder,
+            player2_builder,
             temperature_scheduler: TemperatureScheduler::from_str(temperature_policy),
-            serializer: serializer,
-            output_dir1: output_dir1,
-            output_dir2: output_dir2,
-            data_entries_prefix: data_entries_prefix,
-            results: results,
-            start_idx: start_idx,
-            end_idx: end_idx,
+            serializer,
+            output_dir1,
+            output_dir2,
+            data_entries_prefix,
+            results,
+            start_idx,
+            end_idx,
         }
     }
 
@@ -207,7 +208,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             //     println!("self play {}%", percentage);
             // }
             let mut game = Game::new();
-            let mut pos_probs_pairs: Vec<(Game::Position, Vec<(Game::Move, f32)>)> = Vec::new();
+            let mut pos_probs_pairs = Vec::new();
 
             let mut half_move_num = 0;
             while !game.is_over() {
@@ -225,7 +226,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                 let next_move = player.choose_move_from_probabilities(&moves).unwrap();
 
                 /* Store probabilities */
-                pos_probs_pairs.push((game.get_position().clone(), moves));
+                pos_probs_pairs.push((*game.get_position(), moves));
 
                 /* Advance game position */
                 game.play_single_turn(next_move);
@@ -234,8 +235,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             }
             let winner = game.get_winner();
 
-            let mut pos_idx = 0;
-            for (pos, probs) in pos_probs_pairs {
+            for (pos_idx, (pos, probs)) in pos_probs_pairs.into_iter().enumerate() {
                 let output_dir = match pos.get_turn() {
                     GameColor::Player1 => [&self.output_dir1, &self.output_dir2],
                     GameColor::Player2 => [&self.output_dir2, &self.output_dir1],
@@ -250,7 +250,6 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                         output_dir, self.data_entries_prefix, game_idx, pos_idx
                     ),
                 )?;
-                pos_idx += 1;
             }
 
             match winner {
@@ -265,7 +264,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             }
             .fetch_add(1, Ordering::Relaxed);
         }
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -292,15 +291,15 @@ impl TemperatureScheduler {
     /// "30,1.0,0.0" means a temperature of 1.0 for the first 30 moves, and temperature of zero after than
     /// "15,2.0,30,0.5,0.1" means a temperature of 2.0 for the first 15 moves, 0.5 in the moves 16 up to 30, and 0.1
     /// after that
-    fn from_str(s: &String) -> Self {
-        let s = s.split(",").collect_vec();
+    fn from_str(s: &str) -> Self {
+        let s = s.split(',').collect_vec();
         assert!(s.len() % 2 == 1);
 
         let mut temperatures = Vec::new();
         for i in 0..(((s.len() - 1) / 2) as usize) {
             let threshold = s[i * 2].parse::<u32>().unwrap();
             let temperature = s[i * 2 + 1].parse::<f32>().unwrap();
-            if temperatures.len() > 0 {
+            if !temperatures.is_empty() {
                 let (last_threshold, _last_temp) = temperatures.last().unwrap();
                 assert!(*last_threshold < threshold);
             }
@@ -308,7 +307,7 @@ impl TemperatureScheduler {
         }
         let last_temp = s.last().unwrap().parse::<f32>().unwrap();
         Self {
-            temperatures: temperatures,
+            temperatures,
             last_temperature: last_temp,
         }
     }
@@ -319,6 +318,6 @@ impl TemperatureScheduler {
                 return *temperature;
             }
         }
-        return self.last_temperature;
+        self.last_temperature
     }
 }

@@ -18,11 +18,6 @@ use pleco::{Board, PieceType, Player};
 use std::mem::MaybeUninit;
 
 pub struct StockfishNet {}
-impl StockfishNet {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
 
 impl ValueFunction<ChessGame> for StockfishNet {
     fn evaluate(
@@ -41,7 +36,7 @@ impl ValueFunction<ChessGame> for StockfishNet {
             .map(|m| (m, 1.0 / move_count))
             .collect_vec();
 
-        return net::flip_score_if_needed((val, moves_probs), is_flipped);
+        net::flip_score_if_needed((val, moves_probs), is_flipped)
     }
 }
 
@@ -379,6 +374,7 @@ struct EvaluationInner<'a> {
     king_adjacent_zone_attacks_count: [i32; PLAYER_CNT],
 }
 
+#[allow(clippy::all)]
 impl<'a, 'b> EvaluationInner<'a> {
     fn new(
         board: &'a Board,
@@ -1022,9 +1018,7 @@ impl<'a, 'b> EvaluationInner<'a> {
         let weight: i32 =
             self.board.count_pieces_player(us) as i32 - 2 * self.pawn_entry.open_files() as i32;
 
-        let score = Score(bonus * weight * weight / 16, 0);
-
-        score
+        Score(bonus * weight * weight / 16, 0)
     }
 
     // evaluate_initiative() computes the initiative correction value for the

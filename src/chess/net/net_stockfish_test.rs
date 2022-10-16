@@ -6,7 +6,7 @@ mod tests {
 
     #[test]
     fn basic_evaluate() {
-        let mut net = StockfishNet::new();
+        let mut net = StockfishNet {};
 
         let pos1 = ChessPosition::from_str(
             &"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string(),

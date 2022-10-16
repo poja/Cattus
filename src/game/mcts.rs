@@ -27,10 +27,10 @@ struct MCTSNode<Position: GamePosition> {
 }
 
 impl<Position: GamePosition> MCTSNode<Position> {
-    pub fn from_position(pos: Position, init_score: f32) -> Self {
+    pub fn from_position(position: Position, init_score: f32) -> Self {
         Self {
-            position: pos,
-            init_score: init_score,
+            position,
+            init_score,
             simulations_n: 0,
             score_w: 0.0,
         }
@@ -55,14 +55,14 @@ impl<Game: IGame> MCTSPlayer<Game> {
         Self {
             search_tree: DiGraph::new(),
             root: None,
-            exploration_param_c: exploration_param_c,
-            simulations_per_move: simulations_per_move,
+            exploration_param_c,
+            simulations_per_move,
             temperature: 1.0,
-            value_func: value_func,
+            value_func,
         }
     }
 
-    fn detect_repetition(&self, trajectory: &Vec<NodeIndex>) -> bool {
+    fn detect_repetition(&self, trajectory: &[NodeIndex]) -> bool {
         let repetition_limit = Game::get_repetition_limit();
         if repetition_limit.is_none() {
             return false;
@@ -82,10 +82,10 @@ impl<Game: IGame> MCTSPlayer<Game> {
                 return true;
             }
         }
-        return false;
+        false
     }
 
-    fn develop_tree(&mut self) -> () {
+    fn develop_tree(&mut self) {
         for _ in 0..self.simulations_per_move {
             /* Select a leaf node */
             let path_to_selection = self.select();
@@ -138,7 +138,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
                     let child2 = self.search_tree.node_weight(child2_id).unwrap();
                     let val1 = self.calc_selection_heuristic(node, child1);
                     let val2 = self.calc_selection_heuristic(node, child2);
-                    return val1.partial_cmp(&val2).unwrap();
+                    val1.partial_cmp(&val2).unwrap()
                 })
                 .unwrap();
         }
@@ -159,7 +159,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             * child.init_score
             * ((parent.simulations_n as f32).sqrt() / (1 + child.simulations_n) as f32);
 
-        return exploit + explore;
+        exploit + explore
     }
 
     fn create_children(
@@ -174,7 +174,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         let moves_actual: HashSet<Game::Move> =
             HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| *m));
         let moves_expected: HashSet<Game::Move> =
-            HashSet::from_iter(parent_pos.get_legal_moves().iter().map(|x| *x));
+            HashSet::from_iter(parent_pos.get_legal_moves().iter().cloned());
         assert!(moves_actual == moves_expected);
 
         for (m, p) in per_move_init_score {
@@ -189,7 +189,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
     fn simulate(&mut self, leaf_id: NodeIndex) -> (f32, Vec<(Game::Move, f32)>) {
         let position = &self.search_tree.node_weight(leaf_id).unwrap().position;
         assert!(!position.is_over());
-        return self.value_func.evaluate(&position);
+        self.value_func.evaluate(position)
     }
 
     fn backpropagate(&mut self, path: &Vec<NodeIndex>, score: f32) {
@@ -226,13 +226,13 @@ impl<Game: IGame> MCTSPlayer<Game> {
                     return Some(node);
                 }
                 // Add children to next layer
-                for edge in self.search_tree.edges(node).into_iter() {
+                for edge in self.search_tree.edges(node) {
                     next_layer.push(edge.target())
                 }
             }
             layer = next_layer;
         }
-        return None;
+        None
     }
 
     fn remove_all_but_subtree(&mut self, sub_tree_root: NodeIndex) {
@@ -250,7 +250,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         while !nodes.is_empty() {
             let (parent_old, parent_new) = nodes.pop().unwrap();
 
-            for edge in self.search_tree.edges(parent_old).into_iter() {
+            for edge in self.search_tree.edges(parent_old) {
                 let child_old = edge.target();
                 let child_data = self.search_tree.node_weight(child_old).unwrap();
                 let child_new = new_tree.add_node(*child_data);
@@ -316,26 +316,26 @@ impl<Game: IGame> MCTSPlayer<Game> {
             .iter()
             .map(|&(_, simcount)| simcount)
             .sum();
-        return moves_and_simcounts
+        moves_and_simcounts
             .into_iter()
             .map(|(m, simcount)| (*m, simcount as f32 / simcount_total as f32))
-            .collect_vec();
+            .collect_vec()
     }
 
     pub fn choose_move_from_probabilities(
         &self,
         moves_probs: &Vec<(Game::Move, f32)>,
     ) -> Option<Game::Move> {
-        if moves_probs.len() == 0 {
+        if moves_probs.is_empty() {
             return None;
         }
 
         if self.temperature == 0.0 {
             let (m, _p) = moves_probs
-                .into_iter()
+                .iter()
                 .max_by(|(_m1, p1), (_m2, p2)| p1.total_cmp(p2))
                 .unwrap();
-            return Some(*m);
+            Some(*m)
         } else {
             /* prob -> prob^temperature */
             assert!(self.temperature > 0.0);
@@ -348,7 +348,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             let probs_sum: f32 = probabilities.iter().sum();
             let probabilities = probabilities.iter().map(|p| p / probs_sum).collect_vec();
             let distribution = WeightedIndex::new(&probabilities).unwrap();
-            return Some(moves_probs[distribution.sample(&mut rand::thread_rng())].0);
+            Some(moves_probs[distribution.sample(&mut rand::thread_rng())].0)
         }
     }
 
@@ -361,7 +361,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
 impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
         let moves = self.calc_moves_probabilities(position);
-        return self.choose_move_from_probabilities(&moves);
+        self.choose_move_from_probabilities(&moves)
     }
 }
 
@@ -377,11 +377,6 @@ pub trait ValueFunction<Game: IGame> {
 }
 
 pub struct ValueFunctionRand {}
-impl ValueFunctionRand {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
 
 impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
     fn evaluate(&mut self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>) {
@@ -389,8 +384,8 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
             position.get_winner()
         } else {
             // Play randomly and return the simulation game result
-            let mut player1 = PlayerRand::new();
-            let mut player2 = PlayerRand::new();
+            let mut player1 = PlayerRand {};
+            let mut player2 = PlayerRand {};
             let mut game = Game::new_from_pos(*position);
 
             let (_final_pos, winner) = game.play_until_over(&mut player1, &mut player2);
@@ -413,6 +408,6 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
         let move_prob = 1.0 / moves.len() as f32;
         let moves_probs = moves.iter().map(|m| (*m, move_prob)).collect_vec();
 
-        return (val, moves_probs);
+        (val, moves_probs)
     }
 }

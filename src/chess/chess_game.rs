@@ -28,20 +28,21 @@ pub struct ChessMove {
 
 impl ChessMove {
     pub fn new(m: chess::ChessMove) -> Self {
-        Self { m: m }
+        Self { m }
     }
 
     pub fn from_san(pos: &ChessPosition, move_str: &str) -> Result<Self, String> {
-        return match chess::ChessMove::from_san(&pos.board, move_str) {
+        match chess::ChessMove::from_san(&pos.board, move_str) {
             Ok(m) => Ok(Self::new(m)),
             Err(e) => Err(err_to_str(e)),
-        };
+        }
     }
 
     pub fn from_lan(move_str: &str) -> Result<Self, String> {
         if !(move_str.len() == 4 || move_str.len() == 5) {
             return Err("Invalid LAN length".to_string());
         }
+        #[allow(clippy::iter_nth_zero)]
         let sf = chess::File::from_index(move_str.chars().nth(0).unwrap() as usize - 'a' as usize);
         let sr = chess::Rank::from_index(move_str.chars().nth(1).unwrap() as usize - '1' as usize);
         let df = chess::File::from_index(move_str.chars().nth(2).unwrap() as usize - 'a' as usize);
@@ -59,9 +60,9 @@ impl ChessMove {
         } else {
             None
         };
-        return Ok(ChessMove::new(chess::ChessMove::new(
+        Ok(ChessMove::new(chess::ChessMove::new(
             source, dest, promotion,
-        )));
+        )))
     }
 
     pub fn get_raw(&self) -> &chess::ChessMove {
@@ -69,22 +70,21 @@ impl ChessMove {
     }
 
     pub fn to_idx(&self) -> usize {
-        let promotion = self.m.get_promotion();
-        if promotion.is_none() {
-            return self.m.get_source().to_index() * 64 + self.m.get_dest().to_index();
-        } else {
+        if let Some(promotion) = self.m.get_promotion() {
             let promotions_base = 64 * 64;
             let sf = self.m.get_source().get_file().to_index();
             let df = self.m.get_dest().get_file().to_index();
             let move_chunk = (sf * 2 + df) * 4;
-            let piece_offset = match promotion.unwrap() {
+            let piece_offset = match promotion {
                 chess::Piece::Queen => 0,
                 chess::Piece::Rook => 1,
                 chess::Piece::Bishop => 2,
                 chess::Piece::Knight => 3,
                 other => panic!("unexpected promotion piece: {:?}", other),
             };
-            return promotions_base + move_chunk + piece_offset;
+            promotions_base + move_chunk + piece_offset
+        } else {
+            self.m.get_source().to_index() * 64 + self.m.get_dest().to_index()
         }
     }
 }
@@ -100,7 +100,7 @@ impl GameMove for ChessMove {
         let s = flip_square(self.m.get_source());
         let d = flip_square(self.m.get_dest());
         let promotion = self.m.get_promotion();
-        return ChessMove::new(chess::ChessMove::new(s, d, promotion));
+        ChessMove::new(chess::ChessMove::new(s, d, promotion))
     }
 
     fn to_nn_idx(&self) -> usize {
@@ -147,7 +147,7 @@ impl GameBitboard for ChessBitboard {
 
     fn get(&self, idx: usize) -> bool {
         assert!(idx < ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE);
-        return (self.b.0 & (1u64 << idx)) != 0;
+        (self.b.0 & (1u64 << idx)) != 0
     }
 
     fn set(&mut self, idx: usize, val: bool) {
@@ -169,12 +169,13 @@ pub struct ChessPosition {
 impl ChessPosition {
     fn new_from_board(board: chess::Board) -> Self {
         Self {
-            board: board,
+            board,
             fifty_rule_count: 0,
         }
     }
 
-    pub fn from_str(s: &String) -> Self {
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(s: &str) -> Self {
         Self::new_from_board(chess::Board::from_str(s).unwrap())
     }
 
@@ -286,7 +287,7 @@ impl ChessPosition {
         // s.push(' ');
         // s.push_str(&format!("{}", (self.half_moves / 2) + 1));
 
-        return s;
+        s
     }
 }
 
@@ -334,7 +335,7 @@ impl GamePosition for ChessPosition {
 
     fn get_legal_moves(&self) -> Vec<<Self::Game as IGame>::Move> {
         chess::MoveGen::new_legal(&self.board)
-            .map(|m| ChessMove::new(m))
+            .map(ChessMove::new)
             .collect_vec()
     }
 
@@ -356,7 +357,7 @@ impl GamePosition for ChessPosition {
             self.fifty_rule_count
         };
 
-        return next_board;
+        next_board
     }
 
     fn is_over(&self) -> bool {
@@ -364,10 +365,10 @@ impl GamePosition for ChessPosition {
     }
 
     fn get_winner(&self) -> Option<GameColor> {
-        return match self.board.status() {
+        match self.board.status() {
             chess::BoardStatus::Ongoing => {
                 if self.fifty_rule_count >= 50 {
-                    return None;
+                    None
                 } else {
                     panic!("Game is not over")
                 }
@@ -378,7 +379,7 @@ impl GamePosition for ChessPosition {
                 // looks valid according to https://docs.rs/chess/latest/src/chess/game.rs.html#98-105
                 Some(self.get_turn().opposite())
             }
-        };
+        }
     }
 
     fn get_flip(&self) -> Self {
@@ -407,17 +408,14 @@ impl GamePosition for ChessPosition {
             !b.side_to_move(),
             b.castle_rights(chess::Color::Black),
             b.castle_rights(chess::Color::White),
-            match b.en_passant() {
-                None => None,
-                Some(square) => Some(flip_file(square.get_file())),
-            },
+            b.en_passant().map(|square| flip_file(square.get_file())),
         ))
         .expect("unable to flip board");
 
-        return Self {
-            board: board,
+        Self {
+            board,
             fifty_rule_count: self.fifty_rule_count,
-        };
+        }
     }
 
     fn print(&self) {
@@ -466,27 +464,27 @@ impl IGame for ChessGame {
 
     fn new_from_pos(pos: Self::Position) -> Self {
         Self {
-            pos: pos,
+            pos,
             seen_positions: HashMap::from([(pos, 1)]),
             repetition_detected: false,
         }
     }
 
     fn get_position(&self) -> &Self::Position {
-        return &self.pos;
+        &self.pos
     }
 
     fn is_over(&self) -> bool {
-        return self.repetition_detected || self.pos.is_over();
+        self.repetition_detected || self.pos.is_over()
     }
 
     fn get_winner(&self) -> Option<GameColor> {
         assert!(self.is_over());
         if self.repetition_detected {
-            return None;
+            None
         } else {
-            return self.pos.get_winner();
-        };
+            self.pos.get_winner()
+        }
     }
 
     fn play_single_turn(&mut self, next_move: Self::Move) {
@@ -514,11 +512,11 @@ impl IGame for ChessGame {
             let next_move = player.next_move(&self.pos).unwrap();
             self.play_single_turn(next_move);
         }
-        return (self.pos, self.get_winner());
+        (self.pos, self.get_winner())
     }
 
     fn get_repetition_limit() -> Option<u32> {
-        return Some(3);
+        Some(3)
     }
 }
 
@@ -709,5 +707,5 @@ static MOVE_TO_NN_INDEX: Lazy<Vec<u16>> = Lazy::new(|| {
         assert!(res[m.to_idx()] == no_move);
         res[m.to_idx()] = idx as u16;
     }
-    return res;
+    res
 });

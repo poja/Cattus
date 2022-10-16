@@ -49,6 +49,7 @@ pub struct MaterialEntry {
     pub phase: u16,
 }
 
+#[allow(clippy::all)]
 impl MaterialEntry {
     pub fn new(board: &Board) -> Self {
         let mut factor = [SCALE_FACTOR_NORMAL; PLAYER_CNT];
@@ -125,11 +126,11 @@ impl MaterialEntry {
         let value =
             (imbalance::<WhiteType>(&piece_counts) - imbalance::<BlackType>(&piece_counts)) / 16;
 
-        return Self {
+        Self {
             value: value,
             factor: factor,
             phase: phase,
-        };
+        }
     }
 
     #[inline(always)]
@@ -327,7 +328,7 @@ impl PawnEntry {
 
         entry.asymmetry = (all_passed | BitBoard(exclusive_open_files as u64)).count_bits() as i16;
 
-        return entry;
+        entry
     }
 
     /// Returns the current score of the pawn structure.

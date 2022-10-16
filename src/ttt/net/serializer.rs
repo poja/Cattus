@@ -7,19 +7,13 @@ use itertools::Itertools;
 
 pub struct TttSerializer {}
 
-impl TttSerializer {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
 impl DataSerializer<TttGame> for TttSerializer {
     fn serialize_data_entry(
         &self,
         pos: TttPosition,
         probs: Vec<(TttMove, f32)>,
         winner: Option<GameColor>,
-        filename: &String,
+        filename: &str,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(winner) as f32;
@@ -32,6 +26,6 @@ impl DataSerializer<TttGame> for TttSerializer {
             .map(|p| p.get_raw() as u64)
             .collect_vec();
 
-        return SerializerBase::write_entry::<TttGame, MOVES_NUM>(planes, probs, winner, filename);
+        SerializerBase::write_entry::<TttGame, MOVES_NUM>(planes, probs, winner, filename)
     }
 }

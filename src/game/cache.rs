@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::RwLock;
 
 struct PositionCache<Game: IGame> {
+    #[allow(clippy::type_complexity)]
     map: HashMap<Game::Position, (f32, Vec<(Game::Move, f32)>)>,
     deque: VecDeque<Game::Position>,
 }
@@ -23,7 +24,7 @@ impl<Game: IGame> ValueFuncCache<Game> {
                 map: HashMap::new(),
                 deque: VecDeque::new(),
             }),
-            max_size: max_size,
+            max_size,
             hits: AtomicUsize::new(0),
             misses: AtomicUsize::new(0),
         }
@@ -39,10 +40,9 @@ impl<Game: IGame> ValueFuncCache<Game> {
         // Acquire the read lock and check if the position is in the cache
         {
             let cache = self.lock.read().unwrap();
-            let cached_val = cache.map.get(position);
-            if cached_val.is_some() {
+            if let Some(cached_val) = cache.map.get(position) {
                 self.hits.fetch_add(1, Ordering::Relaxed);
-                return cached_val.unwrap().clone();
+                return cached_val.clone();
             }
         }
 
@@ -53,10 +53,9 @@ impl<Game: IGame> ValueFuncCache<Game> {
         {
             let mut cache = self.lock.write().unwrap();
             // Check again for the result in the cache, maybe it was added between the read and write locks acquires
-            let cached_val = cache.map.get(position);
-            if cached_val.is_some() {
+            if let Some(cached_val) = cache.map.get(position) {
                 self.hits.fetch_add(1, Ordering::Relaxed);
-                let cached_val = cached_val.unwrap().clone();
+                let cached_val = cached_val.clone();
                 assert!(computed_val == cached_val);
                 return cached_val;
             }
@@ -71,7 +70,7 @@ impl<Game: IGame> ValueFuncCache<Game> {
             cache.map.insert(*position, computed_val.clone());
             cache.deque.push_back(*position);
             self.misses.fetch_add(1, Ordering::Relaxed);
-            return computed_val;
+            computed_val
         }
     }
 }

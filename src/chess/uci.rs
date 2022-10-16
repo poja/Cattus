@@ -51,7 +51,7 @@ struct Engine {
 impl Engine {
     pub fn new(player_builder: Box<dyn Builder<MCTSPlayer<ChessGame>>>) -> Self {
         Self {
-            player_builder: player_builder,
+            player_builder,
             options: HashMap::new(),
             player: None,
             position: None,
@@ -90,11 +90,12 @@ impl Engine {
         .to_owned();
 
         let mut pos = ChessPosition::from_str(&fen);
-        for move_str in args.get("moves").unwrap_or(&"".to_string()).split(" ") {
+        for move_str in args.get("moves").unwrap_or(&"".to_string()).split(' ') {
             if move_str.is_empty() {
                 continue;
             }
-            let m = ChessMove::from_lan(move_str).expect(&format!("Invalid move: {}", move_str));
+            let m = ChessMove::from_lan(move_str)
+                .unwrap_or_else(|_| panic!("Invalid move: {}", move_str));
             pos = pos.get_moved_position(m);
         }
         self.position = Some(pos);
@@ -105,7 +106,7 @@ impl Engine {
         go_args.searchmoves = args
             .get("searchmoves")
             .unwrap_or(&"".to_string())
-            .split(" ")
+            .split(' ')
             .map(|s| s.to_string())
             .collect_vec();
         go_args.ponder = args.contains_key("ponder");
@@ -121,7 +122,7 @@ impl Engine {
 
         let player = self.player.as_mut().unwrap();
         self.best_move = Some(player.next_move(&self.position.unwrap()).unwrap());
-        self.send_response(format!("bestmove {}", self.best_move.unwrap().to_string()));
+        self.send_response(format!("bestmove {}", self.best_move.unwrap()));
     }
 
     pub fn cmd_stop(&mut self) {}
@@ -241,7 +242,7 @@ impl UCI {
 
         let mut args = HashMap::new();
         let mut last_arg = None;
-        for word in suffix.split(" ") {
+        for word in suffix.split(' ') {
             if word.is_empty() {
                 continue;
             }
@@ -253,9 +254,9 @@ impl UCI {
                 last_arg = Some(word);
             } else {
                 let val = args
-                    .get_mut(last_arg.expect(&format!("unexpected argument '{}'", word)))
+                    .get_mut(last_arg.unwrap_or_else(|| panic!("unexpected argument '{}'", word)))
                     .unwrap();
-                val.push_str(" ");
+                val.push(' ');
                 val.push_str(word);
             }
         }
@@ -264,7 +265,7 @@ impl UCI {
             .into_iter()
             .map(|(key, val)| (key.trim().to_string(), val.trim().to_string()))
             .collect();
-        return Some((command.to_string(), args));
+        Some((command.to_string(), args))
     }
 }
 

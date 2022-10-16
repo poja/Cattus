@@ -11,7 +11,7 @@ struct NNetworkBuilder;
 impl INNetworkBuilder<TttGame> for NNetworkBuilder {
     fn build_net(
         &self,
-        model_path: &String,
+        model_path: &str,
         cache: Arc<ValueFuncCache<TttGame>>,
     ) -> Box<dyn ValueFunction<TttGame>> {
         Box::new(TwoHeadedNet::with_cache(model_path, cache))
@@ -19,5 +19,5 @@ impl INNetworkBuilder<TttGame> for NNetworkBuilder {
 }
 
 fn main() -> std::io::Result<()> {
-    return run_main(Box::new(NNetworkBuilder {}), Box::new(TttSerializer::new()));
+    run_main(Box::new(NNetworkBuilder {}), Box::new(TttSerializer {}))
 }

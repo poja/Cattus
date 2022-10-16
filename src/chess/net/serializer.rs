@@ -7,19 +7,13 @@ use itertools::Itertools;
 
 pub struct ChessSerializer {}
 
-impl ChessSerializer {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
 impl DataSerializer<ChessGame> for ChessSerializer {
     fn serialize_data_entry(
         &self,
         pos: ChessPosition,
         probs: Vec<(ChessMove, f32)>,
         winner: Option<GameColor>,
-        filename: &String,
+        filename: &str,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(winner) as f32;
@@ -32,8 +26,6 @@ impl DataSerializer<ChessGame> for ChessSerializer {
             .map(|p| p.get_raw())
             .collect_vec();
 
-        return SerializerBase::write_entry::<ChessGame, MOVES_NUM>(
-            planes, probs, winner, filename,
-        );
+        SerializerBase::write_entry::<ChessGame, MOVES_NUM>(planes, probs, winner, filename)
     }
 }

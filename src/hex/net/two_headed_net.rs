@@ -11,13 +11,13 @@ pub struct TwoHeadedNet {
 }
 
 impl TwoHeadedNet {
-    pub fn new(model_path: &String) -> Self {
+    pub fn new(model_path: &str) -> Self {
         Self {
             base: TwoHeadedNetBase::new(model_path, None),
         }
     }
 
-    pub fn with_cache(model_path: &String, cache: Arc<ValueFuncCache<HexGame>>) -> Self {
+    pub fn with_cache(model_path: &str, cache: Arc<ValueFuncCache<HexGame>>) -> Self {
         Self {
             base: TwoHeadedNetBase::new(model_path, Some(cache)),
         }
@@ -26,6 +26,6 @@ impl TwoHeadedNet {
 
 impl ValueFunction<HexGame> for TwoHeadedNet {
     fn evaluate(&mut self, position: &HexPosition) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
-        return self.base.evaluate(position, common::position_to_planes);
+        self.base.evaluate(position, common::position_to_planes)
     }
 }
