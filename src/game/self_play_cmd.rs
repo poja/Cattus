@@ -25,11 +25,15 @@ struct SelfPlayArgs {
     #[clap(long, default_value = "_NONE_")]
     result_file: String,
     #[clap(long, default_value = "100")]
-    sim_count: u32,
+    sim_num: u32,
     #[clap(long, default_value = "1.41421")]
     explore_factor: f32,
     #[clap(long, default_value = "1.0")]
     temperature_policy: String,
+    #[clap(long, default_value = "0.0")]
+    prior_noise_alpha: f32,
+    #[clap(long, default_value = "0.0")]
+    prior_noise_epsilon: f32,
     #[clap(long, default_value = "1")]
     threads: u32,
     #[clap(long, default_value = "100000")]
@@ -47,8 +51,10 @@ pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
 struct PlayerBuilder<Game: IGame> {
     network_builder: Arc<dyn INNetworkBuilder<Game>>,
     model_path: String,
-    sim_count: u32,
+    sim_num: u32,
     explore_factor: f32,
+    prior_noise_alpha: f32,
+    prior_noise_epsilon: f32,
     cache: Arc<ValueFuncCache<Game>>,
 }
 
@@ -56,15 +62,19 @@ impl<Game: IGame> PlayerBuilder<Game> {
     fn new(
         network_builder: Arc<dyn INNetworkBuilder<Game>>,
         model_path: String,
-        sim_count: u32,
+        sim_num: u32,
         explore_factor: f32,
+        prior_noise_alpha: f32,
+        prior_noise_epsilon: f32,
         cache_size: usize,
     ) -> Self {
         Self {
             network_builder,
             model_path,
-            sim_count,
+            sim_num,
             explore_factor,
+            prior_noise_alpha,
+            prior_noise_epsilon,
             cache: Arc::new(ValueFuncCache::new(cache_size)),
         }
     }
@@ -75,7 +85,13 @@ impl<Game: IGame> Builder<MCTSPlayer<Game>> for PlayerBuilder<Game> {
         let value_func: Box<dyn ValueFunction<Game>> = self
             .network_builder
             .build_net(&self.model_path, Arc::clone(&self.cache));
-        MCTSPlayer::new_custom(self.sim_count, self.explore_factor, value_func)
+        MCTSPlayer::new_custom(
+            self.sim_num,
+            self.explore_factor,
+            self.prior_noise_alpha,
+            self.prior_noise_epsilon,
+            value_func,
+        )
     }
 }
 
@@ -89,8 +105,10 @@ pub fn run_main<Game: IGame + 'static>(
     let player1_builder = Arc::new(PlayerBuilder::new(
         Arc::clone(&network_builder),
         args.model1_path.clone(),
-        args.sim_count,
+        args.sim_num,
         args.explore_factor,
+        args.prior_noise_alpha,
+        args.prior_noise_epsilon,
         args.cache_size,
     ));
 
@@ -100,8 +118,10 @@ pub fn run_main<Game: IGame + 'static>(
         Arc::new(PlayerBuilder::new(
             Arc::clone(&network_builder),
             args.model2_path,
-            args.sim_count,
+            args.sim_num,
             args.explore_factor,
+            args.prior_noise_alpha,
+            args.prior_noise_epsilon,
             args.cache_size,
         ))
     };

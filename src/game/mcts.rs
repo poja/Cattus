@@ -3,6 +3,7 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
+use rand_distr::Dirichlet;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
@@ -40,23 +41,34 @@ impl<Position: GamePosition> MCTSNode<Position> {
 pub struct MCTSPlayer<Game: IGame> {
     search_tree: DiGraph<MCTSNode<Game::Position>, Game::Move>,
     root: Option<NodeIndex>,
-    exploration_param_c: f32,
-    simulations_per_move: u32,
+
+    sim_num: u32,
+    explore_factor: f32,
     temperature: f32,
+    prior_noise_alpha: f32,
+    prior_noise_epsilon: f32,
     value_func: Box<dyn ValueFunction<Game>>,
 }
 
 impl<Game: IGame> MCTSPlayer<Game> {
+    pub fn new(sim_num: u32, value_func: Box<dyn ValueFunction<Game>>) -> Self {
+        Self::new_custom(sim_num, std::f32::consts::SQRT_2, 0.0, 0.0, value_func)
+    }
+
     pub fn new_custom(
-        simulations_per_move: u32,
-        exploration_param_c: f32,
+        sim_num: u32,
+        explore_factor: f32,
+        prior_noise_alpha: f32,
+        prior_noise_epsilon: f32,
         value_func: Box<dyn ValueFunction<Game>>,
     ) -> Self {
         Self {
             search_tree: DiGraph::new(),
             root: None,
-            exploration_param_c,
-            simulations_per_move,
+            sim_num,
+            explore_factor,
+            prior_noise_alpha,
+            prior_noise_epsilon,
             temperature: 1.0,
             value_func,
         }
@@ -86,7 +98,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
     }
 
     fn develop_tree(&mut self) {
-        for _ in 0..self.simulations_per_move {
+        for _ in 0..self.sim_num {
             /* Select a leaf node */
             let path_to_selection = self.select();
 
@@ -107,6 +119,11 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
                 /* Expand leaf and assign initial scores */
                 self.create_children(leaf_id, per_move_val);
+
+                /* Add Dirichlet noise to root initial probabilities */
+                if leaf_id == self.root.unwrap() {
+                    self.add_dirichlet_noise(leaf_id);
+                }
             }
 
             /* back propagate the position score to the parents */
@@ -138,7 +155,12 @@ impl<Game: IGame> MCTSPlayer<Game> {
                     let child2 = self.search_tree.node_weight(child2_id).unwrap();
                     let val1 = self.calc_selection_heuristic(node, child1);
                     let val2 = self.calc_selection_heuristic(node, child2);
-                    val1.partial_cmp(&val2).unwrap()
+                    val1.partial_cmp(&val2).unwrap_or_else(|| {
+                        panic!(
+                            "Failed to compare nodes during selection '{}','{}'",
+                            val1, val2
+                        )
+                    })
                 })
                 .unwrap();
         }
@@ -155,7 +177,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             child.score_w / child.simulations_n as f32
         };
 
-        let explore = self.exploration_param_c
+        let explore = self.explore_factor
             * child.init_score
             * ((parent.simulations_n as f32).sqrt() / (1 + child.simulations_n) as f32);
 
@@ -262,6 +284,11 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
         self.search_tree = new_tree;
         self.root = Some(new_root);
+
+        /* If the prior probabilities of the new root were already calculated, add a Dirichlet noise */
+        if self.search_tree.edges(new_root).next().is_some() {
+            self.add_dirichlet_noise(new_root);
+        }
     }
 
     pub fn calc_moves_probabilities(
@@ -355,6 +382,41 @@ impl<Game: IGame> MCTSPlayer<Game> {
     pub fn set_temperature(&mut self, temperature: f32) {
         assert!(temperature >= 0.0);
         self.temperature = temperature;
+    }
+
+    fn add_dirichlet_noise(&mut self, node_id: NodeIndex) {
+        if self.prior_noise_alpha == 0.0 || self.prior_noise_epsilon == 0.0 {
+            return;
+        }
+
+        assert!(0.0 <= self.prior_noise_epsilon && self.prior_noise_epsilon <= 1.0);
+
+        let children = self
+            .search_tree
+            .edges(node_id)
+            .map(|edge| edge.target())
+            .collect_vec();
+        if children.len() < 2 {
+            return;
+        }
+
+        /* The Dirichlet implementation seems to return NaNs and INFs sometimes. */
+        /* Keep drawing random noises until valid values are achieved */
+        let dist = Dirichlet::new_with_size(self.prior_noise_alpha, children.len()).unwrap();
+        let mut noise_vec;
+        loop {
+            noise_vec = dist.sample(&mut rand::thread_rng());
+            if noise_vec.iter().all(|n| n.is_finite()) {
+                break;
+            }
+        }
+
+        for (child_id, noise) in children.into_iter().zip(noise_vec.into_iter()) {
+            let child = self.search_tree.node_weight_mut(child_id).unwrap();
+            child.init_score = (1.0 - self.prior_noise_epsilon) * child.init_score
+                + self.prior_noise_epsilon * noise;
+            assert!(!child.init_score.is_nan());
+        }
     }
 }
 

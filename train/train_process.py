@@ -118,9 +118,11 @@ class TrainProcess:
             "--out-dir1", out_dir,
             "--out-dir2", out_dir,
             "--data-entries-prefix", "i{0:04d}_".format(iter_num),
-            "--sim-count", str(self.cfg["mcts"]["sim_count"]),
+            "--sim-num", str(self.cfg["mcts"]["sim_num"]),
             "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
             "--temperature-policy", self.cfg["self_play"]["temperature_policy_str"],
+            "--prior-noise-alpha", str(self.cfg["mcts"]["prior_noise_alpha"]),
+            "--prior-noise-epsilon", str(self.cfg["mcts"]["prior_noise_epsilon"]),
             "--threads", str(self.cfg["self_play"]["threads"]),
             "--cache-size", str(self.cfg["mcts"]["cache_size"])],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
@@ -178,9 +180,11 @@ class TrainProcess:
                 "--out-dir2", tmp_games_dir,
                 "--data-entries-prefix", "i{0:04d}_".format(games_gen_idx),
                 "--result-file", compare_res_file,
-                "--sim-count", str(self.cfg["mcts"]["sim_count"]),
+                "--sim-num", str(self.cfg["mcts"]["sim_num"]),
                 "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
                 "--temperature-policy", self.cfg["training"]["compare"]["temperature_policy_str"],
+                "--prior-noise-alpha", str(self.cfg["mcts"]["prior_noise_alpha"]),
+                "--prior-noise-epsilon", str(self.cfg["mcts"]["prior_noise_epsilon"]),
                 "--threads", str(self.cfg["training"]["compare"]["threads"])],
                 stderr=sys.stderr, stdout=sys.stdout, check=True)
 
