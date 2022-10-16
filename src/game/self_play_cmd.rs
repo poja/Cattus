@@ -88,14 +88,14 @@ pub fn run_main<Game: IGame + 'static>(
 
     let player1_builder = Arc::new(PlayerBuilder::new(
         Arc::clone(&network_builder),
-        args.model1_path,
+        args.model1_path.clone(),
         args.sim_count,
         args.explore_factor,
         args.cache_size,
     ));
 
     let player2_builder;
-    if args.model2_path == args.model2_path {
+    if args.model1_path == args.model2_path {
         player2_builder = Arc::clone(&player1_builder);
     } else {
         player2_builder = Arc::new(PlayerBuilder::new(
