@@ -127,7 +127,7 @@ def _test_serialize_encode(args):
             bytes_entry = DataParser.serialize(nparr_entry, game)
             data_parser_tensor = DataParser.bytes_entry_to_tensor(
                 bytes_entry, game, cpu)
-            planes_dpt, _probs_dpt, _winner_dpt = data_parser_tensor
+            planes_dpt, _ = data_parser_tensor
 
             with open(ENCODE_FILE, "r") as encode_file:
                 rust_tensor_data = json.load(encode_file)
