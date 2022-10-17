@@ -36,7 +36,7 @@ class TrainProcess:
         working_area = working_area.format(RL_TOP=RL_TOP)
         self.cfg["working_area"] = working_area
         working_area = Path(working_area)
-        assert(working_area.exists())
+        assert working_area.exists()
 
         self.cfg["games_dir"] = working_area / "games"
         self.cfg["games_dir"].mkdir(exist_ok=True)
@@ -86,15 +86,13 @@ class TrainProcess:
 
         best_model = self.base_model_path
         latest_model = self.base_model_path
-        games_gen_idx = 0
         lr_scheduler = LearningRateScheduler(self.cfg)
 
         for iter_num in range(self.cfg["self_play"]["iterations"]):
             logging.info(f"Training iteration {iter_num}")
 
             # Generate training data using the best model
-            self._self_play(best_model, games_dir, games_gen_idx)
-            games_gen_idx += 1
+            self._self_play(best_model, games_dir)
 
             # Train latest model from training data
             lr = lr_scheduler.get_lr(
@@ -104,25 +102,26 @@ class TrainProcess:
 
             # Compare latest model to the current best, and switch if better
             best_model = self._compare_models(
-                best_model, latest_model, games_dir, games_gen_idx)
-            games_gen_idx += 1
+                best_model, latest_model, games_dir)
 
-    def _self_play(self, model_path, out_dir, iter_num):
+    def _self_play(self, model_path, games_dir):
         profile = "dev" if self.cfg["debug"] == "true" else "release"
+        data_entries_dir = os.path.join(
+            games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
         subprocess.run([
             "cargo", "run", "--profile", profile, "-q", "--bin",
             self.self_play_exec, "--",
             "--model1-path", model_path,
             "--model2-path", model_path,
             "--games-num", str(self.cfg["self_play"]["games_num"]),
-            "--out-dir1", out_dir,
-            "--out-dir2", out_dir,
-            "--data-entries-prefix", "i{0:04d}_".format(iter_num),
+            "--out-dir1", data_entries_dir,
+            "--out-dir2", data_entries_dir,
             "--sim-num", str(self.cfg["mcts"]["sim_num"]),
             "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
             "--temperature-policy", self.cfg["self_play"]["temperature_policy_str"],
             "--prior-noise-alpha", str(self.cfg["mcts"]["prior_noise_alpha"]),
-            "--prior-noise-epsilon", str(self.cfg["mcts"]["prior_noise_epsilon"]),
+            "--prior-noise-epsilon", str(self.cfg["mcts"]
+                                         ["prior_noise_epsilon"]),
             "--threads", str(self.cfg["self_play"]["threads"]),
             "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU",
             "--cache-size", str(self.cfg["mcts"]["cache_size"])],
@@ -162,13 +161,16 @@ class TrainProcess:
 
         return (self._save_model(model), metrics)
 
-    def _compare_models(self, best_model, latest_model, games_dir, games_gen_idx):
+    def _compare_models(self, best_model, latest_model, games_dir):
         tmp_dirpath = tempfile.mkdtemp()
         try:
             compare_res_file = os.path.join(tmp_dirpath, "compare_result.json")
             tmp_games_dir = os.path.join(tmp_dirpath, "games")
 
             profile = "dev" if self.cfg["debug"] == "true" else "release"
+            data_entries_dir = os.path.join(
+                games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
+
             subprocess.run([
                 "cargo", "run", "--profile", profile, "-q", "--bin",
                 self.self_play_exec, "--",
@@ -177,15 +179,16 @@ class TrainProcess:
                 "--games-num", str(self.cfg["training"]
                                    ["compare"]["games_num"]),
                 # take the opportunity to generate more games to main games directory
-                "--out-dir1", games_dir,
+                "--out-dir1", data_entries_dir,
                 "--out-dir2", tmp_games_dir,
-                "--data-entries-prefix", "i{0:04d}_".format(games_gen_idx),
                 "--result-file", compare_res_file,
                 "--sim-num", str(self.cfg["mcts"]["sim_num"]),
                 "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
                 "--temperature-policy", self.cfg["training"]["compare"]["temperature_policy_str"],
-                "--prior-noise-alpha", str(self.cfg["mcts"]["prior_noise_alpha"]),
-                "--prior-noise-epsilon", str(self.cfg["mcts"]["prior_noise_epsilon"]),
+                "--prior-noise-alpha", str(self.cfg["mcts"]
+                                           ["prior_noise_alpha"]),
+                "--prior-noise-epsilon", str(self.cfg["mcts"]
+                                             ["prior_noise_epsilon"]),
                 "--threads", str(self.cfg["training"]["compare"]["threads"]),
                 "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU"],
                 stderr=sys.stderr, stdout=sys.stdout, check=True)
@@ -201,8 +204,8 @@ class TrainProcess:
                 # In case the new model is the new best model, take the opportunity and use the new games generated by
                 # the comparison stage as training data in future training steps
                 for filename in os.listdir(tmp_games_dir):
-                    shutil.move(os.path.join(
-                        tmp_games_dir, filename), games_dir)
+                    shutil.move(os.path.join(tmp_games_dir,
+                                filename), data_entries_dir)
             elif losing > self.cfg["training"]["compare"]["warning_losing_threshold"]:
                 print(
                     "WARNING: new model is worse than previous one, losing ratio:", losing)

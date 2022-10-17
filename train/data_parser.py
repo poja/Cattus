@@ -6,6 +6,7 @@ import tensorflow as tf
 import struct
 import random
 import functools
+from pathlib import Path
 
 
 class DataParser:
@@ -17,9 +18,7 @@ class DataParser:
         assert self.cfg["training"]["latest_data_entries"] >= self.cfg["training"]["iteration_data_entries"]
 
     def _data_entries_filenames_gen(self):
-        filenames = os.listdir(self.data_dir)
-        filenames = [os.path.join(self.data_dir, filename)
-                     for filename in filenames]
+        filenames = [str(p) for p in Path(self.data_dir).rglob("*.json")]
 
         # take the latests files
         latest_de = self.cfg["training"]["latest_data_entries"]

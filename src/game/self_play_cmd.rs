@@ -20,8 +20,6 @@ struct SelfPlayArgs {
     out_dir1: String,
     #[clap(long)]
     out_dir2: String,
-    #[clap(long, default_value = "")]
-    data_entries_prefix: String,
     #[clap(long, default_value = "_NONE_")]
     result_file: String,
     #[clap(long, default_value = "100")]
@@ -152,7 +150,6 @@ pub fn run_main<Game: IGame + 'static>(
         args.games_num,
         &args.out_dir1,
         &args.out_dir2,
-        &args.data_entries_prefix,
         &args.result_file,
     )
 }
