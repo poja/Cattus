@@ -85,7 +85,6 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
         games_num: u32,
         output_dir1: &String,
         output_dir2: &String,
-        data_entries_prefix: &String,
         result_file: &String,
     ) -> std::io::Result<()> {
         if games_num % 2 != 0 {
@@ -116,7 +115,6 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
                 Arc::clone(&self.serializer),
                 output_dir1.to_string(),
                 output_dir2.to_string(),
-                data_entries_prefix.to_string(),
                 Arc::clone(&result),
                 start_idx,
                 end_idx,
@@ -164,7 +162,6 @@ struct SelfPlayWorker<Game: IGame> {
     serializer: Arc<dyn DataSerializer<Game>>,
     output_dir1: String,
     output_dir2: String,
-    data_entries_prefix: String,
     results: Arc<GamesResults>,
     start_idx: u32,
     end_idx: u32,
@@ -179,7 +176,6 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         serializer: Arc<dyn DataSerializer<Game>>,
         output_dir1: String,
         output_dir2: String,
-        data_entries_prefix: String,
         results: Arc<GamesResults>,
         start_idx: u32,
         end_idx: u32,
@@ -191,7 +187,6 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             serializer,
             output_dir1,
             output_dir2,
-            data_entries_prefix,
             results,
             start_idx,
             end_idx,
@@ -245,10 +240,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                     pos,
                     probs,
                     winner,
-                    &format!(
-                        "{}/{}{:#08}_{:#03}.json",
-                        output_dir, self.data_entries_prefix, game_idx, pos_idx
-                    ),
+                    &format!("{}/{:#08}_{:#03}.json", output_dir, game_idx, pos_idx),
                 )?;
             }
 
