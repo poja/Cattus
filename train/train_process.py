@@ -42,6 +42,8 @@ class TrainProcess:
         self.cfg["games_dir"].mkdir(exist_ok=True)
         self.cfg["models_dir"] = working_area / "models"
         self.cfg["models_dir"].mkdir(exist_ok=True)
+        self.cfg["metrics_dir"] = working_area / "metrics"
+        self.cfg["metrics_dir"].mkdir(exist_ok=True)
 
         if self.cfg["game"] == "tictactoe":
             self.game = TicTacToe()
@@ -79,35 +81,33 @@ class TrainProcess:
         assert self.cfg["training"]["compare"]["switching_winning_threshold"] >= 0.5
         assert self.cfg["training"]["compare"]["warning_losing_threshold"] >= 0.5
 
+        self.lr_scheduler = LearningRateScheduler(self.cfg)
+
     def run_training_loop(self):
         # TODO better organize the mode type parameter, and validate that the model path matches the requested model type
-        run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-        games_dir = os.path.join(self.cfg["games_dir"], run_id)
+        self.run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
 
         best_model = self.base_model_path
         latest_model = self.base_model_path
-        lr_scheduler = LearningRateScheduler(self.cfg)
 
         for iter_num in range(self.cfg["self_play"]["iterations"]):
             logging.info(f"Training iteration {iter_num}")
 
             # Generate training data using the best model
-            self._self_play(best_model, games_dir)
+            self._self_play(best_model)
 
             # Train latest model from training data
-            lr = lr_scheduler.get_lr(
-                iter_num * self.cfg["training"]["iteration_data_entries"])
-            latest_model, _metrics = self._train(latest_model, games_dir, lr)
-            # TODO log metrics into file
+            latest_model = self._train(latest_model, iter_num)
 
             # Compare latest model to the current best, and switch if better
-            best_model = self._compare_models(
-                best_model, latest_model, games_dir)
+            best_model = self._compare_models(best_model, latest_model)
 
-    def _self_play(self, model_path, games_dir):
+    def _self_play(self, model_path):
         profile = "dev" if self.cfg["debug"] == "true" else "release"
+        games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
         data_entries_dir = os.path.join(
             games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
+
         subprocess.run([
             "cargo", "run", "--profile", profile, "-q", "--bin",
             self.self_play_exec, "--",
@@ -127,12 +127,14 @@ class TrainProcess:
             "--cache-size", str(self.cfg["mcts"]["cache_size"])],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
 
-    def _train(self, model_path, training_games_dir, lr):
+    def _train(self, model_path, iter_num):
+        games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
+
         logging.debug("Loading current model")
         model = self.game.load_model(model_path, self.net_type)
 
         logging.debug("Loading games by current model")
-        parser = DataParser(self.game, training_games_dir, self.cfg)
+        parser = DataParser(self.game, games_dir, self.cfg)
         train_dataset = tf.data.Dataset.from_generator(
             parser.generator, output_types=(tf.string, tf.string, tf.string))
         train_dataset = train_dataset.map(parser.get_parse_func())
@@ -142,32 +144,40 @@ class TrainProcess:
             parser.get_after_batch_reshape_func())
         train_dataset = train_dataset.prefetch(4)
 
+
+        lr = self.lr_scheduler.get_lr(
+            iter_num * self.cfg["training"]["iteration_data_entries"])
         logging.debug("Training with learning rate %f", lr)
         keras.backend.set_value(model.optimizer.learning_rate, lr)
 
         logging.info("Fitting new model...")
         history = model.fit(train_dataset, epochs=1, verbose=0).history
         metrics = {
-            "value loss": history["value_head_loss"][0],
-            "policy loss": history["policy_head_loss"][0],
-            "value accuracy": history["value_head_value_head_accuracy"][0],
-            "policy accuracy": history["policy_head_policy_head_accuracy"][0],
+            "value_loss": history["value_head_loss"][0],
+            "policy_loss": history["policy_head_loss"][0],
+            "value_accuracy": history["value_head_value_head_accuracy"][0],
+            "policy_accuracy": history["policy_head_policy_head_accuracy"][0],
         }
 
-        print("Value loss {:.4f}".format(metrics["value loss"]),
-              "Policy loss {:.4f}".format(metrics["policy loss"]))
-        print("Value accuracy {:.4f}".format(metrics["value accuracy"]),
-              "Policy accuracy {:.4f}".format(metrics["policy accuracy"]))
+        metrics_filename = os.path.join(self.cfg["metrics_dir"], self.run_id)
+        with open(metrics_filename, "a") as metrics_file:
+            metrics_file.write(json.dumps(metrics) + "\n")
 
-        return (self._save_model(model), metrics)
+        print("Value loss {:.4f}".format(metrics["value_loss"]),
+              "Policy loss {:.4f}".format(metrics["policy_loss"]))
+        print("Value accuracy {:.4f}".format(metrics["value_accuracy"]),
+              "Policy accuracy {:.4f}".format(metrics["policy_accuracy"]))
 
-    def _compare_models(self, best_model, latest_model, games_dir):
+        return self._save_model(model)
+
+    def _compare_models(self, best_model, latest_model):
         tmp_dirpath = tempfile.mkdtemp()
         try:
             compare_res_file = os.path.join(tmp_dirpath, "compare_result.json")
             tmp_games_dir = os.path.join(tmp_dirpath, "games")
 
             profile = "dev" if self.cfg["debug"] == "true" else "release"
+            games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
             data_entries_dir = os.path.join(
                 games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
 
