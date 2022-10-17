@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use petgraph::visit::EdgeRef;
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
@@ -7,13 +7,24 @@ use rand_distr::Dirichlet;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use crate::game::common::{GameColor, GamePlayer, GamePosition, IGame, PlayerRand};
+use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame, PlayerRand};
 
 /// Monte Carlo Tree Search (MCTS) implementation
 
 #[derive(Clone, Copy)]
 struct MCTSNode<Position: GamePosition> {
     position: Position,
+}
+
+impl<Position: GamePosition> MCTSNode<Position> {
+    pub fn from_position(position: Position) -> Self {
+        Self { position }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct MCTSEdge<Move: GameMove> {
+    m: Move,
 
     /// The initial score calculated for this node.
     /// In range [0, 1], "probability"
@@ -23,14 +34,13 @@ struct MCTSNode<Position: GamePosition> {
     simulations_n: u32,
 
     /// This is the variable w from UCT formula
-    /// Float because could be half for games with ties
     score_w: f32,
 }
 
-impl<Position: GamePosition> MCTSNode<Position> {
-    pub fn from_position(position: Position, init_score: f32) -> Self {
+impl<Move: GameMove> MCTSEdge<Move> {
+    pub fn new(m: Move, init_score: f32) -> Self {
         Self {
-            position,
+            m,
             init_score,
             simulations_n: 0,
             score_w: 0.0,
@@ -39,7 +49,7 @@ impl<Position: GamePosition> MCTSNode<Position> {
 }
 
 pub struct MCTSPlayer<Game: IGame> {
-    search_tree: DiGraph<MCTSNode<Game::Position>, Game::Move>,
+    search_tree: DiGraph<MCTSNode<Game::Position>, MCTSEdge<Game::Move>>,
     root: Option<NodeIndex>,
 
     sim_num: u32,
@@ -74,15 +84,22 @@ impl<Game: IGame> MCTSPlayer<Game> {
         }
     }
 
-    fn detect_repetition(&self, trajectory: &[NodeIndex]) -> bool {
+    fn detect_repetition(&self, trajectory: &[EdgeIndex]) -> bool {
         let repetition_limit = Game::get_repetition_limit();
-        if repetition_limit.is_none() {
+        if repetition_limit.is_none() || trajectory.is_empty() {
             return false;
         }
 
-        let positions = trajectory
-            .iter()
-            .map(|idx| &self.search_tree.node_weight(*idx).unwrap().position);
+        let mut positions = Vec::with_capacity(1 + trajectory.len());
+
+        let (e0_source, _e0_target) = self.search_tree.edge_endpoints(trajectory[0]).unwrap();
+        assert!(e0_source == self.root.unwrap());
+        positions.push(&self.search_tree[e0_source].position);
+
+        let positions = trajectory.iter().map(|idx| {
+            let (_e_source, e_target) = self.search_tree.edge_endpoints(*idx).unwrap();
+            &self.search_tree[e_target].position
+        });
 
         let mut repetitions = HashMap::new();
         for pos in positions {
@@ -103,8 +120,16 @@ impl<Game: IGame> MCTSPlayer<Game> {
             let path_to_selection = self.select();
 
             let repetition_reached = self.detect_repetition(&path_to_selection);
-            let leaf_id: NodeIndex = *path_to_selection.last().unwrap();
-            let leaf_pos = &self.search_tree.node_weight(leaf_id).unwrap().position;
+            let leaf_id: NodeIndex = if path_to_selection.is_empty() {
+                self.root.unwrap()
+            } else {
+                let (_e_source, e_target) = self
+                    .search_tree
+                    .edge_endpoints(*path_to_selection.last().unwrap())
+                    .unwrap();
+                e_target
+            };
+            let leaf_pos = &self.search_tree[leaf_id].position;
 
             let (eval, per_move_val);
             if leaf_pos.is_over() || repetition_reached {
@@ -127,59 +152,60 @@ impl<Game: IGame> MCTSPlayer<Game> {
             }
 
             /* back propagate the position score to the parents */
-            self.backpropagate(&path_to_selection, eval)
+            self.backpropagate(path_to_selection, eval)
         }
     }
 
     /* Return path to selected leaf node */
-    fn select(&self) -> Vec<NodeIndex> {
-        let mut path: Vec<NodeIndex> = vec![];
+    fn select(&self) -> Vec<EdgeIndex> {
+        let mut path: Vec<EdgeIndex> = vec![];
 
         let mut node_id = self.root.unwrap();
         loop {
-            path.push(node_id);
-            let node = self.search_tree.node_weight(node_id).unwrap();
+            let node = &self.search_tree[node_id];
 
             /* Node is leaf, done */
             if node.position.is_over() || self.search_tree.edges(node_id).next().is_none() {
                 return path;
             }
 
-            /* Node is not a leaf, choose best child and continue in it's sub tree */
-            node_id = self
+            let node_simcount = 1 + self
                 .search_tree
                 .edges(node_id)
-                .map(|edge| edge.target())
-                .max_by(|&child1_id, &child2_id| {
-                    let child1 = self.search_tree.node_weight(child1_id).unwrap();
-                    let child2 = self.search_tree.node_weight(child2_id).unwrap();
-                    let val1 = self.calc_selection_heuristic(node, child1);
-                    let val2 = self.calc_selection_heuristic(node, child2);
+                .map(|edge| edge.weight().simulations_n)
+                .sum::<u32>();
+
+            /* Node is not a leaf, choose best child and continue in it's sub tree */
+            let edge = self
+                .search_tree
+                .edges(node_id)
+                .max_by(|e1, e2| {
+                    let val1 = self.calc_selection_heuristic(e1.weight(), node_simcount);
+                    let val2 = self.calc_selection_heuristic(e2.weight(), node_simcount);
                     val1.partial_cmp(&val2).unwrap_or_else(|| {
                         panic!(
-                            "Failed to compare nodes during selection '{}','{}'",
+                            "Failed to compare edges during selection '{}','{}'",
                             val1, val2
                         )
                     })
                 })
                 .unwrap();
+
+            path.push(edge.id());
+            node_id = edge.target();
         }
     }
 
-    fn calc_selection_heuristic(
-        &self,
-        parent: &MCTSNode<Game::Position>,
-        child: &MCTSNode<Game::Position>,
-    ) -> f32 {
-        let exploit = if child.simulations_n == 0 {
+    fn calc_selection_heuristic(&self, edge: &MCTSEdge<Game::Move>, parent_simcount: u32) -> f32 {
+        let exploit = if edge.simulations_n == 0 {
             0.0
         } else {
-            child.score_w / child.simulations_n as f32
+            edge.score_w / edge.simulations_n as f32
         };
 
         let explore = self.explore_factor
-            * child.init_score
-            * ((parent.simulations_n as f32).sqrt() / (1 + child.simulations_n) as f32);
+            * edge.init_score
+            * ((parent_simcount as f32).sqrt() / (1 + edge.simulations_n) as f32);
 
         exploit + explore
     }
@@ -189,7 +215,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         parent_id: NodeIndex,
         per_move_init_score: Vec<(Game::Move, f32)>,
     ) {
-        let parent_pos = self.search_tree.node_weight(parent_id).unwrap().position;
+        let parent_pos = self.search_tree[parent_id].position;
         assert!(!parent_pos.is_over());
 
         // TODO remove
@@ -201,34 +227,27 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
         for (m, p) in per_move_init_score {
             let leaf_pos = parent_pos.get_moved_position(m);
-            let leaf_id = self
-                .search_tree
-                .add_node(MCTSNode::from_position(leaf_pos, p));
-            self.search_tree.add_edge(parent_id, leaf_id, m);
+            let leaf_id = self.search_tree.add_node(MCTSNode::from_position(leaf_pos));
+            self.search_tree
+                .add_edge(parent_id, leaf_id, MCTSEdge::new(m, p));
         }
     }
 
     fn simulate(&mut self, leaf_id: NodeIndex) -> (f32, Vec<(Game::Move, f32)>) {
-        let position = &self.search_tree.node_weight(leaf_id).unwrap().position;
+        let position = &self.search_tree[leaf_id].position;
         assert!(!position.is_over());
         self.value_func.evaluate(position)
     }
 
-    fn backpropagate(&mut self, path: &Vec<NodeIndex>, score: f32) {
-        for node_id in path {
-            let mut node = self.search_tree.node_weight_mut(*node_id).unwrap();
-            node.simulations_n += 1;
-            node.score_w += match node.position.get_turn() {
-                /* This is confusing: the score is 1 if player1 wins and -1 if player2 wins,
-                 * nevertheless we apply -score if its player1 turn in the position.
-                 * The reason is, the score of the nodes should represent the evaluation of the PARENT node towards
-                 * the possible moves, leading to the children nodes.
-                 * If its player1 turn in the position, the evaluation should be relative to player2 turn in the parent position.
-                 *
-                 * TODO: better is to save the score on the edges, more intuitive
-                 */
-                GameColor::Player1 => -score,
-                GameColor::Player2 => score,
+    fn backpropagate(&mut self, path: Vec<EdgeIndex>, score: f32) {
+        for edge_id in path {
+            let (e_source, _e_target) = self.search_tree.edge_endpoints(edge_id).unwrap();
+            let player_to_play = self.search_tree[e_source].position.get_turn();
+            let mut edge = self.search_tree.edge_weight_mut(edge_id).unwrap();
+            edge.simulations_n += 1;
+            edge.score_w += match player_to_play {
+                GameColor::Player1 => score,
+                GameColor::Player2 => -score,
             };
         }
     }
@@ -244,7 +263,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             let mut next_layer = Vec::new();
 
             for node in layer {
-                if &self.search_tree.node_weight(node).unwrap().position == position {
+                if &self.search_tree[node].position == position {
                     return Some(node);
                 }
                 // Add children to next layer
@@ -266,7 +285,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         // change. So instead of removing nodes from the current tree, we copy
         // the sub tree to a new graph
         let mut new_tree = DiGraph::new();
-        let new_root = new_tree.add_node(*self.search_tree.node_weight(sub_tree_root).unwrap());
+        let new_root = new_tree.add_node(self.search_tree[sub_tree_root]);
         let mut nodes = vec![(sub_tree_root, new_root)];
 
         while !nodes.is_empty() {
@@ -274,7 +293,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
             for edge in self.search_tree.edges(parent_old) {
                 let child_old = edge.target();
-                let child_data = self.search_tree.node_weight(child_old).unwrap();
+                let child_data = &self.search_tree[child_old];
                 let child_new = new_tree.add_node(*child_data);
                 new_tree.add_edge(parent_new, child_new, *edge.weight());
 
@@ -312,17 +331,10 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
         if self.root.is_none() {
             // Init search tree with one root node
-            let root = MCTSNode::from_position(*position, 1.0);
+            let root = MCTSNode::from_position(*position);
             self.root = Some(self.search_tree.add_node(root));
         }
-        assert!(
-            position
-                == &self
-                    .search_tree
-                    .node_weight(self.root.unwrap())
-                    .unwrap()
-                    .position
-        );
+        assert!(position == &self.search_tree[self.root.unwrap()].position);
 
         // Run all simulations
         self.develop_tree();
@@ -333,8 +345,8 @@ impl<Game: IGame> MCTSPlayer<Game> {
             .edges(self.root.unwrap())
             .into_iter()
             .map(|edge| {
-                let child = self.search_tree.node_weight(edge.target()).unwrap();
-                (edge.weight(), child.simulations_n)
+                let e = edge.weight();
+                (e.m, e.simulations_n)
             })
             .collect_vec();
 
@@ -345,7 +357,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             .sum();
         moves_and_simcounts
             .into_iter()
-            .map(|(m, simcount)| (*m, simcount as f32 / simcount_total as f32))
+            .map(|(m, simcount)| (m, simcount as f32 / simcount_total as f32))
             .collect_vec()
     }
 
@@ -391,18 +403,18 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
         assert!(0.0 <= self.prior_noise_epsilon && self.prior_noise_epsilon <= 1.0);
 
-        let children = self
+        let moves = self
             .search_tree
             .edges(node_id)
-            .map(|edge| edge.target())
+            .map(|e| e.id())
             .collect_vec();
-        if children.len() < 2 {
+        if moves.len() < 2 {
             return;
         }
 
         /* The Dirichlet implementation seems to return NaNs and INFs sometimes. */
         /* Keep drawing random noises until valid values are achieved */
-        let dist = Dirichlet::new_with_size(self.prior_noise_alpha, children.len()).unwrap();
+        let dist = Dirichlet::new_with_size(self.prior_noise_alpha, moves.len()).unwrap();
         let mut noise_vec;
         loop {
             noise_vec = dist.sample(&mut rand::thread_rng());
@@ -411,11 +423,11 @@ impl<Game: IGame> MCTSPlayer<Game> {
             }
         }
 
-        for (child_id, noise) in children.into_iter().zip(noise_vec.into_iter()) {
-            let child = self.search_tree.node_weight_mut(child_id).unwrap();
-            child.init_score = (1.0 - self.prior_noise_epsilon) * child.init_score
-                + self.prior_noise_epsilon * noise;
-            assert!(!child.init_score.is_nan());
+        for (edge_id, noise) in moves.into_iter().zip(noise_vec.into_iter()) {
+            let mut m = self.search_tree.edge_weight_mut(edge_id).unwrap();
+            m.init_score =
+                (1.0 - self.prior_noise_epsilon) * m.init_score + self.prior_noise_epsilon * noise;
+            assert!(!m.init_score.is_nan());
         }
     }
 }
