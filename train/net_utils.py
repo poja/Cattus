@@ -28,6 +28,10 @@ def loss_cross_entropy(target, output):
     return tf.reduce_mean(input_tensor=policy_cross_entropy)
 
 
+def loss_const_0(target, output):
+     return tf.constant(0.0)
+
+
 def policy_head_accuracy(target, output):
     target, output = mask_illegal_moves(target, output)
     return tf.reduce_mean(tf.cast(tf.equal(tf.argmax(input=target, axis=1),
