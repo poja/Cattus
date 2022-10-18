@@ -50,7 +50,7 @@ class TicTacToe(TrainableGame):
         
         # Shared part
         flow = tf.keras.layers.Flatten()(inputs)
-        flow = Dense(units=9, activation="relu")(flow)
+        flow = Dense(units=9, activation="relu", kernel_regularizer=l2reg)(flow)
         flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
         flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
         flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
