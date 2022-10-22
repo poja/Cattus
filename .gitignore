@@ -7,3 +7,5 @@ __pycache__/
 output/
 venv/
 workarea/
+.DS_Store
+.trunk
