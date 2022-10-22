@@ -9,8 +9,8 @@ from keras.layers import Dense
 from keras.models import Model
 import keras
 
-from trainable_game import TrainableGame
-import net_utils
+from train.trainable_game import TrainableGame
+from train import net_utils
 
 
 class NetType:

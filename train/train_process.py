@@ -17,11 +17,11 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import tensorflow as tf
 import keras
 
-from hex import Hex
-from tictactoe import TicTacToe
-from chess import Chess
-from data_parser import DataParser
-import net_utils
+from train.hex import Hex
+from train.tictactoe import TicTacToe
+from train.chess import Chess
+from train.data_parser import DataParser
+from train import net_utils
 
 
 TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -108,7 +108,7 @@ class TrainProcess:
         data_entries_dir = os.path.join(
             games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
 
-        subprocess.run([
+        subprocess.run(" ".join([
             "cargo", "run", "--profile", profile, "-q", "--bin",
             self.self_play_exec, "--",
             "--model1-path", model_path,
@@ -123,9 +123,9 @@ class TrainProcess:
             "--prior-noise-epsilon", str(self.cfg["mcts"]
                                          ["prior_noise_epsilon"]),
             "--threads", str(self.cfg["self_play"]["threads"]),
-            "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU",
-            "--cache-size", str(self.cfg["mcts"]["cache_size"])],
-            stderr=sys.stderr, stdout=sys.stdout, check=True)
+			"--processing-unit", "CPU" if self.cfg["cpu"] else "GPU",
+            "--cache-size", str(self.cfg["mcts"]["cache_size"])]),
+            stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
 
     def _train(self, model_path, iter_num):
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)

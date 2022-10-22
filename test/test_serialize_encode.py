@@ -8,6 +8,11 @@ import shutil
 import subprocess
 import numpy as np
 
+from train.hex import Hex
+from train.tictactoe import TicTacToe
+from train.chess import Chess
+from train.data_parser import DataParser
+
 
 DEBUG = True
 REMOVE_TMP_DIR_ON_FINISH = True
@@ -18,14 +23,6 @@ TRAIN_TOP = os.path.join(CATTUS_TOP, "train")
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_serialize_encode")
 SERIALIZE_FILE = os.path.join(TMP_DIR, "serialize_res.json")
 ENCODE_FILE = os.path.join(TMP_DIR, "encode_res.json")
-
-if TRAIN_TOP not in sys.path:
-    sys.path.insert(0, TRAIN_TOP)
-
-from hex import Hex
-from tictactoe import TicTacToe
-from chess import Chess
-from data_parser import DataParser
 
 
 def run_test():

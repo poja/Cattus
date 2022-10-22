@@ -3,7 +3,7 @@
 import argparse
 import json
 import logging
-from train_process import TrainProcess
+from train.train_process import TrainProcess
 
 if __name__ == "__main__":
     logging.basicConfig(
