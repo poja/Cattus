@@ -1,17 +1,17 @@
 import os
+from pathlib import Path
+import subprocess
+import sys
 import chess
 import chess.engine
 
 DEBUG = False
-TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
-EXE_DIR = os.path.join(CATTUS_TOP, "target", "debug" if DEBUG else "release")
-UCI_EXE = os.path.join(EXE_DIR, "cattus.exe")
+TESTS_DIR = Path(__file__).parent
+RL_TOP = TESTS_DIR.parent
 
 
-def test_uci():
-    engine = chess.engine.SimpleEngine.popen_uci(
-        [UCI_EXE, "--sim-num", "10000"])
+def test_works_with_python_library_chess():
+    engine = chess.engine.SimpleEngine.popen_uci("cargo run --bin cattus -- --sim-num 100".split(' '))
 
     board = chess.Board()
     while not board.is_game_over() and not board.can_claim_draw():
