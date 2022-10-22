@@ -17,7 +17,7 @@ class HexNetType:
 
 
 class Hex(TrainableGame):
-    BOARD_SIZE = 11
+    BOARD_SIZE = 4
     PLANES_NUM = 3
     MOVE_NUM = BOARD_SIZE * BOARD_SIZE
 

@@ -384,7 +384,7 @@ impl IGame for HexGame {
     type Position = HexPosition;
     type Move = HexMove;
     type Bitboard = HexBitboard;
-    const BOARD_SIZE: usize = 11;
+    const BOARD_SIZE: usize = 4;
 
     fn new() -> Self {
         Self {
