@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "train"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.23.4"
+chess = "^1.9.3"
+
+keras = "^2.10.0"
+tensorflow = [
+    { version="^2.10.0", platform="windows"},
+    { version="^2.10.0", platform="linux"}
+]
+tensorflow-macos = [{ version="^2.10.0", platform="macos"}]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
