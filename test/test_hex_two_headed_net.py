@@ -17,7 +17,7 @@ CONFIG_FILE = os.path.join(TMP_DIR, "config.json")
 PYTHON_MAIN = os.path.join(CATTUS_TOP, "train", "main.py")
 
 
-def run_test():
+def test_hex_two_headed_net():
     logging.basicConfig(
         level=logging.DEBUG,
         format='[Hex Two Headed Net Test]: %(message)s')
@@ -84,6 +84,3 @@ def run_test():
         if REMOVE_TMP_DIR_ON_FINISH:
             shutil.rmtree(TMP_DIR)
 
-
-if __name__ == "__main__":
-    run_test()

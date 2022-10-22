@@ -9,7 +9,7 @@ EXE_DIR = os.path.join(CATTUS_TOP, "target", "debug" if DEBUG else "release")
 UCI_EXE = os.path.join(EXE_DIR, "cattus.exe")
 
 
-def run_test():
+def test_uci():
     engine = chess.engine.SimpleEngine.popen_uci(
         [UCI_EXE, "--sim-num", "10000"])
 
@@ -30,6 +30,3 @@ def run_test():
 
     engine.quit()
 
-
-if __name__ == "__main__":
-    run_test()

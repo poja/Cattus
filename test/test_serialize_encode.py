@@ -25,7 +25,7 @@ SERIALIZE_FILE = os.path.join(TMP_DIR, "serialize_res.json")
 ENCODE_FILE = os.path.join(TMP_DIR, "encode_res.json")
 
 
-def run_test():
+def test_serialize_encode():
     logging.basicConfig(
         level=logging.DEBUG,
         format='[Serialize Encode Test]: %(message)s')
@@ -148,6 +148,3 @@ r"
                 if REMOVE_TMP_DIR_ON_FINISH:
                     shutil.rmtree(TMP_DIR)
 
-
-if __name__ == "__main__":
-    run_test()
