@@ -5,7 +5,7 @@ import logging
 import os
 import shutil
 import subprocess
-
+import sys
 
 DEBUG = True
 REMOVE_TMP_DIR_ON_FINISH = True
@@ -73,10 +73,12 @@ def run_test():
             }, f)
 
         logging.info("Running self play and generating new models...")
-        subprocess.check_call([
-            "python", PYTHON_MAIN,
-            "--config", CONFIG_FILE],
-            stderr=subprocess.STDOUT)
+        python = sys.executable
+        subprocess.check_call(" ".join(
+            [python, "-m", "train.main", "--config", CONFIG_FILE]),
+            env=dict(os.environ, PYTHONPATH=CATTUS_TOP),
+            stderr=subprocess.STDOUT,
+            shell=True)
 
     finally:
         if REMOVE_TMP_DIR_ON_FINISH:
