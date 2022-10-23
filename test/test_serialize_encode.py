@@ -39,11 +39,11 @@ def run_test():
             "game_obj": TicTacToe(),
             "positions": [
                 "___x__o_ox",
-                "oox__oo_xo",
+                "oox__oo_xx",
                 "o_xx_x__ox",
                 "o__xo__xxx",
                 "o___x_o__x",
-                "_o___xx__o",
+                "_o___xx__x",
                 "oo__x____x",
                 "oo__o__oxx",
             ]
@@ -121,11 +121,6 @@ r"
 
                 cpu = True
                 game = args["game_obj"]
-                planes_shape_cpu = (1, game.BOARD_SIZE,
-                                    game.BOARD_SIZE, game.PLANES_NUM)
-                planes_shape_gpu = (1, game.PLANES_NUM,
-                                    game.BOARD_SIZE, game.BOARD_SIZE)
-                planes_shape = planes_shape_cpu if cpu else planes_shape_gpu
                 packed_entry = game.load_data_entry(SERIALIZE_FILE)
                 nparr_entry = DataParser.unpack_planes(packed_entry, game, cpu)
                 bytes_entry = DataParser.serialize(nparr_entry, game)
@@ -149,8 +144,6 @@ r"
                 if (planes_rust != planes_dpt).any():
                     print("game", args["game_name"])
                     print("position", position)
-                    # print("rust planes", planes_rust.reshape(planes_shape))
-                    # print("data parser planes", planes_dpt.reshape(planes_shape))
                     print("rust planes", planes_rust)
                     print("data parser planes", planes_dpt)
                     raise ValueError("planes tensor mismatch")
