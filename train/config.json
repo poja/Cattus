@@ -2,14 +2,14 @@
     "game": "hex",
     "working_area": "{CATTUS_TOP}/workarea/",
     "mcts": {
-        "sim_num": 200,
+        "sim_num": 1000,
         "explore_factor": 1.41421,
         "prior_noise_alpha": 0.03,
         "prior_noise_epsilon": 0.25,
         "cache_size": 100000
     },
     "self_play": {
-        "iterations": 5,
+        "iterations": 100,
         "temperature_policy": [
             [8,    1.0],
             [       0.0]
@@ -25,11 +25,10 @@
         "l2reg": 0.00005
     },
     "training": {
-        "latest_data_entries": 16384,
-        "iteration_data_entries": 1024,
+        "latest_data_entries": 1000,
+        "iteration_data_entries": 300,
         "batch_size": 32,
         "learning_rate": [
-            [40960, 0.01],
             [61440, 0.001],
             [       0.0001]
         ],
