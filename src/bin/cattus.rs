@@ -1,9 +1,9 @@
 use clap::Parser;
-use rl::chess::chess_game::ChessGame;
-use rl::chess::net::net_stockfish::StockfishNet;
-use rl::chess::uci::UCI;
-use rl::game::mcts::MCTSPlayer;
-use rl::utils::Builder;
+use cattus::chess::chess_game::ChessGame;
+use cattus::chess::net::net_stockfish::StockfishNet;
+use cattus::chess::uci::UCI;
+use cattus::game::mcts::MCTSPlayer;
+use cattus::utils::Builder;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]

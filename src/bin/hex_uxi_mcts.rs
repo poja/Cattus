@@ -1,8 +1,8 @@
 use clap::Parser;
-use rl::game::mcts::{MCTSPlayer, ValueFunction};
-use rl::hex::hex_game::HexGame;
-use rl::hex::net::two_headed_net::TwoHeadedNet;
-use rl::hex::uxi;
+use cattus::game::mcts::{MCTSPlayer, ValueFunction};
+use cattus::hex::hex_game::HexGame;
+use cattus::hex::net::two_headed_net::TwoHeadedNet;
+use cattus::hex::uxi;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]

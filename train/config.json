@@ -1,6 +1,6 @@
 {
     "game": "tictactoe",
-    "working_area": "{RL_TOP}/workarea/",
+    "working_area": "{CATTUS_TOP}/workarea/",
     "mcts": {
         "sim_num": 140,
         "explore_factor": 1.41421,

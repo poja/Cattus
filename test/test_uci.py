@@ -4,9 +4,9 @@ import chess.engine
 
 DEBUG = False
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-RL_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
-EXE_DIR = os.path.join(RL_TOP, "target", "debug" if DEBUG else "release")
-UCI_EXE = os.path.join(EXE_DIR, "chess_uci.exe")
+CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
+EXE_DIR = os.path.join(CATTUS_TOP, "target", "debug" if DEBUG else "release")
+UCI_EXE = os.path.join(EXE_DIR, "cattus.exe")
 
 
 def run_test():

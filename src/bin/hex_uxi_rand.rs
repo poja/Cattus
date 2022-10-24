@@ -1,4 +1,4 @@
-use rl::{game::common::PlayerRand, hex::uxi};
+use cattus::{game::common::PlayerRand, hex::uxi};
 
 fn main() {
     let player = Box::new(PlayerRand {});

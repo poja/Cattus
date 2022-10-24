@@ -1,8 +1,8 @@
 use clap::Parser;
 use rand::Rng;
-use rl::game::common::{GameColor, GamePlayer, IGame};
-use rl::hex::hex_game::{HexGame, HexPosition};
-use rl::hex::uxi::HexPlayerUXI;
+use cattus::game::common::{GameColor, GamePlayer, IGame};
+use cattus::hex::hex_game::{HexGame, HexPosition};
+use cattus::hex::uxi::HexPlayerUXI;
 use std::path::Path;
 use std::time::Instant;
 

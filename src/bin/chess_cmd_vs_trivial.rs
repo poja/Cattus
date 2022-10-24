@@ -1,8 +1,8 @@
-use rl::chess::chess_game::ChessGame;
-use rl::chess::cmd_player::ChessPlayerCmd;
-use rl::chess::net::net_trivial::TrivialNet;
-use rl::game::common::{GameColor, GamePosition, IGame};
-use rl::game::mcts::MCTSPlayer;
+use cattus::chess::chess_game::ChessGame;
+use cattus::chess::cmd_player::ChessPlayerCmd;
+use cattus::chess::net::net_trivial::TrivialNet;
+use cattus::game::common::{GameColor, GamePosition, IGame};
+use cattus::game::mcts::MCTSPlayer;
 
 fn color_to_str(c: Option<GameColor>) -> String {
     match c {

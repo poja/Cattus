@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use rl::game::cache::ValueFuncCache;
-use rl::game::mcts::ValueFunction;
-use rl::game::self_play_cmd::{run_main, INNetworkBuilder};
-use rl::ttt::net::serializer::TttSerializer;
-use rl::ttt::net::two_headed_net::TwoHeadedNet;
-use rl::ttt::ttt_game::TttGame;
+use cattus::game::cache::ValueFuncCache;
+use cattus::game::mcts::ValueFunction;
+use cattus::game::self_play_cmd::{run_main, INNetworkBuilder};
+use cattus::ttt::net::serializer::TttSerializer;
+use cattus::ttt::net::two_headed_net::TwoHeadedNet;
+use cattus::ttt::ttt_game::TttGame;
 
 struct NNetworkBuilder;
 impl INNetworkBuilder<TttGame> for NNetworkBuilder {

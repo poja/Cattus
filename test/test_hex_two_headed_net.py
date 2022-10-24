@@ -11,10 +11,10 @@ DEBUG = True
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-RL_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
+CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_hex_two_headed_net")
 CONFIG_FILE = os.path.join(TMP_DIR, "config.json")
-PYTHON_MAIN = os.path.join(RL_TOP, "train", "main.py")
+PYTHON_MAIN = os.path.join(CATTUS_TOP, "train", "main.py")
 
 
 def run_test():

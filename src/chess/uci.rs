@@ -271,7 +271,7 @@ impl UCI {
 
 fn log<S: Into<String>>(_s: S) {
     // let s = s.into();
-    // let path = Path::new("C:\\code\\rl\\log.txt");
+    // let path = Path::new("C:\\code\\cattus\\log.txt");
     // if !path.exists() {
     //     File::create(path).expect("failed to create log file");
     // }

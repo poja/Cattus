@@ -25,7 +25,7 @@ import net_utils
 
 
 TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
-RL_TOP = os.path.abspath(os.path.join(TRAIN_DIR, ".."))
+CATTUS_TOP = os.path.abspath(os.path.join(TRAIN_DIR, ".."))
 
 
 class TrainProcess:
@@ -33,7 +33,7 @@ class TrainProcess:
         self.cfg = copy.deepcopy(cfg)
 
         working_area = self.cfg["working_area"]
-        working_area = working_area.format(RL_TOP=RL_TOP)
+        working_area = working_area.format(CATTUS_TOP=CATTUS_TOP)
         self.cfg["working_area"] = working_area
         working_area = Path(working_area)
         assert working_area.exists()

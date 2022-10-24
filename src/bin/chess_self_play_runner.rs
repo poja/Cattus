@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use rl::chess::chess_game::ChessGame;
-use rl::chess::net::net_tf_two_headed::TwoHeadedNet;
-use rl::chess::net::serializer::ChessSerializer;
-use rl::game::cache::ValueFuncCache;
-use rl::game::mcts::ValueFunction;
-use rl::game::self_play_cmd::{run_main, INNetworkBuilder};
+use cattus::chess::chess_game::ChessGame;
+use cattus::chess::net::net_tf_two_headed::TwoHeadedNet;
+use cattus::chess::net::serializer::ChessSerializer;
+use cattus::game::cache::ValueFuncCache;
+use cattus::game::mcts::ValueFunction;
+use cattus::game::self_play_cmd::{run_main, INNetworkBuilder};
 
 struct NNetworkBuilder;
 impl INNetworkBuilder<ChessGame> for NNetworkBuilder {

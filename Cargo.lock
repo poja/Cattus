@@ -159,6 +159,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a4f925191b4367301851c6d99b09890311d74b0d43f274c0b34c86d308a3663"
 
 [[package]]
+name = "cattus"
+version = "0.1.0"
+dependencies = [
+ "cached",
+ "chess",
+ "clap",
+ "itertools",
+ "json",
+ "lazy_static",
+ "once_cell",
+ "petgraph",
+ "pleco",
+ "rand 0.8.4",
+ "rand_distr",
+ "tensorflow",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1069,24 +1087,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62f25bc4c7e55e0b0b7a1d43fb893f4fa1361d0abe38b9ce4f323c2adfe6ef42"
 dependencies = [
  "bitflags",
-]
-
-[[package]]
-name = "rl"
-version = "0.1.0"
-dependencies = [
- "cached",
- "chess",
- "clap",
- "itertools",
- "json",
- "lazy_static",
- "once_cell",
- "petgraph",
- "pleco",
- "rand 0.8.4",
- "rand_distr",
- "tensorflow",
 ]
 
 [[package]]

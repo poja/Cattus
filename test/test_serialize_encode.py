@@ -13,8 +13,8 @@ DEBUG = True
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-RL_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
-TRAIN_TOP = os.path.join(RL_TOP, "train")
+CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
+TRAIN_TOP = os.path.join(CATTUS_TOP, "train")
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_serialize_encode")
 SERIALIZE_FILE = os.path.join(TMP_DIR, "serialize_res.json")
 ENCODE_FILE = os.path.join(TMP_DIR, "encode_res.json")

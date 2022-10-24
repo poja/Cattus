@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use rl::game::cache::ValueFuncCache;
-use rl::game::mcts::ValueFunction;
-use rl::game::self_play_cmd::{run_main, INNetworkBuilder};
-use rl::hex::hex_game::HexGame;
-use rl::hex::net::serializer::HexSerializer;
-use rl::hex::net::two_headed_net::TwoHeadedNet;
+use cattus::game::cache::ValueFuncCache;
+use cattus::game::mcts::ValueFunction;
+use cattus::game::self_play_cmd::{run_main, INNetworkBuilder};
+use cattus::hex::hex_game::HexGame;
+use cattus::hex::net::serializer::HexSerializer;
+use cattus::hex::net::two_headed_net::TwoHeadedNet;
 
 struct NNetworkBuilder;
 impl INNetworkBuilder<HexGame> for NNetworkBuilder {

@@ -1,9 +1,9 @@
 use clap::Parser;
-use rl::game::common::{GamePosition, IGame};
-use rl::game::mcts::MCTSPlayer;
-use rl::ttt::cmd_player::TttPlayerCmd;
-use rl::ttt::net::two_headed_net::TwoHeadedNet;
-use rl::ttt::ttt_game::{color_to_str, TttGame};
+use cattus::game::common::{GamePosition, IGame};
+use cattus::game::mcts::MCTSPlayer;
+use cattus::ttt::cmd_player::TttPlayerCmd;
+use cattus::ttt::net::two_headed_net::TwoHeadedNet;
+use cattus::ttt::ttt_game::{color_to_str, TttGame};
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]

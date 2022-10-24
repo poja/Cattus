@@ -2,16 +2,16 @@ use std::fs;
 
 use clap::Parser;
 use itertools::Itertools;
-use rl::chess::chess_game::{ChessGame, ChessPosition};
-use rl::chess::net::serializer::ChessSerializer;
-use rl::game::common::{GameColor, GamePosition, IGame};
-use rl::game::net;
-use rl::game::self_play::DataSerializer;
-use rl::hex::hex_game::{HexGame, HexPosition};
-use rl::hex::net::serializer::HexSerializer;
-use rl::ttt::net::serializer::TttSerializer;
-use rl::ttt::ttt_game::{TttGame, TttPosition};
-use rl::{chess, hex, ttt};
+use cattus::chess::chess_game::{ChessGame, ChessPosition};
+use cattus::chess::net::serializer::ChessSerializer;
+use cattus::game::common::{GameColor, GamePosition, IGame};
+use cattus::game::net;
+use cattus::game::self_play::DataSerializer;
+use cattus::hex::hex_game::{HexGame, HexPosition};
+use cattus::hex::net::serializer::HexSerializer;
+use cattus::ttt::net::serializer::TttSerializer;
+use cattus::ttt::ttt_game::{TttGame, TttPosition};
+use cattus::{chess, hex, ttt};
 use tensorflow::Tensor;
 
 #[derive(Parser, Debug)]
