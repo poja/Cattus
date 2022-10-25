@@ -72,6 +72,10 @@ impl<Game: IGame> MCTSPlayer<Game> {
         prior_noise_epsilon: f32,
         value_func: Box<dyn ValueFunction<Game>>,
     ) -> Self {
+        assert!(sim_num > 0);
+        assert!(explore_factor >= 0.0);
+        assert!(prior_noise_alpha >= 0.0);
+        assert!((0.0..=1.0).contains(&prior_noise_epsilon));
         Self {
             search_tree: DiGraph::new(),
             root: None,
@@ -218,12 +222,13 @@ impl<Game: IGame> MCTSPlayer<Game> {
         let parent_pos = self.search_tree[parent_id].position;
         assert!(!parent_pos.is_over());
 
-        // TODO remove
-        let moves_actual: HashSet<Game::Move> =
-            HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| *m));
-        let moves_expected: HashSet<Game::Move> =
-            HashSet::from_iter(parent_pos.get_legal_moves().iter().cloned());
-        assert!(moves_actual == moves_expected);
+        debug_assert!({
+            let moves_actual: HashSet<Game::Move> =
+                HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| *m));
+            let moves_expected: HashSet<Game::Move> =
+                HashSet::from_iter(parent_pos.get_legal_moves().iter().cloned());
+            moves_actual == moves_expected
+        });
 
         for (m, p) in per_move_init_score {
             let leaf_pos = parent_pos.get_moved_position(m);
@@ -401,7 +406,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             return;
         }
 
-        assert!(0.0 <= self.prior_noise_epsilon && self.prior_noise_epsilon <= 1.0);
+        assert!((0.0..=1.0).contains(&self.prior_noise_epsilon));
 
         let moves = self
             .search_tree
