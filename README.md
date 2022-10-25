@@ -1,5 +1,6 @@
 
 # Cattus
+[![All tests](https://github.com/poja/RL/actions/workflows/all-tests.yml/badge.svg)](https://github.com/poja/RL/actions/workflows/all-tests.yml)
 
 Cattus is a chess engine based on DeepMind [AlphaZero paper](https://arxiv.org/abs/1712.01815), written in Rust. It uses a neural network to evaluate positions, and MCTS as a search algorithm.
 
