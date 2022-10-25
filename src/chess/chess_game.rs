@@ -52,7 +52,7 @@ impl ChessMove {
         let promotion = if move_str.len() == 5 {
             Some(match move_str.chars().nth(4).unwrap() {
                 'q' => chess::Piece::Queen,
-                'k' => chess::Piece::Knight,
+                'n' => chess::Piece::Knight,
                 'r' => chess::Piece::Rook,
                 'b' => chess::Piece::Bishop,
                 c => return Err(format!("Unknown promotion char: {:?}", c)),
@@ -685,15 +685,15 @@ static NN_INDEX_TO_MOVE: Lazy<Vec<ChessMove>> = Lazy::new(|| {
         "g8g7", "g8h7", "g8a8", "g8b8", "g8c8", "g8d8", "g8e8", "g8f8", "g8h8", "h8a1", "h8h1",
         "h8b2", "h8h2", "h8c3", "h8h3", "h8d4", "h8h4", "h8e5", "h8h5", "h8f6", "h8g6", "h8h6",
         "h8f7", "h8g7", "h8h7", "h8a8", "h8b8", "h8c8", "h8d8", "h8e8", "h8f8", "h8g8", "a7a8q",
-        "a7a8r", "a7a8b", "a7a8k", "a7b8q", "a7b8r", "a7b8b", "a7b8k", "b7a8q", "b7a8r", "b7a8b",
-        "b7a8k", "b7b8q", "b7b8r", "b7b8b", "b7b8k", "b7c8q", "b7c8r", "b7c8b", "b7c8k", "c7b8q",
-        "c7b8r", "c7b8b", "c7b8k", "c7c8q", "c7c8r", "c7c8b", "c7c8k", "c7d8q", "c7d8r", "c7d8b",
-        "c7d8k", "d7c8q", "d7c8r", "d7c8b", "d7c8k", "d7d8q", "d7d8r", "d7d8b", "d7d8k", "d7e8q",
-        "d7e8r", "d7e8b", "d7e8k", "e7d8q", "e7d8r", "e7d8b", "e7d8k", "e7e8q", "e7e8r", "e7e8b",
-        "e7e8k", "e7f8q", "e7f8r", "e7f8b", "e7f8k", "f7e8q", "f7e8r", "f7e8b", "f7e8k", "f7f8q",
-        "f7f8r", "f7f8b", "f7f8k", "f7g8q", "f7g8r", "f7g8b", "f7g8k", "g7f8q", "g7f8r", "g7f8b",
-        "g7f8k", "g7g8q", "g7g8r", "g7g8b", "g7g8k", "g7h8q", "g7h8r", "g7h8b", "g7h8k", "h7g8q",
-        "h7g8r", "h7g8b", "h7g8k", "h7h8q", "h7h8r", "h7h8b", "h7h8k",
+        "a7a8r", "a7a8b", "a7a8n", "a7b8q", "a7b8r", "a7b8b", "a7b8n", "b7a8q", "b7a8r", "b7a8b",
+        "b7a8n", "b7b8q", "b7b8r", "b7b8b", "b7b8n", "b7c8q", "b7c8r", "b7c8b", "b7c8n", "c7b8q",
+        "c7b8r", "c7b8b", "c7b8n", "c7c8q", "c7c8r", "c7c8b", "c7c8n", "c7d8q", "c7d8r", "c7d8b",
+        "c7d8n", "d7c8q", "d7c8r", "d7c8b", "d7c8n", "d7d8q", "d7d8r", "d7d8b", "d7d8n", "d7e8q",
+        "d7e8r", "d7e8b", "d7e8n", "e7d8q", "e7d8r", "e7d8b", "e7d8n", "e7e8q", "e7e8r", "e7e8b",
+        "e7e8n", "e7f8q", "e7f8r", "e7f8b", "e7f8n", "f7e8q", "f7e8r", "f7e8b", "f7e8n", "f7f8q",
+        "f7f8r", "f7f8b", "f7f8n", "f7g8q", "f7g8r", "f7g8b", "f7g8n", "g7f8q", "g7f8r", "g7f8b",
+        "g7f8n", "g7g8q", "g7g8r", "g7g8b", "g7g8n", "g7h8q", "g7h8r", "g7h8b", "g7h8n", "h7g8q",
+        "h7g8r", "h7g8b", "h7g8n", "h7h8q", "h7h8r", "h7h8b", "h7h8n",
     ]
     .into_iter()
     .map(|s| ChessMove::from_lan(s).unwrap())
