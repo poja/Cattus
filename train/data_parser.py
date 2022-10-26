@@ -18,7 +18,7 @@ class DataParser:
         assert self.cfg["training"]["latest_data_entries"] >= self.cfg["training"]["iteration_data_entries"]
 
     def _data_entries_filenames_gen(self):
-        filenames = [str(p) for p in Path(self.data_dir).rglob("*.json")]
+        filenames = [str(p) for p in Path(self.data_dir).rglob("*.traindata")]
 
         # take the latests files
         latest_de = self.cfg["training"]["latest_data_entries"]
@@ -42,8 +42,7 @@ class DataParser:
     @staticmethod
     def unpack_planes(packed_entry, game, cpu):
         planes, probs, winner = packed_entry
-        assert planes.dtype == np.uint32 and len(
-            planes) == game.PLANES_NUM
+        assert len(planes) == game.PLANES_NUM
         plane_size = game.BOARD_SIZE * game.BOARD_SIZE
         planes = [np.frombuffer(plane, dtype=np.uint8) for plane in planes]
         planes = [np.unpackbits(

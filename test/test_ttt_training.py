@@ -92,4 +92,4 @@ def _get_metrics():
 
 
 if __name__ == "__main__":
-    test_ttt_two_headed_net()
+    test_ttt_training()
