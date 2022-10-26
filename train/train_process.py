@@ -81,12 +81,11 @@ class TrainProcess:
         self.lr_scheduler = LearningRateScheduler(self.cfg)
 
     def run_training_loop(self, run_id=None):
-
         if run_id is None:
             run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
         self.run_id = run_id
 
-        best_model = self.base_model_path
+        best_model = str(self.base_model_path)
         latest_model = self.base_model_path
 
         for iter_num in range(self.cfg["self_play"]["iterations"]):

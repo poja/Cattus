@@ -5,7 +5,7 @@ from keras import optimizers, Input
 from keras.layers import Dense
 from keras.models import Model
 import keras
-from construct import Struct, Array, Int64ul, Float32l, Int8sl
+from construct import Struct, Array, Int64ul, Float32l, Int8sl, Int8ul
 
 from train.trainable_game import TrainableGame
 from train import net_utils
@@ -23,7 +23,8 @@ class Chess(TrainableGame):
 
     ENTRY_FORMAT = Struct(
         "planes" / Array(PLANES_NUM, Int64ul),
-        "probs" / Array(MOVE_NUM, Float32l),
+        "moves_bitmap" / Array(235, Int8ul),
+        "probs" / Array(225, Float32l),
         "winner" / Int8sl,
     )
 
@@ -33,8 +34,18 @@ class Chess(TrainableGame):
         assert self.ENTRY_FORMAT.sizeof() == len(entry_bytes)
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
         planes = np.array(entry.planes, dtype=np.uint64)
+        moves_bitmap = np.array(entry.moves_bitmap, dtype=np.uint8)
         probs = np.array(entry.probs, dtype=np.float32)
         winner = entry.winner
+
+        probs_all = np.full((self.MOVE_NUM), -1.0, dtype=np.float32)
+        probs_idx = 0
+        for move_idx in range(self.MOVE_NUM):
+            i, j = move_idx // 8, move_idx % 8
+            if moves_bitmap[i] & (1 << j) != 0:
+                probs_all[move_idx] = probs[probs_idx]
+                probs_idx += 1
+        probs = probs_all
 
         assert len(planes) == self.PLANES_NUM
         assert len(probs) == self.MOVE_NUM
