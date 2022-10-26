@@ -18,8 +18,7 @@ pub trait DataSerializer<Game: IGame>: Sync + Send {
     ) -> std::io::Result<()>;
 }
 
-pub struct SerializerBase {}
-
+pub struct SerializerBase;
 impl SerializerBase {
     pub fn write_entry<Game: IGame, const MOVES_NUM: usize>(
         planes: Vec<u64>,
@@ -35,16 +34,20 @@ impl SerializerBase {
             probs_vec[m.to_nn_idx()] = prob;
         }
 
+        let u64bytes = u64::BITS as usize / 8;
+        let f32bytes = /* f32::BITS */ 32 / 8;
+        let i8bytes = i8::BITS as usize / 8;
+        let size = planes.len() * u64bytes + probs_vec.len() * f32bytes + i8bytes;
+        let mut bytes = Vec::with_capacity(size);
+
+        /* Serialized in little indian format, should deserialized the same */
+        bytes.extend(planes.into_iter().flat_map(|p| p.to_le_bytes()));
+        bytes.extend(probs_vec.into_iter().flat_map(|p| p.to_le_bytes()));
+        bytes.extend((winner as i8).to_le_bytes());
+        assert!(bytes.len() == size);
+
         /* Write to file */
-        fs::write(
-            filename,
-            json::object! {
-                planes: planes,
-                probs: probs_vec,
-                winner: winner
-            }
-            .dump(),
-        )
+        fs::write(filename, bytes)
     }
 }
 
@@ -240,7 +243,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                     pos,
                     probs,
                     winner,
-                    &format!("{}/{:#08}_{:#03}.json", output_dir, game_idx, pos_idx),
+                    &format!("{}/{:#08}_{:#03}.traindata", output_dir, game_idx, pos_idx),
                 )?;
             }
 

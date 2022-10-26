@@ -1,11 +1,11 @@
-import json
-
+import sys
 import numpy as np
 import tensorflow as tf
 from keras import optimizers, Input
 from keras.layers import Dense
 from keras.models import Model
 import keras
+from construct import Struct, Array, Int64ul, Float32l, Int8sl
 
 from train.trainable_game import TrainableGame
 from train import net_utils
@@ -21,19 +21,23 @@ class Chess(TrainableGame):
     PLANES_NUM = 18
     MOVE_NUM = 1880
 
+    ENTRY_FORMAT = Struct(
+        "planes" / Array(PLANES_NUM, Int64ul),
+        "probs" / Array(MOVE_NUM, Float32l),
+        "winner" / Int8sl,
+    )
+
     def load_data_entry(self, path):
         with open(path, "rb") as f:
-            data_entry = json.load(f)
+            entry_bytes = f.read()
+        assert self.ENTRY_FORMAT.sizeof() == len(entry_bytes)
+        entry = self.ENTRY_FORMAT.parse(entry_bytes)
+        planes = np.array(entry.planes, dtype=np.uint64)
+        probs = np.array(entry.probs, dtype=np.float32)
+        winner = entry.winner
 
-        planes = np.array(data_entry["planes"], dtype=np.uint64)
-        planes = np.frombuffer(planes, dtype=np.uint32).reshape(
-            (self.PLANES_NUM, 2))
-
-        probs = np.array(data_entry["probs"], dtype=np.float32)
+        assert len(planes) == self.PLANES_NUM
         assert len(probs) == self.MOVE_NUM
-
-        winner = np.float32(data_entry["winner"])
-
         return (planes, probs, winner)
 
     def _get_input_shape(self, cfg):

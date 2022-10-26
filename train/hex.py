@@ -1,4 +1,3 @@
-import json
 import sys
 import numpy as np
 import tensorflow as tf
@@ -6,6 +5,7 @@ from keras import optimizers, Input
 from keras.layers import Dense
 from keras.models import Model
 import keras
+from construct import Struct, Array, Int64ul, Float32l, Int8sl
 
 from train.trainable_game import TrainableGame
 from train import net_utils
@@ -21,23 +21,24 @@ class Hex(TrainableGame):
     PLANES_NUM = 3
     MOVE_NUM = BOARD_SIZE * BOARD_SIZE
 
+    ENTRY_FORMAT = Struct(
+        "planes" / Array(PLANES_NUM * 2, Int64ul),
+        "probs" / Array(MOVE_NUM, Float32l),
+        "winner" / Int8sl,
+    )
+
     def load_data_entry(self, path):
         with open(path, "rb") as f:
-            data_entry = json.load(f)
+            entry_bytes = f.read()
+        assert self.ENTRY_FORMAT.sizeof() == len(entry_bytes)
+        entry = self.ENTRY_FORMAT.parse(entry_bytes)
+        # planes of 128bit are saved as two 64bit values
+        planes = np.array(entry.planes, dtype=np.uint64).reshape((self.PLANES_NUM, 2))
+        probs = np.array(entry.probs, dtype=np.float32)
+        winner = entry.winner
 
-        # planes of 128bit are saved in json as two 64bit values
-        # we convert them into 32bits np arrays
-        assert sys.byteorder == "little"
-        planes = np.array(data_entry["planes"], dtype=np.uint64).reshape(
-            (self.PLANES_NUM, 2))
-        planes = np.frombuffer(planes, dtype=np.uint32).reshape(
-            (self.PLANES_NUM, 4))
-
-        probs = np.array(data_entry["probs"], dtype=np.float32)
+        assert len(planes) == self.PLANES_NUM
         assert len(probs) == self.MOVE_NUM
-
-        winner = np.float32(data_entry["winner"])
-
         return (planes, probs, winner)
 
     def _get_input_shape(self, cfg):
