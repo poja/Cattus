@@ -1,4 +1,5 @@
 
+
 # Cattus
 [![All tests](https://github.com/poja/RL/actions/workflows/all-tests.yml/badge.svg)](https://github.com/poja/RL/actions/workflows/all-tests.yml)
 
@@ -24,4 +25,23 @@ while  not board.is_game_over() and  not board.can_claim_draw():
 	board.push(result.move)
 
 engine.quit()
+```
+
+## Training
+
+To run the training process, first one should install the python project on `venv`:
+```bash
+pip install poetry
+
+mkdir ~/.venvs; cd ~/.venvs
+python -m venv cattus
+
+pip install -e $CATTUS_TOP
+```
+
+Activate the `venv` and start the training process:
+```bash
+~/.venvs/cattus/activate
+
+python $CATTUS_TOP/train/main.py --config $CATTUS_TOP/train/config.json
 ```
