@@ -1,9 +1,8 @@
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-};
-
 use rand::Rng;
+use std::fmt::{Debug, Display};
+use std::hash::Hash;
+
+use crate::game::self_play::DataEntry;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum GameColor {
@@ -37,7 +36,7 @@ impl GameColor {
     }
 }
 
-pub trait IGame {
+pub trait IGame: Sized {
     type Position: GamePosition<Game = Self>;
     type Move: GameMove<Game = Self>;
     type Bitboard: GameBitboard<Game = Self>;
@@ -55,6 +54,8 @@ pub trait IGame {
         player2: &mut dyn GamePlayer<Self>,
     ) -> (Self::Position, Option<GameColor>);
     fn get_repetition_limit() -> Option<u32>;
+
+    fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>>;
 }
 
 pub trait GamePosition: Clone + Copy + Eq + Hash + Send + Sync {

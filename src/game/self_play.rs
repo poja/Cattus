@@ -16,6 +16,16 @@ pub struct DataEntry<Game: IGame> {
     pub winner: Option<GameColor>,
 }
 
+impl<Game: IGame> Clone for DataEntry<Game> {
+    fn clone(&self) -> Self {
+        DataEntry {
+            pos: self.pos,
+            probs: self.probs.clone(),
+            winner: self.winner,
+        }
+    }
+}
+
 pub trait DataSerializer<Game: IGame>: Sync + Send {
     fn serialize_data_entry(&self, entry: DataEntry<Game>, filename: &str) -> std::io::Result<()>;
 }
@@ -274,11 +284,17 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         let (winner, probs) = net::flip_score_if_needed((winner, probs), is_flipped);
         let winner = GameColor::from_idx(winner as i32);
 
-        let entry = DataEntry { pos, probs, winner };
-        self.serializer.serialize_data_entry(
-            entry,
-            &format!("{}/{:#08}_{:#03}.traindata", output_dir, game_idx, pos_idx),
-        )
+        let entries = Game::produce_transformed_data_entries(DataEntry { pos, probs, winner });
+        for (transform_idx, entry) in entries.into_iter().enumerate() {
+            self.serializer.serialize_data_entry(
+                entry,
+                &format!(
+                    "{}/{:#08}_{:#03}_{:#02}.traindata",
+                    output_dir, game_idx, pos_idx, transform_idx
+                ),
+            )?;
+        }
+        Ok(())
     }
 }
 
