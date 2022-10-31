@@ -1,18 +1,13 @@
-use std::fs;
-
-use clap::Parser;
-use itertools::Itertools;
-use cattus::chess::chess_game::{ChessGame, ChessPosition};
+use cattus::chess::chess_game::ChessPosition;
 use cattus::chess::net::serializer::ChessSerializer;
 use cattus::game::common::{GameColor, GamePosition, IGame};
-use cattus::game::net;
 use cattus::game::self_play::DataSerializer;
-use cattus::hex::hex_game::{HexGame, HexPosition};
+use cattus::hex::hex_game::HexPosition;
 use cattus::hex::net::serializer::HexSerializer;
 use cattus::ttt::net::serializer::TttSerializer;
-use cattus::ttt::ttt_game::{TttGame, TttPosition};
-use cattus::{chess, hex, ttt};
-use tensorflow::Tensor;
+use cattus::ttt::ttt_game::TttPosition;
+use clap::Parser;
+use itertools::Itertools;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -22,9 +17,7 @@ struct Args {
     #[clap(long)]
     position: String,
     #[clap(long)]
-    serialize_out: String,
-    #[clap(long)]
-    encode_out: String,
+    outfile: String,
 }
 
 fn main() -> std::io::Result<()> {
@@ -40,48 +33,22 @@ fn main() -> std::io::Result<()> {
 fn test_tictactoe(args: Args) -> std::io::Result<()> {
     let pos = TttPosition::from_str(&args.position);
 
-    let planes = ttt::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<TttGame, true>(planes);
-    tensor_to_json(tensor, &args.encode_out)?;
-
     let serializer = TttSerializer {};
-    serialize_position(pos, &serializer, &args.serialize_out)
+    serialize_position(pos, &serializer, &args.outfile)
 }
 
 fn test_hex(args: Args) -> std::io::Result<()> {
     let pos = HexPosition::from_str(&args.position);
 
-    let planes = hex::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<HexGame, true>(planes);
-    tensor_to_json(tensor, &args.encode_out)?;
-
     let serializer = HexSerializer {};
-    serialize_position(pos, &serializer, &args.serialize_out)
+    serialize_position(pos, &serializer, &args.outfile)
 }
 
 fn test_chess(args: Args) -> std::io::Result<()> {
     let pos = ChessPosition::from_str(&args.position);
 
-    let planes = chess::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<ChessGame, true>(planes);
-    tensor_to_json(tensor, &args.encode_out)?;
-
     let serializer = ChessSerializer {};
-    serialize_position(pos, &serializer, &args.serialize_out)
-}
-
-fn tensor_to_json(tensor: Tensor<f32>, filename: &String) -> std::io::Result<()> {
-    let shape: Option<Vec<Option<i64>>> = tensor.shape().try_into().unwrap();
-    let shape = shape.unwrap().into_iter().map(|d| d.unwrap()).collect_vec();
-    let data = tensor.iter().cloned().collect_vec();
-    fs::write(
-        filename,
-        json::object! {
-            shape: shape,
-            data: data,
-        }
-        .dump(),
-    )
+    serialize_position(pos, &serializer, &args.outfile)
 }
 
 fn serialize_position<Game: IGame>(
