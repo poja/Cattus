@@ -110,11 +110,17 @@ def _test_serialize_encode(args):
         try:
             subprocess.run([
                 "cargo", "run", "--profile", "dev", "-q", "--bin",
-                "test_serialize_encode", "--",
+                "test_encode", "--",
                 "--game", args["game_name"],
                 "--position", position,
-                "--serialize-out", SERIALIZE_FILE,
-                "--encode-out", ENCODE_FILE],
+                "--outfile", ENCODE_FILE],
+                stderr=sys.stderr, stdout=sys.stdout, check=True)
+            subprocess.run([
+                "cargo", "run", "--profile", "dev", "-q", "--bin",
+                "test_serialize", "--",
+                "--game", args["game_name"],
+                "--position", position,
+                "--outfile", SERIALIZE_FILE],
                 stderr=sys.stderr, stdout=sys.stdout, check=True)
 
             cpu = True
