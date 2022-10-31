@@ -56,7 +56,11 @@ impl<Game: IGame> ValueFuncCache<Game> {
             if let Some(cached_val) = cache.map.get(position) {
                 self.hits.fetch_add(1, Ordering::Relaxed);
                 let cached_val = cached_val.clone();
-                assert!(computed_val == cached_val);
+                /* We would like to assert (computed_val == cached_val), but this is highly unreliable due to */
+                /* floating points calculation errors. */
+                /* This is more significant when the number of layers and params in the model is large, and it is */
+                /* even more significant on the beginning of the training process, where the model contains random */
+                /* values which cause very large or very small numbers. */
                 return cached_val;
             }
 
