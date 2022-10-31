@@ -60,7 +60,6 @@ fn compare_players(
     println!("\tplayer2: {}", player2_display_name);
     println!("\tnumber of games: {}", number_of_games);
 
-    // TODO progress bar
     let run_time = Instant::now();
     let mut player1_wins = 0;
     let mut player2_wins = 0;

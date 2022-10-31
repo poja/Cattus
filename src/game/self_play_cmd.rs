@@ -147,7 +147,7 @@ pub fn run_main<Game: IGame + 'static>(
         args.threads,
     )
     .generate_data(
-        args.games_num,
+        args.games_num as usize,
         &args.out_dir1,
         &args.out_dir2,
         &args.result_file,

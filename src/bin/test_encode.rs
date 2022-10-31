@@ -1,13 +1,13 @@
+use clap::Parser;
+use itertools::Itertools;
 use std::fs;
+use tensorflow::Tensor;
 
 use cattus::chess::chess_game::{ChessGame, ChessPosition};
 use cattus::game::net;
 use cattus::hex::hex_game::{HexGame, HexPosition};
 use cattus::ttt::ttt_game::{TttGame, TttPosition};
 use cattus::{chess, hex, ttt};
-use clap::Parser;
-use itertools::Itertools;
-use tensorflow::Tensor;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]

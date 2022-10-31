@@ -1,34 +1,32 @@
 use itertools::Itertools;
 use std::fs;
 
-use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
+use crate::chess::chess_game::ChessGame;
 use crate::chess::net::common;
-use crate::game::common::{GameColor, GameMove, GamePosition};
-use crate::game::net;
-use crate::game::self_play::DataSerializer;
+use crate::game::common::GameMove;
+use crate::game::common::{GameColor, GamePosition};
+use crate::game::self_play::{DataEntry, DataSerializer};
 
 pub struct ChessSerializer;
 impl DataSerializer<ChessGame> for ChessSerializer {
     fn serialize_data_entry(
         &self,
-        pos: ChessPosition,
-        probs: Vec<(ChessMove, f32)>,
-        winner: Option<GameColor>,
+        mut entry: DataEntry<ChessGame>,
         filename: &str,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
-        let winner = GameColor::to_idx(winner) as f32;
-        let (pos, is_flipped) = net::flip_pos_if_needed(pos);
-        let (winner, mut probs) = net::flip_score_if_needed((winner, probs), is_flipped);
-        assert!(pos.get_turn() == GameColor::Player1);
+        let winner = GameColor::to_idx(entry.winner) as i8;
+        assert!(entry.pos.get_turn() == GameColor::Player1);
 
-        let planes = common::position_to_planes(&pos)
+        let planes = common::position_to_planes(&entry.pos)
             .iter()
             .map(|p| p.get_raw())
             .collect_vec();
 
         /* Sort moves by their indices. Important as the deserializer expect the bitmap and probs order to match */
-        probs.sort_by(|(m1, _p1), (m2, _p2)| m1.to_nn_idx().cmp(&m2.to_nn_idx()));
+        entry
+            .probs
+            .sort_by(|(m1, _p1), (m2, _p2)| m1.to_nn_idx().cmp(&m2.to_nn_idx()));
 
         /* Construct moves bitmap and probs array */
         /* This is done to save disk space. Instead of saving all 1880 probabilities, we take advantage of the fact */
@@ -37,7 +35,7 @@ impl DataSerializer<ChessGame> for ChessSerializer {
         /* the moves_probs array. */
         let mut moves_bitmap = [0u8; 235];
         let mut moves_probs = [-1.0f32; 225];
-        for (idx, (m, prob)) in probs.into_iter().enumerate() {
+        for (idx, (m, prob)) in entry.probs.into_iter().enumerate() {
             let nn_idx = m.to_nn_idx();
             let (i, j) = (nn_idx / 8, nn_idx % 8);
             moves_bitmap[i] |= 1u8 << j;

@@ -18,11 +18,21 @@ impl GameColor {
             GameColor::Player2 => GameColor::Player1,
         }
     }
+
     pub fn to_idx(player: Option<GameColor>) -> i32 {
         match player {
             Some(GameColor::Player1) => 1,
             Some(GameColor::Player2) => -1,
             None => 0,
+        }
+    }
+
+    pub fn from_idx(player: i32) -> Option<GameColor> {
+        match player {
+            1 => Some(GameColor::Player1),
+            -1 => Some(GameColor::Player2),
+            0 => None,
+            other => panic!("unknown player index: {}", other),
         }
     }
 }

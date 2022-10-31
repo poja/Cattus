@@ -1,7 +1,7 @@
 use cattus::chess::chess_game::ChessPosition;
 use cattus::chess::net::serializer::ChessSerializer;
 use cattus::game::common::{GameColor, GamePosition, IGame};
-use cattus::game::self_play::DataSerializer;
+use cattus::game::self_play::{DataEntry, DataSerializer};
 use cattus::hex::hex_game::HexPosition;
 use cattus::hex::net::serializer::HexSerializer;
 use cattus::ttt::net::serializer::TttSerializer;
@@ -69,5 +69,5 @@ fn serialize_position<Game: IGame>(
         2 => None,
         _ => panic!("cant happen"),
     };
-    serializer.serialize_data_entry(pos, probs, winner, filename)
+    serializer.serialize_data_entry(DataEntry { pos, probs, winner }, filename)
 }

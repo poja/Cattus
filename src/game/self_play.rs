@@ -1,6 +1,3 @@
-use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
-use crate::game::mcts::MCTSPlayer;
-use crate::utils::Builder;
 use itertools::Itertools;
 use std::fs;
 use std::path;
@@ -8,14 +5,19 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::thread;
 
+use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
+use crate::game::mcts::MCTSPlayer;
+use crate::game::net;
+use crate::utils::Builder;
+
+pub struct DataEntry<Game: IGame> {
+    pub pos: Game::Position,
+    pub probs: Vec<(Game::Move, f32)>,
+    pub winner: Option<GameColor>,
+}
+
 pub trait DataSerializer<Game: IGame>: Sync + Send {
-    fn serialize_data_entry(
-        &self,
-        pos: Game::Position,
-        probs: Vec<(Game::Move, f32)>,
-        winner: Option<GameColor>,
-        filename: &str,
-    ) -> std::io::Result<()>;
+    fn serialize_data_entry(&self, entry: DataEntry<Game>, filename: &str) -> std::io::Result<()>;
 }
 
 pub struct SerializerBase;
@@ -23,7 +25,7 @@ impl SerializerBase {
     pub fn write_entry<Game: IGame, const MOVES_NUM: usize>(
         planes: Vec<u64>,
         probs: Vec<(Game::Move, f32)>,
-        winner: f32,
+        winner: i8,
         filename: &str,
     ) -> std::io::Result<()> {
         /* Use -1 for illegal moves */
@@ -62,7 +64,7 @@ pub struct SelfPlayRunner<Game: IGame> {
     player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
     temperature_policy: String,
     serializer: Arc<dyn DataSerializer<Game>>,
-    thread_num: u32,
+    thread_num: usize,
 }
 
 impl<Game: IGame + 'static> SelfPlayRunner<Game> {
@@ -79,13 +81,13 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
             player2_builder,
             temperature_policy,
             serializer,
-            thread_num,
+            thread_num: thread_num as usize,
         }
     }
 
     pub fn generate_data(
         &self,
-        games_num: u32,
+        games_num: usize,
         output_dir1: &String,
         output_dir2: &String,
         result_file: &String,
@@ -166,8 +168,8 @@ struct SelfPlayWorker<Game: IGame> {
     output_dir1: String,
     output_dir2: String,
     results: Arc<GamesResults>,
-    start_idx: u32,
-    end_idx: u32,
+    start_idx: usize,
+    end_idx: usize,
 }
 
 impl<Game: IGame> SelfPlayWorker<Game> {
@@ -180,8 +182,8 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         output_dir1: String,
         output_dir2: String,
         results: Arc<GamesResults>,
-        start_idx: u32,
-        end_idx: u32,
+        start_idx: usize,
+        end_idx: usize,
     ) -> Self {
         Self {
             player1_builder,
@@ -231,22 +233,14 @@ impl<Game: IGame> SelfPlayWorker<Game> {
 
                 half_move_num += 1;
             }
+
+            /* Save all data entries */
             let winner = game.get_winner();
-
             for (pos_idx, (pos, probs)) in pos_probs_pairs.into_iter().enumerate() {
-                let output_dir = match pos.get_turn() {
-                    GameColor::Player1 => [&self.output_dir1, &self.output_dir2],
-                    GameColor::Player2 => [&self.output_dir2, &self.output_dir1],
-                }[(game_idx % 2) as usize];
-
-                self.serializer.serialize_data_entry(
-                    pos,
-                    probs,
-                    winner,
-                    &format!("{}/{:#08}_{:#03}.traindata", output_dir, game_idx, pos_idx),
-                )?;
+                self.write_data_entry(game_idx, pos_idx, pos, probs, winner)?;
             }
 
+            /* Update winning counters */
             match winner {
                 None => &self.results.d,
                 Some(p) => {
@@ -260,6 +254,31 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             .fetch_add(1, Ordering::Relaxed);
         }
         Ok(())
+    }
+
+    fn write_data_entry(
+        &self,
+        game_idx: usize,
+        pos_idx: usize,
+        pos: Game::Position,
+        probs: Vec<(Game::Move, f32)>,
+        winner: Option<GameColor>,
+    ) -> std::io::Result<()> {
+        let output_dir = match pos.get_turn() {
+            GameColor::Player1 => [&self.output_dir1, &self.output_dir2],
+            GameColor::Player2 => [&self.output_dir2, &self.output_dir1],
+        }[(game_idx % 2) as usize];
+
+        let winner = GameColor::to_idx(winner) as f32;
+        let (pos, is_flipped) = net::flip_pos_if_needed(pos);
+        let (winner, probs) = net::flip_score_if_needed((winner, probs), is_flipped);
+        let winner = GameColor::from_idx(winner as i32);
+
+        let entry = DataEntry { pos, probs, winner };
+        self.serializer.serialize_data_entry(
+            entry,
+            &format!("{}/{:#08}_{:#03}.traindata", output_dir, game_idx, pos_idx),
+        )
     }
 }
 
