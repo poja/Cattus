@@ -1,8 +1,9 @@
+use itertools::Itertools;
+use std::cmp::Ordering;
+use std::fmt::{self, Display};
+
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
-use std::{
-    cmp::Ordering,
-    fmt::{self, Display},
-};
+use crate::game::self_play::DataEntry;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct HexMove {
@@ -429,5 +430,44 @@ impl IGame for HexGame {
 
     fn get_repetition_limit() -> Option<u32> {
         None
+    }
+
+    fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>> {
+        let transform = |e: &DataEntry<Self>, transform_sq: &dyn Fn(usize) -> usize| {
+            let (board_red, board_blue) = [e.pos.board_red, e.pos.board_blue]
+                .iter()
+                .map(|b| {
+                    let mut bt = HexBitboard::new();
+                    for idx in 0..HexGame::BOARD_SIZE * HexGame::BOARD_SIZE {
+                        bt.set(transform_sq(idx), b.get(idx));
+                    }
+                    bt
+                })
+                .collect_tuple()
+                .unwrap();
+            let pos = HexPosition::new_from_board(board_red, board_blue, e.pos.get_turn());
+
+            let probs = e
+                .probs
+                .iter()
+                .map(|(m, p)| (HexMove::from_idx(transform_sq(m.to_idx())), *p))
+                .collect_vec();
+
+            let winner = e.winner;
+            DataEntry { pos, probs, winner }
+        };
+
+        let rotate_180 = |e: &DataEntry<Self>| {
+            transform(e, &|idx| {
+                let (r, c) = (idx / HexGame::BOARD_SIZE, idx % HexGame::BOARD_SIZE);
+                let rt = HexGame::BOARD_SIZE - 1 - r;
+                let ct = HexGame::BOARD_SIZE - 1 - c;
+                rt * HexGame::BOARD_SIZE + ct
+            })
+        };
+
+        let mut entries = vec![entry];
+        entries.extend(entries.iter().map(rotate_180).collect_vec());
+        entries
     }
 }

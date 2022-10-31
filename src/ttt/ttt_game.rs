@@ -1,8 +1,10 @@
+use std::cmp::Ordering;
+use std::fmt::{self, Display};
+
+use itertools::Itertools;
+
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
-use std::{
-    cmp::Ordering,
-    fmt::{self, Display},
-};
+use crate::game::self_play::DataEntry;
 
 pub fn color_to_str(c: Option<GameColor>) -> String {
     match c {
@@ -133,6 +135,18 @@ impl TttPosition {
         }
         pos.check_winner();
         pos
+    }
+
+    /* Could lead to invalid board */
+    pub fn from_bitboards(board_x: TttBitboard, board_o: TttBitboard, turn: GameColor) -> Self {
+        let mut s = Self {
+            board_x,
+            board_o,
+            turn,
+            winner: None,
+        };
+        s.check_winner();
+        s
     }
 
     pub fn pieces_x(&self) -> TttBitboard {
@@ -325,5 +339,73 @@ impl IGame for TttGame {
 
     fn get_repetition_limit() -> Option<u32> {
         None
+    }
+
+    fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>> {
+        let transform = |e: &DataEntry<Self>, transform_sq: &dyn Fn(usize) -> usize| {
+            let (board_x, board_o) = [e.pos.board_x, e.pos.board_o]
+                .iter()
+                .map(|b| {
+                    let mut bt = TttBitboard::new();
+                    for idx in 0..TttGame::BOARD_SIZE * TttGame::BOARD_SIZE {
+                        bt.set(transform_sq(idx), b.get(idx));
+                    }
+                    bt
+                })
+                .collect_tuple()
+                .unwrap();
+            let pos = TttPosition::from_bitboards(board_x, board_o, e.pos.get_turn());
+
+            let probs = e
+                .probs
+                .iter()
+                .map(|(m, p)| (TttMove::from_idx(transform_sq(m.to_idx())), *p))
+                .collect_vec();
+
+            let winner = e.winner;
+            DataEntry { pos, probs, winner }
+        };
+
+        let rows_mirror = |e: &DataEntry<Self>| {
+            transform(e, &|idx| {
+                let (r, c) = (idx / TttGame::BOARD_SIZE, idx % TttGame::BOARD_SIZE);
+                let rt = TttGame::BOARD_SIZE - 1 - r;
+                let ct = c;
+                rt * TttGame::BOARD_SIZE + ct
+            })
+        };
+        let columns_mirror = |e: &DataEntry<Self>| {
+            transform(e, &|idx| {
+                let (r, c) = (idx / TttGame::BOARD_SIZE, idx % TttGame::BOARD_SIZE);
+                let rt = r;
+                let ct = TttGame::BOARD_SIZE - 1 - c;
+                rt * TttGame::BOARD_SIZE + ct
+            })
+        };
+        let diagonal_mirror = |e: &DataEntry<Self>| {
+            transform(e, &|idx| {
+                let (r, c) = (idx / TttGame::BOARD_SIZE, idx % TttGame::BOARD_SIZE);
+                let rt = c;
+                let ct = r;
+                rt * TttGame::BOARD_SIZE + ct
+            })
+        };
+
+        /*
+         * Use all combination of the basic transforms:
+         * original
+         * rows mirror
+         * columns mirror
+         * diagonal mirror
+         * rows + columns = rotate 180
+         * rows + diagonal = rotate 90
+         * columns + diagonal = rotate 90 (other direction)
+         * row + columns + diagonal = other diagonal mirror
+         */
+        let mut entries = vec![entry];
+        entries.extend(entries.iter().map(rows_mirror).collect_vec());
+        entries.extend(entries.iter().map(columns_mirror).collect_vec());
+        entries.extend(entries.iter().map(diagonal_mirror).collect_vec());
+        entries
     }
 }
