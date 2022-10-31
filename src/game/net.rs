@@ -51,7 +51,7 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         }
     }
 
-    fn run_net(&self, input: Tensor<f32>) -> (f32, Vec<f32>) {
+    pub fn run_net(&self, input: Tensor<f32>) -> (f32, Vec<f32>) {
         let mut args = SessionRunArgs::new();
         args.add_feed(&self.input_op, 0, &input);
         let output_scalar = args.request_fetch(&self.value_head, 1);
