@@ -156,14 +156,11 @@ impl HexPosition {
         };
         for r in 0..HexGame::BOARD_SIZE {
             for c in 0..HexGame::BOARD_SIZE {
-                match s.get_tile(r, c) {
-                    Some(color) => {
-                        s.number_of_empty_tiles -= 1;
-                        if is_reach_begin(r, c, color) {
-                            s.update_reach(r, c, color);
-                        }
+                if let Some(color) = s.get_tile(r, c) {
+                    s.number_of_empty_tiles -= 1;
+                    if is_reach_begin(r, c, color) {
+                        s.update_reach(r, c, color);
                     }
-                    None => {}
                 }
             }
         }

@@ -1,8 +1,8 @@
-use clap::Parser;
-use rand::Rng;
 use cattus::game::common::{GameColor, GamePlayer, IGame};
 use cattus::hex::hex_game::{HexGame, HexPosition};
 use cattus::hex::uxi::HexPlayerUXI;
+use clap::Parser;
+use rand::Rng;
 use std::path::Path;
 use std::time::Instant;
 
@@ -71,12 +71,11 @@ fn compare_players(
         };
         let mut game = HexGame::new_from_pos(HexPosition::new_with_starting_color(starting_player));
         let (_final_pos, winner) = game.play_until_over(player1, player2);
-        match winner {
-            None => {}
-            Some(winner) => match winner {
+        if let Some(winner) = winner {
+            match winner {
                 GameColor::Player1 => player1_wins += 1,
                 GameColor::Player2 => player2_wins += 1,
-            },
+            }
         };
     }
     println!("Comparison results:");
