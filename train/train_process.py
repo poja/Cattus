@@ -84,7 +84,7 @@ class TrainProcess:
         self.lr_scheduler = LearningRateScheduler(self.cfg)
 
     def run_training_loop(self, run_id=None):
-        
+
         if run_id is None:
             run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
         self.run_id = run_id
@@ -216,7 +216,7 @@ class TrainProcess:
                 # the comparison stage as training data in future training steps
                 for filename in os.listdir(tmp_games_dir):
                     shutil.move(os.path.join(
-                        tmp_games_dir, filename), games_dir)
+                        tmp_games_dir, filename), data_entries_dir)
             elif losing > self.cfg["training"]["compare"]["warning_losing_threshold"]:
                 logging.warn("New model is worse than previous one, losing ratio: %f", losing)
 
