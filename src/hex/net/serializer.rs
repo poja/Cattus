@@ -1,28 +1,22 @@
 use crate::game::common::{GameColor, GamePosition};
-use crate::game::net;
-use crate::game::self_play::{DataSerializer, SerializerBase};
-use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
+use crate::game::self_play::{DataEntry, DataSerializer, SerializerBase};
+use crate::hex::hex_game::HexGame;
 use crate::hex::net::common::{self, MOVES_NUM};
 use itertools::Itertools;
 
-pub struct HexSerializer {}
-
+pub struct HexSerializer;
 impl DataSerializer<HexGame> for HexSerializer {
     fn serialize_data_entry(
         &self,
-        pos: HexPosition,
-        probs: Vec<(HexMove, f32)>,
-        winner: Option<GameColor>,
+        entry: DataEntry<HexGame>,
         filename: &str,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
-        let winner = GameColor::to_idx(winner) as f32;
-        let (pos, is_flipped) = net::flip_pos_if_needed(pos);
-        let (winner, probs) = net::flip_score_if_needed((winner, probs), is_flipped);
-        assert!(pos.get_turn() == GameColor::Player1);
+        let winner = GameColor::to_idx(entry.winner) as i8;
+        assert!(entry.pos.get_turn() == GameColor::Player1);
 
         #[allow(clippy::identity_op)]
-        let planes = common::position_to_planes(&pos)
+        let planes = common::position_to_planes(&entry.pos)
             .into_iter()
             .flat_map(|p| {
                 [
@@ -34,6 +28,6 @@ impl DataSerializer<HexGame> for HexSerializer {
             .into_iter()
             .collect_vec();
 
-        SerializerBase::write_entry::<HexGame, MOVES_NUM>(planes, probs, winner, filename)
+        SerializerBase::write_entry::<HexGame, MOVES_NUM>(planes, entry.probs, winner, filename)
     }
 }
