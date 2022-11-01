@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-
-
 import datetime
 import logging
 import os
@@ -71,7 +68,7 @@ class TrainProcess:
                 raise ValueError(
                     "Model [latest] was requested, but no existing models were found.")
             base_model_path = sorted(all_models)[-1]
-        self.base_model_path = base_model_path
+        self.base_model_path = str(base_model_path)
 
         self.cfg["self_play"]["temperature_policy_str"] = temperature_policy_to_str(
             self.cfg["self_play"]["temperature_policy"])

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import json
 import logging
 import os
@@ -29,50 +27,43 @@ def test_ttt_two_headed_net():
 
     try:
         with open(CONFIG_FILE, "w") as f:
-            json.dump({
-                "game": "tictactoe",
-                "working_area": TMP_DIR,
-                "mcts": {
-                    "sim_num": 1000,
-                    "explore_factor": 1.41421,
-                    "cache_size": 1000,
-                    "prior_noise_alpha": 0.0,
-                    "prior_noise_epsilon": 0.0,
-                },
-                "self_play": {
-                    "iterations": 3,
-                    "temperature_policy": [
-                        [30,    1.0],
-                        [       0.0]
-                    ],
-                    "games_num": 200,
-                    "threads": 1,
-                },
-                "model": {
-                    "base": "[none]",
-                    "type": "simple_two_headed",
-                    "l2reg": 0.00005,
-                },
-                "training": {
-                    "latest_data_entries": 1024,
-                    "iteration_data_entries": 128,
-                    "batch_size": 4,
-                    "learning_rate": [
-                        [0.001]
-                    ],
-                    "compare": {
-                        "temperature_policy": [
-                            [       0.0]
-                        ],
-                        "games_num": 4,
-                        "switching_winning_threshold": 0.55,
-                        "warning_losing_threshold": 0.55,
-                        "threads": 1,
-                    }
-                },
-                "cpu": True,
-                "debug": True,
-            }, f)
+            f.write(f"""%YAML 1.2
+---
+game: "tictactoe"
+working_area: {TMP_DIR}
+mcts:
+    sim_num: 1000
+    explore_factor: 1.41421
+    prior_noise_alpha: 0.0
+    prior_noise_epsilon: 0.2
+    cache_size: 1000
+self_play:
+    iterations: 3
+    temperature_policy:
+        - [30,    1.0]
+        - [       0.0]
+    games_num: 200
+    threads: 1
+model:
+    base: "[none]"
+    type: "simple_two_headed"
+    l2reg: 0.00005
+training:
+    latest_data_entries: 1024
+    iteration_data_entries: 128
+    batch_size: 4
+    learning_rate:
+        - [       0.001]
+    compare:
+        temperature_policy:
+            - [       0.0]
+        games_num: 4
+        switching_winning_threshold: 0.55
+        warning_losing_threshold: 0.55
+        threads: 1
+cpu: true
+debug: true
+""")
 
         logging.info("Running self play and generating new models...")
         subprocess.check_call([

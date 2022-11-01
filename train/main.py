@@ -1,5 +1,5 @@
 import argparse
-import json
+import yaml
 import logging
 from train.train_process import TrainProcess
 
@@ -15,7 +15,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     with open(args.config, "r") as config_file:
-        config = json.load(config_file)
+        config = yaml.safe_load(config_file)
 
     tp = TrainProcess(config)
     tp.run_training_loop(run_id=args.run_id)
