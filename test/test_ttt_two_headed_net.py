@@ -13,12 +13,12 @@ REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 RL_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
-TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_tictactoe_two_headed_net")
+TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_ttt_two_headed_net")
 CONFIG_FILE = os.path.join(TMP_DIR, "config.json")
 PYTHON_MAIN = os.path.join(RL_TOP, "train", "main.py")
 
 
-def run_test():
+def test_ttt_two_headed_net():
     logging.basicConfig(
         level=logging.DEBUG,
         format='[TicTactToe Two Headed Net Test]: %(message)s')
@@ -73,20 +73,21 @@ def run_test():
                 "cpu": True,
                 "debug": True,
             }, f)
-            
+
         logging.info("Running self play and generating new models...")
         subprocess.check_call([
             "python", PYTHON_MAIN,
             "--config", CONFIG_FILE,
             "--run-id", "test"],
             stderr=subprocess.STDOUT)
-   
+
         logging.info("Checking quality of training...")
         metrics = _get_metrics()
         assert metrics['value_loss'] > 0
         assert metrics['policy_loss'] > 0
         assert metrics['value_accuracy'] > 0.6
         assert metrics['policy_accuracy'] > 0.2
+        logging.info("Training quality is sufficient")
 
     finally:
         if REMOVE_TMP_DIR_ON_FINISH:
@@ -96,9 +97,9 @@ def run_test():
 def _get_metrics():
     path = Path(TMP_DIR) / 'metrics' / 'test'
     with path.open('r') as f:
-        lines = f.read().strip().split()
-        return json.loads(lines[-1])
-        
+        last_metric = f.readlines()[-1]
+        return json.loads(last_metric)
+
 
 if __name__ == "__main__":
-    run_test()
+    test_ttt_two_headed_net()
