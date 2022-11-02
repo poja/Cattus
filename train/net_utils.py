@@ -111,7 +111,7 @@ def residual_block(inputs, channels, name, l2reg, cpu):
     return tf.keras.layers.Activation('relu')(flow)
 
 
-def create_convnetv1(inputs, residual_filter_num, residual_block_num, moves_num, l2reg, cpu):
+def create_convnetv1(inputs, residual_block_num, residual_filter_num, moves_num, l2reg, cpu):
     l2reg = tf.keras.regularizers.l2(l=l2reg)
 
     # single conv block
