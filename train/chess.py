@@ -68,8 +68,8 @@ class Chess(TrainableGame):
             name="input_planes")
         outputs = net_utils.create_convnetv1(
             inputs,
-            residual_filter_num=cfg["model"]["residual_filter_num"],
             residual_block_num=cfg["model"]["residual_block_num"],
+            residual_filter_num=cfg["model"]["residual_filter_num"],
             moves_num=self.MOVE_NUM,
             l2reg=cfg["model"]["l2reg"],
             cpu=cfg["cpu"])
