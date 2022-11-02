@@ -4,21 +4,15 @@ import shutil
 import subprocess
 import sys
 
-DEBUG = True
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
-TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_hex_two_headed_net")
+TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_simple_two_headed")
 CONFIG_FILE = os.path.join(TMP_DIR, "config.json")
-PYTHON_MAIN = os.path.join(CATTUS_TOP, "train", "main.py")
 
 
-def test_hex_two_headed_net():
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='[Hex Two Headed Net Test]: %(message)s')
-
+def _test_simple_two_headed(game_name):
     if os.path.exists(TMP_DIR):
         shutil.rmtree(TMP_DIR)
     os.makedirs(TMP_DIR)
@@ -27,7 +21,7 @@ def test_hex_two_headed_net():
         with open(CONFIG_FILE, "w") as f:
             f.write(f"""%YAML 1.2
 ---
-game: "hex"
+game: "{game_name}"
 working_area: {TMP_DIR}
 mcts:
     sim_num: 10
@@ -36,7 +30,7 @@ mcts:
     prior_noise_epsilon: 0.2
     cache_size: 1000
 self_play:
-    iterations: 2
+    iterations: 3
     temperature_policy:
         - [       0.0]
     games_num: 8
@@ -74,3 +68,23 @@ debug: true
         if REMOVE_TMP_DIR_ON_FINISH:
             shutil.rmtree(TMP_DIR)
 
+
+def test_ttt_two_headed():
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='[TTT Simple Two Headed Test]: %(message)s')
+    _test_simple_two_headed("tictactoe")
+
+
+def test_hex_two_headed():
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='[Hex Simple Two Headed Test]: %(message)s')
+    _test_simple_two_headed("hex")
+
+
+def test_chess_two_headed():
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='[Chess Simple Two Headed Test]: %(message)s')
+    _test_simple_two_headed("chess")
