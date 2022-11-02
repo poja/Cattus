@@ -6,20 +6,19 @@ import shutil
 import subprocess
 
 
-DEBUG = True
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-RL_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
-TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_ttt_two_headed_net")
+CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
+TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_ttt_training")
 CONFIG_FILE = os.path.join(TMP_DIR, "config.json")
-PYTHON_MAIN = os.path.join(RL_TOP, "train", "main.py")
+PYTHON_MAIN = os.path.join(CATTUS_TOP, "train", "main.py")
 
 
-def test_ttt_two_headed_net():
+def test_ttt_training():
     logging.basicConfig(
         level=logging.DEBUG,
-        format='[TicTactToe Two Headed Net Test]: %(message)s')
+        format='[TicTactToe Training Test]: %(message)s')
 
     if os.path.exists(TMP_DIR):
         shutil.rmtree(TMP_DIR)
@@ -62,7 +61,7 @@ training:
         warning_losing_threshold: 0.55
         threads: 1
 cpu: true
-debug: true
+debug: false
 """)
 
         logging.info("Running self play and generating new models...")

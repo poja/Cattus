@@ -14,12 +14,9 @@ from train.chess import Chess
 from train.data_parser import DataParser
 
 
-DEBUG = True
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
-TRAIN_TOP = os.path.join(CATTUS_TOP, "train")
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_serialize_encode")
 SERIALIZE_FILE = os.path.join(TMP_DIR, "serialize_res.json")
 ENCODE_FILE = os.path.join(TMP_DIR, "encode_res.json")
@@ -144,7 +141,7 @@ def _test_serialize_encode(args):
                 rust_tensor_data["data"], dtype=np.float32)
             if (planes_rust != planes_dpt).any():
 
-                raise ValueError(f"Planes tensor mismatch." 
+                raise ValueError(f"Planes tensor mismatch."
                                  f"(Game: {args['game_name']}, Position: {position}, "
                                  f"Rust planes: {planes_rust}, Data parser planes: {planes_dpt})")
         finally:
