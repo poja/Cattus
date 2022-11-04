@@ -29,19 +29,18 @@ engine.quit()
 
 ## Training
 
-To run the training process, first one should install the python project on `venv`:
+To run the training process, first one should install the python project:
+1. From a directory of the project
+   ```
+   pip install Cattus
+   ```
+2. Or straight from Github:
+   ```
+   pip install git+https://github.com/poja/Cattus.git
+   ```
+
+
+Then start the training process:
 ```bash
-pip install poetry
-
-mkdir ~/.venvs; cd ~/.venvs
-python -m venv cattus
-
-pip install -e $CATTUS_TOP
-```
-
-Activate the `venv` and start the training process:
-```bash
-~/.venvs/cattus/activate
-
-python $CATTUS_TOP/train/main.py --config $CATTUS_TOP/train/config.json
+python -m train.main  --config config.json
 ```
