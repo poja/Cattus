@@ -14,16 +14,25 @@ from train.chess import Chess
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_net_output")
 MODEL_PATH = os.path.join(TMP_DIR, "model")
 ENCODE_FILE = os.path.join(TMP_DIR, "encode_res.json")
 OUTPUT_FILE = os.path.join(TMP_DIR, "output.json")
 
+ASSERT_PYTHON_OUTPUT_EQ_REPEAT = 8
+ASSERT_RUST_OUTPUT_EQ_REPEAT = 8
+
 
 logging.basicConfig(
     level=logging.DEBUG,
     format='[Net Output Test]: %(message)s')
+
+
+def is_outputs_equals(o1, o2):
+    val1, probs1 = o1
+    val2, probs2 = o2
+    return math.isclose(val1, val2, rel_tol=1e-5) and \
+        np.isclose(probs1, probs2, rtol=1e-3, atol=0).all()
 
 
 def _test_net_output(game_name, game, positions):
@@ -52,15 +61,12 @@ def _test_net_output(game_name, game, positions):
                              game.BOARD_SIZE, game.PLANES_NUM)
 
             # Run model from Python and assert all outputs are equal
-            py_outputs = [model(tensor) for _ in range(8)]
+            py_outputs = [model(tensor) for _ in range(ASSERT_PYTHON_OUTPUT_EQ_REPEAT)]
             py_outputs = [(val.numpy().item(), probs.numpy())
                           for (val, probs) in py_outputs]
             py_output = py_outputs[0]
             for out_other in py_outputs:
-                val, probs = py_output
-                val_other, probs_other = out_other
-                assert math.isclose(val, val_other, rel_tol=1e-5)
-                assert np.isclose(probs, probs_other, rtol=1e-4, atol=0).all()
+                assert is_outputs_equals(py_output, out_other)
 
             # Run model from Rust and assert all outputs are equal
             subprocess.run([
@@ -70,7 +76,7 @@ def _test_net_output(game_name, game, positions):
                 "--position", position,
                 "--model-path", MODEL_PATH,
                 "--outfile", OUTPUT_FILE,
-                "--repeat", "8"],
+                "--repeat", str(ASSERT_RUST_OUTPUT_EQ_REPEAT)],
                 stderr=sys.stderr, stdout=sys.stdout, check=True)
             with open(OUTPUT_FILE, "r") as output_file:
                 output = json.load(output_file)
@@ -79,16 +85,10 @@ def _test_net_output(game_name, game, positions):
                           for (val, probs) in rs_outputs]
             rs_output = rs_outputs[0]
             for out_other in rs_outputs:
-                val, probs = rs_output
-                val_other, probs_other = out_other
-                assert math.isclose(val, val_other, rel_tol=1e-5)
-                assert np.isclose(probs, probs_other, rtol=1e-4, atol=0).all()
+                assert is_outputs_equals(rs_output, out_other)
 
             # Assert Python output and Rust output are equal
-            py_val, py_probs = py_output
-            rs_val, rs_probs = rs_output
-            assert math.isclose(py_val, rs_val, rel_tol=1e-5)
-            assert np.isclose(py_probs, rs_probs, rtol=1e-4, atol=0).all()
+            assert is_outputs_equals(py_output, rs_output)
         finally:
             if REMOVE_TMP_DIR_ON_FINISH:
                 shutil.rmtree(TMP_DIR)
