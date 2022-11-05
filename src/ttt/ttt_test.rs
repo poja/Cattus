@@ -12,7 +12,7 @@ mod tests {
         assert!(to_pos("oxxo__ox_x").get_winner() == Some(GameColor::Player2));
         assert!(to_pos("xox_o_xo_x").get_winner() == Some(GameColor::Player2));
         assert!(to_pos("xxo__o_xox").get_winner() == Some(GameColor::Player2));
-        assert!(to_pos("xxoooxxxoo").get_winner() == None);
+        assert!(to_pos("xxoooxxxoo").get_winner().is_none());
     }
 
     #[test]

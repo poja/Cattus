@@ -337,7 +337,7 @@ impl GamePosition for HexPosition {
     }
 
     fn is_over(&self) -> bool {
-        self.winner != None || self.number_of_empty_tiles == 0
+        self.winner.is_some() || self.number_of_empty_tiles == 0
     }
 
     fn get_winner(&self) -> Option<GameColor> {

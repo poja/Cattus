@@ -234,7 +234,7 @@ impl GamePosition for TttPosition {
         let mut moves = Vec::new();
         for r in 0..TttGame::BOARD_SIZE {
             for c in 0..TttGame::BOARD_SIZE {
-                if self.get_tile(r, c) == None {
+                if self.get_tile(r, c).is_none() {
                     moves.push(TttMove::new(r, c));
                 }
             }
@@ -250,7 +250,8 @@ impl GamePosition for TttPosition {
     }
 
     fn is_over(&self) -> bool {
-        self.winner != None || ((self.board_x.get_raw() | self.board_o.get_raw()) == ((1 << 9) - 1))
+        self.winner.is_some()
+            || ((self.board_x.get_raw() | self.board_o.get_raw()) == ((1 << 9) - 1))
     }
 
     fn get_winner(&self) -> Option<GameColor> {
