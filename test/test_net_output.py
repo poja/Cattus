@@ -125,8 +125,8 @@ def test_ttt_net_output():
 
 def test_hex_net_output():
     _test_net_output(
-        "hex",
-        Hex(),
+        "hex11",
+        Hex(11),
         [
             "reeeeeeeeee"
             "eeeeeeeeeee"

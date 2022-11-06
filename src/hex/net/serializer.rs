@@ -1,14 +1,14 @@
 use crate::game::common::{GameColor, GamePosition};
 use crate::game::self_play::{DataEntry, DataSerializer, SerializerBase};
 use crate::hex::hex_game::HexGame;
-use crate::hex::net::common::{self, MOVES_NUM};
+use crate::hex::net::common::{self};
 use itertools::Itertools;
 
 pub struct HexSerializer;
-impl DataSerializer<HexGame> for HexSerializer {
+impl<const BOARD_SIZE: usize> DataSerializer<HexGame<BOARD_SIZE>> for HexSerializer {
     fn serialize_data_entry(
         &self,
-        entry: DataEntry<HexGame>,
+        entry: DataEntry<HexGame<BOARD_SIZE>>,
         filename: &str,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
@@ -28,6 +28,6 @@ impl DataSerializer<HexGame> for HexSerializer {
             .into_iter()
             .collect_vec();
 
-        SerializerBase::write_entry::<HexGame, MOVES_NUM>(planes, entry.probs, winner, filename)
+        SerializerBase::write_entry::<HexGame<BOARD_SIZE>>(planes, entry.probs, winner, filename)
     }
 }

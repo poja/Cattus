@@ -31,7 +31,7 @@ mcts:
     prior_noise_epsilon: 0.2
     cache_size: 1000
 self_play:
-    iterations: 3
+    iterations: 2
     temperature_policy:
         - [       0.0]
     games_num: 8
@@ -72,22 +72,31 @@ debug: true
             shutil.rmtree(TMP_DIR)
 
 
-def test_ttt_two_headed():
+def test_ttt_convnetv1():
     logging.basicConfig(
         level=logging.DEBUG,
         format='[TTT ConvNetV1 Test]: %(message)s')
     _test_convnetv1("tictactoe")
 
 
-def test_hex_two_headed():
+def test_hex_convnetv1():
     logging.basicConfig(
         level=logging.DEBUG,
         format='[Hex ConvNetV1 Test]: %(message)s')
-    _test_convnetv1("hex")
+    _test_convnetv1("hex5")
+    _test_convnetv1("hex7")
+    _test_convnetv1("hex9")
+    _test_convnetv1("hex11")
 
 
-def test_chess_two_headed():
+def test_chess_convnetv1():
     logging.basicConfig(
         level=logging.DEBUG,
         format='[Chess ConvNetV1 Test]: %(message)s')
     _test_convnetv1("chess")
+
+if __name__ == "__main__":
+    test_ttt_convnetv1()
+    test_hex_convnetv1()
+    test_chess_convnetv1()
+    print("test passed")

@@ -6,17 +6,17 @@ use crate::game::common::{GameBitboard, GameColor, GameMove, GamePlayer, GamePos
 use crate::game::self_play::DataEntry;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct HexMove {
+pub struct HexMove<const BOARD_SIZE: usize> {
     idx: u8,
 }
 
-impl HexMove {
+impl<const BOARD_SIZE: usize> HexMove<BOARD_SIZE> {
     pub fn new(r: usize, c: usize) -> Self {
-        HexMove::from_idx(r * HexGame::BOARD_SIZE + c)
+        HexMove::from_idx(r * BOARD_SIZE + c)
     }
 
     pub fn from_idx(idx: usize) -> Self {
-        assert!(idx < HexGame::BOARD_SIZE * HexGame::BOARD_SIZE);
+        assert!(idx < BOARD_SIZE * BOARD_SIZE);
         Self { idx: idx as u8 }
     }
 
@@ -25,16 +25,16 @@ impl HexMove {
     }
 
     pub fn row(&self) -> usize {
-        self.idx as usize / HexGame::BOARD_SIZE
+        self.idx as usize / BOARD_SIZE
     }
 
     pub fn column(&self) -> usize {
-        self.idx as usize % HexGame::BOARD_SIZE
+        self.idx as usize % BOARD_SIZE
     }
 }
 
-impl GameMove for HexMove {
-    type Game = HexGame;
+impl<const BOARD_SIZE: usize> GameMove for HexMove<BOARD_SIZE> {
+    type Game = HexGame<BOARD_SIZE>;
 
     fn get_flip(&self) -> Self {
         HexMove::new(self.column(), self.row())
@@ -45,28 +45,28 @@ impl GameMove for HexMove {
     }
 }
 
-impl Display for HexMove {
+impl<const BOARD_SIZE: usize> Display for HexMove<BOARD_SIZE> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({}, {})", self.row(), self.column())
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct HexBitboard {
+pub struct HexBitboard<const BOARD_SIZE: usize> {
     bitmap: u128,
 }
 
-impl HexBitboard {
+impl<const BOARD_SIZE: usize> HexBitboard<BOARD_SIZE> {
     pub fn get_raw(&self) -> u128 {
         self.bitmap
     }
 
     fn flip(&self) -> Self {
         let mut f = HexBitboard::new();
-        for r in 0..HexGame::BOARD_SIZE {
-            for c in 0..HexGame::BOARD_SIZE {
-                let idx = r * HexGame::BOARD_SIZE + c;
-                let idxf = c * HexGame::BOARD_SIZE + r;
+        for r in 0..BOARD_SIZE {
+            for c in 0..BOARD_SIZE {
+                let idx = r * BOARD_SIZE + c;
+                let idxf = c * BOARD_SIZE + r;
                 f.set(idxf, self.get(idx));
             }
         }
@@ -78,25 +78,32 @@ impl HexBitboard {
     }
 }
 
-impl GameBitboard for HexBitboard {
-    type Game = HexGame;
+impl<const BOARD_SIZE: usize> GameBitboard for HexBitboard<BOARD_SIZE> {
+    type Game = HexGame<BOARD_SIZE>;
     fn new() -> Self {
         Self { bitmap: 0 }
     }
 
     fn new_with_all(val: bool) -> Self {
+        assert!(BOARD_SIZE * BOARD_SIZE <= u128::BITS as usize);
         Self {
-            bitmap: if val { (1u128 << 121) - 1 } else { 0 },
+            bitmap: if val {
+                (1u128 << (BOARD_SIZE * BOARD_SIZE)) - 1
+            } else {
+                0
+            },
         }
     }
 
     fn get(&self, idx: usize) -> bool {
-        assert!(idx < HexGame::BOARD_SIZE * HexGame::BOARD_SIZE);
+        assert!(BOARD_SIZE * BOARD_SIZE <= u128::BITS as usize);
+        assert!(idx < BOARD_SIZE * BOARD_SIZE);
         (self.bitmap & (1u128 << idx)) != 0
     }
 
     fn set(&mut self, idx: usize, val: bool) {
-        assert!(idx < HexGame::BOARD_SIZE * HexGame::BOARD_SIZE);
+        assert!(BOARD_SIZE * BOARD_SIZE <= u128::BITS as usize);
+        assert!(idx < BOARD_SIZE * BOARD_SIZE);
         if val {
             self.bitmap |= 1u128 << idx;
         } else {
@@ -106,24 +113,24 @@ impl GameBitboard for HexBitboard {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct HexPosition {
+pub struct HexPosition<const BOARD_SIZE: usize> {
     /// The board should be imagined in 2D like so:
     /// The board is a rhombus, slanted right. So, board[0][BOARD_SIZE - 1] is the "top right end",
     /// also called the "top end" of the board, and board[BOARD_SIZE - 1][0] is the "bottom end".
     /// Red tries to move left-right and blue tries to move top-bottom.
-    board_red: HexBitboard,
-    board_blue: HexBitboard,
+    board_red: HexBitboard<BOARD_SIZE>,
+    board_blue: HexBitboard<BOARD_SIZE>,
     turn: GameColor,
 
     /* bitmap of all the tiles one can reach from the left side of the board stepping only on tiles with red pieces */
-    left_red_reach: HexBitboard,
+    left_red_reach: HexBitboard<BOARD_SIZE>,
     /* bitmap of all the tiles one can reach from the top side of the board stepping only on tiles with blue pieces */
-    top_blue_reach: HexBitboard,
+    top_blue_reach: HexBitboard<BOARD_SIZE>,
     number_of_empty_tiles: u8,
     winner: Option<GameColor>,
 }
 
-impl HexPosition {
+impl<const BOARD_SIZE: usize> HexPosition<BOARD_SIZE> {
     pub fn new_with_starting_color(starting_color: GameColor) -> Self {
         Self {
             board_red: HexBitboard::new(),
@@ -131,14 +138,14 @@ impl HexPosition {
             turn: starting_color,
             left_red_reach: HexBitboard::new(),
             top_blue_reach: HexBitboard::new(),
-            number_of_empty_tiles: (HexGame::BOARD_SIZE * HexGame::BOARD_SIZE) as u8,
+            number_of_empty_tiles: (BOARD_SIZE * BOARD_SIZE) as u8,
             winner: None,
         }
     }
 
     pub fn new_from_board(
-        board_red: HexBitboard,
-        board_blue: HexBitboard,
+        board_red: HexBitboard<BOARD_SIZE>,
+        board_blue: HexBitboard<BOARD_SIZE>,
         turn: GameColor,
     ) -> Self {
         let mut s = Self {
@@ -147,7 +154,7 @@ impl HexPosition {
             turn,
             left_red_reach: HexBitboard::new(),
             top_blue_reach: HexBitboard::new(),
-            number_of_empty_tiles: (HexGame::BOARD_SIZE * HexGame::BOARD_SIZE) as u8,
+            number_of_empty_tiles: (BOARD_SIZE * BOARD_SIZE) as u8,
             winner: None,
         };
 
@@ -155,8 +162,8 @@ impl HexPosition {
             GameColor::Player1 => c == 0,
             GameColor::Player2 => r == 0,
         };
-        for r in 0..HexGame::BOARD_SIZE {
-            for c in 0..HexGame::BOARD_SIZE {
+        for r in 0..BOARD_SIZE {
+            for c in 0..BOARD_SIZE {
                 if let Some(color) = s.get_tile(r, c) {
                     s.number_of_empty_tiles -= 1;
                     if is_reach_begin(r, c, color) {
@@ -170,7 +177,7 @@ impl HexPosition {
 
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
-        if s.chars().count() != HexGame::BOARD_SIZE * HexGame::BOARD_SIZE + 1 {
+        if s.chars().count() != BOARD_SIZE * BOARD_SIZE + 1 {
             panic!("unexpected string length")
         }
 
@@ -178,7 +185,7 @@ impl HexPosition {
         let mut board_blue = HexBitboard::new();
         let mut turn = None;
         for (idx, c) in s.chars().enumerate() {
-            match idx.cmp(&(HexGame::BOARD_SIZE * HexGame::BOARD_SIZE)) {
+            match idx.cmp(&(BOARD_SIZE * BOARD_SIZE)) {
                 Ordering::Less => match c {
                     'e' => {}
                     'r' => board_red.set(idx, true),
@@ -199,24 +206,22 @@ impl HexPosition {
         Self::new_from_board(board_red, board_blue, turn.unwrap())
     }
 
-    pub fn pieces_red(&self) -> HexBitboard {
+    pub fn pieces_red(&self) -> HexBitboard<BOARD_SIZE> {
         self.board_red
     }
 
-    pub fn pieces_blue(&self) -> HexBitboard {
+    pub fn pieces_blue(&self) -> HexBitboard<BOARD_SIZE> {
         self.board_blue
     }
 
-    pub fn is_valid_move(&self, m: HexMove) -> bool {
+    pub fn is_valid_move(&self, m: HexMove<BOARD_SIZE>) -> bool {
         let idx = m.to_idx();
-        idx < HexGame::BOARD_SIZE * HexGame::BOARD_SIZE
-            && !self.board_red.get(idx)
-            && !self.board_blue.get(idx)
+        idx < BOARD_SIZE * BOARD_SIZE && !self.board_red.get(idx) && !self.board_blue.get(idx)
     }
 
     pub fn get_tile(&self, r: usize, c: usize) -> Option<GameColor> {
-        assert!(r < HexGame::BOARD_SIZE && c < HexGame::BOARD_SIZE);
-        let idx = r * HexGame::BOARD_SIZE + c;
+        assert!(r < BOARD_SIZE && c < BOARD_SIZE);
+        let idx = r * BOARD_SIZE + c;
         if self.board_red.get(idx) {
             return Some(GameColor::Player1);
         }
@@ -231,11 +236,7 @@ impl HexPosition {
         for (dr, dc) in connection_dirs {
             let nr = r as i8 + dr;
             let nc = c as i8 + dc;
-            if nr < 0
-                || nr as usize >= HexGame::BOARD_SIZE
-                || nc < 0
-                || nc as usize >= HexGame::BOARD_SIZE
-            {
+            if nr < 0 || nr as usize >= BOARD_SIZE || nc < 0 || nc as usize >= BOARD_SIZE {
                 continue;
             }
             op(nr as usize, nc as usize);
@@ -256,19 +257,19 @@ impl HexPosition {
             GameColor::Player2 => |r: usize, _: usize| r == 0,
         };
         let is_reach_end = match player {
-            GameColor::Player1 => |_: usize, c: usize| c == HexGame::BOARD_SIZE - 1,
-            GameColor::Player2 => |r: usize, _: usize| r == HexGame::BOARD_SIZE - 1,
+            GameColor::Player1 => |_: usize, c: usize| c == BOARD_SIZE - 1,
+            GameColor::Player2 => |r: usize, _: usize| r == BOARD_SIZE - 1,
         };
 
-        let mut bfs_layer = HexBitboard::new();
+        let mut bfs_layer = HexBitboard::<BOARD_SIZE>::new();
 
         let mut update_reach = is_reach_begin(r, c);
-        HexPosition::foreach_neighbor(r, c, |nr: usize, nc: usize| {
-            let n_idx = nr * HexGame::BOARD_SIZE + nc;
+        Self::foreach_neighbor(r, c, |nr: usize, nc: usize| {
+            let n_idx = nr * BOARD_SIZE + nc;
             update_reach = update_reach || reach_map.get(n_idx);
         });
         if update_reach {
-            let idx = r * HexGame::BOARD_SIZE + c;
+            let idx = r * BOARD_SIZE + c;
             reach_map.set(idx, true);
             bfs_layer.set(idx, true);
         }
@@ -276,14 +277,14 @@ impl HexPosition {
         while !bfs_layer.is_empty() {
             let idx = bfs_layer.get_raw().trailing_zeros() as usize;
             bfs_layer.set(idx, false);
-            let r = idx / HexGame::BOARD_SIZE;
-            let c = idx % HexGame::BOARD_SIZE;
+            let r = idx / BOARD_SIZE;
+            let c = idx % BOARD_SIZE;
 
             if is_reach_end(r, c) {
                 self.winner = Some(player);
             } else {
-                HexPosition::foreach_neighbor(r, c, |nr: usize, nc: usize| {
-                    let n_idx = nr * HexGame::BOARD_SIZE + nc;
+                Self::foreach_neighbor(r, c, |nr: usize, nc: usize| {
+                    let n_idx = nr * BOARD_SIZE + nc;
                     if !reach_map.get(n_idx) && board.get(n_idx) {
                         reach_map.set(n_idx, true);
                         bfs_layer.set(n_idx, true);
@@ -293,7 +294,7 @@ impl HexPosition {
         }
     }
 
-    pub fn make_move(&mut self, m: HexMove) {
+    pub fn make_move(&mut self, m: HexMove<BOARD_SIZE>) {
         assert!(self.is_valid_move(m));
         assert!(!self.is_over());
 
@@ -310,8 +311,8 @@ impl HexPosition {
     }
 }
 
-impl GamePosition for HexPosition {
-    type Game = HexGame;
+impl<const BOARD_SIZE: usize> GamePosition for HexPosition<BOARD_SIZE> {
+    type Game = HexGame<BOARD_SIZE>;
     fn new() -> Self {
         HexPosition::new_with_starting_color(GameColor::Player1)
     }
@@ -321,7 +322,7 @@ impl GamePosition for HexPosition {
 
     fn get_legal_moves(&self) -> Vec<<Self::Game as IGame>::Move> {
         let mut moves = Vec::new();
-        for idx in 0..(HexGame::BOARD_SIZE * HexGame::BOARD_SIZE) {
+        for idx in 0..(BOARD_SIZE * BOARD_SIZE) {
             if !self.board_red.get(idx) && !self.board_blue.get(idx) {
                 moves.push(HexMove::from_idx(idx));
             }
@@ -358,8 +359,8 @@ impl GamePosition for HexPosition {
     }
 
     fn print(&self) {
-        for r in 0..HexGame::BOARD_SIZE {
-            let row_characters: Vec<String> = (0..HexGame::BOARD_SIZE)
+        for r in 0..BOARD_SIZE {
+            let row_characters: Vec<String> = (0..BOARD_SIZE)
                 .map(|c| {
                     String::from(match self.get_tile(r, c) {
                         None => '.',
@@ -368,21 +369,25 @@ impl GamePosition for HexPosition {
                     })
                 })
                 .collect();
-            let spaces = " ".repeat(HexGame::BOARD_SIZE - r - 1);
+            let spaces = " ".repeat(BOARD_SIZE - r - 1);
             println!("{}{}", spaces, row_characters.join(" "));
         }
     }
 }
 
-pub struct HexGame {
-    pos: HexPosition,
+pub struct HexGame<const BOARD_SIZE: usize> {
+    pos: HexPosition<BOARD_SIZE>,
 }
 
-impl IGame for HexGame {
-    type Position = HexPosition;
-    type Move = HexMove;
-    type Bitboard = HexBitboard;
-    const BOARD_SIZE: usize = 11;
+pub const HEX_STANDARD_BOARD_SIZE: usize = 11;
+pub type HexGameStandard = HexGame<HEX_STANDARD_BOARD_SIZE>;
+
+impl<const BOARD_SIZE: usize> IGame for HexGame<BOARD_SIZE> {
+    type Position = HexPosition<BOARD_SIZE>;
+    type Move = HexMove<BOARD_SIZE>;
+    type Bitboard = HexBitboard<BOARD_SIZE>;
+    const BOARD_SIZE: usize = BOARD_SIZE;
+    const MOVES_NUM: usize = BOARD_SIZE * BOARD_SIZE;
 
     fn new() -> Self {
         Self {
@@ -438,7 +443,7 @@ impl IGame for HexGame {
                 .iter()
                 .map(|b| {
                     let mut bt = HexBitboard::new();
-                    for idx in 0..HexGame::BOARD_SIZE * HexGame::BOARD_SIZE {
+                    for idx in 0..BOARD_SIZE * BOARD_SIZE {
                         bt.set(transform_sq(idx), b.get(idx));
                     }
                     bt
@@ -459,10 +464,10 @@ impl IGame for HexGame {
 
         let rotate_180 = |e: &DataEntry<Self>| {
             transform(e, &|idx| {
-                let (r, c) = (idx / HexGame::BOARD_SIZE, idx % HexGame::BOARD_SIZE);
-                let rt = HexGame::BOARD_SIZE - 1 - r;
-                let ct = HexGame::BOARD_SIZE - 1 - c;
-                rt * HexGame::BOARD_SIZE + ct
+                let (r, c) = (idx / BOARD_SIZE, idx % BOARD_SIZE);
+                let rt = BOARD_SIZE - 1 - r;
+                let ct = BOARD_SIZE - 1 - c;
+                rt * BOARD_SIZE + ct
             })
         };
 

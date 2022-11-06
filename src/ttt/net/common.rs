@@ -1,8 +1,7 @@
-use crate::game::common::{GameBitboard, IGame};
-use crate::ttt::ttt_game::{TttBitboard, TttGame, TttPosition};
+use crate::game::common::GameBitboard;
+use crate::ttt::ttt_game::{TttBitboard, TttPosition};
 
 pub const PLANES_NUM: usize = 3;
-pub const MOVES_NUM: usize = TttGame::BOARD_SIZE * TttGame::BOARD_SIZE;
 
 #[allow(clippy::vec_init_then_push)]
 pub fn position_to_planes(pos: &TttPosition) -> Vec<TttBitboard> {

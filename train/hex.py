@@ -17,15 +17,16 @@ class HexNetType:
 
 
 class Hex(TrainableGame):
-    BOARD_SIZE = 11
-    PLANES_NUM = 3
-    MOVE_NUM = BOARD_SIZE * BOARD_SIZE
+    def __init__(self, size):
+        self.BOARD_SIZE = size
+        self.PLANES_NUM = 3
+        self.MOVE_NUM = self.BOARD_SIZE * self.BOARD_SIZE
 
-    ENTRY_FORMAT = Struct(
-        "planes" / Array(PLANES_NUM * 2, Int64ul),
-        "probs" / Array(MOVE_NUM, Float32l),
-        "winner" / Int8sl,
-    )
+        self.ENTRY_FORMAT = Struct(
+            "planes" / Array(self.PLANES_NUM * 2, Int64ul),
+            "probs" / Array(self.MOVE_NUM, Float32l),
+            "winner" / Int8sl,
+        )
 
     def load_data_entry(self, path):
         with open(path, "rb") as f:
@@ -33,7 +34,8 @@ class Hex(TrainableGame):
         assert self.ENTRY_FORMAT.sizeof() == len(entry_bytes)
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
         # planes of 128bit are saved as two 64bit values
-        planes = np.array(entry.planes, dtype=np.uint64).reshape((self.PLANES_NUM, 2))
+        planes = np.array(entry.planes, dtype=np.uint64).reshape(
+            (self.PLANES_NUM, 2))
         probs = np.array(entry.probs, dtype=np.float32)
         winner = entry.winner
 

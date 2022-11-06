@@ -1,13 +1,14 @@
+use clap::Parser;
+use itertools::Itertools;
+
 use cattus::chess::chess_game::ChessPosition;
 use cattus::chess::net::serializer::ChessSerializer;
 use cattus::game::common::{GameColor, GamePosition, IGame};
 use cattus::game::self_play::{DataEntry, DataSerializer};
-use cattus::hex::hex_game::HexPosition;
+use cattus::hex::hex_game::{HexGame, HexPosition};
 use cattus::hex::net::serializer::HexSerializer;
 use cattus::ttt::net::serializer::TttSerializer;
 use cattus::ttt::ttt_game::TttPosition;
-use clap::Parser;
-use itertools::Itertools;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -24,7 +25,10 @@ fn main() -> std::io::Result<()> {
     let args = Args::parse();
     match args.game.as_str() {
         "tictactoe" => test_tictactoe(args),
-        "hex" => test_hex(args),
+        "hex5" => test_hex::<5>(args),
+        "hex7" => test_hex::<7>(args),
+        "hex9" => test_hex::<9>(args),
+        "hex11" => test_hex::<11>(args),
         "chess" => test_chess(args),
         unknown_game => panic!("unknown game: {:?}", unknown_game),
     }
@@ -32,21 +36,18 @@ fn main() -> std::io::Result<()> {
 
 fn test_tictactoe(args: Args) -> std::io::Result<()> {
     let pos = TttPosition::from_str(&args.position);
-
     let serializer = TttSerializer {};
     serialize_position(pos, &serializer, &args.outfile)
 }
 
-fn test_hex(args: Args) -> std::io::Result<()> {
+fn test_hex<const BOARD_SIZE: usize>(args: Args) -> std::io::Result<()> {
     let pos = HexPosition::from_str(&args.position);
-
     let serializer = HexSerializer {};
-    serialize_position(pos, &serializer, &args.outfile)
+    serialize_position::<HexGame<BOARD_SIZE>>(pos, &serializer, &args.outfile)
 }
 
 fn test_chess(args: Args) -> std::io::Result<()> {
     let pos = ChessPosition::from_str(&args.position);
-
     let serializer = ChessSerializer {};
     serialize_position(pos, &serializer, &args.outfile)
 }

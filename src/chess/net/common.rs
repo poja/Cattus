@@ -2,7 +2,6 @@ use crate::chess::chess_game::{ChessBitboard, ChessPosition};
 use crate::game::common::GameBitboard;
 
 pub const PLANES_NUM: usize = 18;
-pub const MOVES_NUM: usize = 1880;
 
 #[allow(clippy::vec_init_then_push)]
 pub fn position_to_planes(pos: &ChessPosition) -> Vec<ChessBitboard> {
