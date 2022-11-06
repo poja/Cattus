@@ -293,6 +293,7 @@ impl IGame for TttGame {
     type Move = TttMove;
     type Bitboard = TttBitboard;
     const BOARD_SIZE: usize = 3;
+    const MOVES_NUM: usize = Self::BOARD_SIZE * Self::BOARD_SIZE;
 
     fn new() -> Self {
         Self {

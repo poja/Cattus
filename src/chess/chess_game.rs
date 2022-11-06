@@ -460,6 +460,7 @@ impl IGame for ChessGame {
     type Move = ChessMove;
     type Bitboard = ChessBitboard;
     const BOARD_SIZE: usize = 8;
+    const MOVES_NUM: usize = 1880;
 
     fn new() -> Self {
         Self::new_from_pos(Self::Position::new())

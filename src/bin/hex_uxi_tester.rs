@@ -1,5 +1,5 @@
 use cattus::game::common::{GameColor, GamePlayer, IGame};
-use cattus::hex::hex_game::{HexGame, HexPosition};
+use cattus::hex::hex_game::{HexGameStandard, HexPosition};
 use cattus::hex::uxi::HexPlayerUXI;
 use clap::Parser;
 use rand::Rng;
@@ -47,8 +47,8 @@ fn comapre_engines(
 }
 
 fn compare_players(
-    player1: &mut dyn GamePlayer<HexGame>,
-    player2: &mut dyn GamePlayer<HexGame>,
+    player1: &mut dyn GamePlayer<HexGameStandard>,
+    player2: &mut dyn GamePlayer<HexGameStandard>,
     number_of_games: usize,
     player1_display_name: &String,
     player2_display_name: &String,
@@ -68,7 +68,8 @@ fn compare_players(
             true => GameColor::Player1,
             false => GameColor::Player2,
         };
-        let mut game = HexGame::new_from_pos(HexPosition::new_with_starting_color(starting_player));
+        let mut game =
+            HexGameStandard::new_from_pos(HexPosition::new_with_starting_color(starting_player));
         let (_final_pos, winner) = game.play_until_over(player1, player2);
         if let Some(winner) = winner {
             match winner {

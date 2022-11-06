@@ -32,14 +32,14 @@ pub trait DataSerializer<Game: IGame>: Sync + Send {
 
 pub struct SerializerBase;
 impl SerializerBase {
-    pub fn write_entry<Game: IGame, const MOVES_NUM: usize>(
+    pub fn write_entry<Game: IGame>(
         planes: Vec<u64>,
         probs: Vec<(Game::Move, f32)>,
         winner: i8,
         filename: &str,
     ) -> std::io::Result<()> {
         /* Use -1 for illegal moves */
-        let mut probs_vec = vec![-1.0f32; MOVES_NUM];
+        let mut probs_vec = vec![-1.0f32; Game::MOVES_NUM];
 
         /* Fill legal moves probabilities */
         for (m, prob) in probs {

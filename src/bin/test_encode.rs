@@ -22,36 +22,33 @@ struct Args {
 
 fn main() -> std::io::Result<()> {
     let args = Args::parse();
-    match args.game.as_str() {
-        "tictactoe" => test_tictactoe(args),
-        "hex" => test_hex(args),
-        "chess" => test_chess(args),
+    let tensor = match args.game.as_str() {
+        "tictactoe" => create_tensor_tictactoe(&args),
+        "hex5" => create_tensor_hex::<5>(&args),
+        "hex7" => create_tensor_hex::<7>(&args),
+        "hex9" => create_tensor_hex::<9>(&args),
+        "hex11" => create_tensor_hex::<11>(&args),
+        "chess" => create_tensor_chess(&args),
         unknown_game => panic!("unknown game: {:?}", unknown_game),
-    }
+    };
+    tensor_to_json(tensor, &args.outfile)
 }
 
-fn test_tictactoe(args: Args) -> std::io::Result<()> {
+fn create_tensor_tictactoe(args: &Args) -> Tensor<f32> {
     let pos = TttPosition::from_str(&args.position);
-
     let planes = ttt::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<TttGame, true>(planes);
-    tensor_to_json(tensor, &args.outfile)
+    net::planes_to_tensor::<TttGame, true>(planes)
 }
-
-fn test_hex(args: Args) -> std::io::Result<()> {
+fn create_tensor_hex<const BOARD_SIZE: usize>(args: &Args) -> Tensor<f32> {
     let pos = HexPosition::from_str(&args.position);
-
     let planes = hex::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<HexGame, true>(planes);
-    tensor_to_json(tensor, &args.outfile)
+    net::planes_to_tensor::<HexGame<BOARD_SIZE>, true>(planes)
 }
 
-fn test_chess(args: Args) -> std::io::Result<()> {
+fn create_tensor_chess(args: &Args) -> Tensor<f32> {
     let pos = ChessPosition::from_str(&args.position);
-
     let planes = chess::net::common::position_to_planes(&pos);
-    let tensor = net::planes_to_tensor::<ChessGame, true>(planes);
-    tensor_to_json(tensor, &args.outfile)
+    net::planes_to_tensor::<ChessGame, true>(planes)
 }
 
 fn tensor_to_json(tensor: Tensor<f32>, filename: &String) -> std::io::Result<()> {

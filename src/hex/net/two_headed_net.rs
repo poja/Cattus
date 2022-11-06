@@ -1,31 +1,35 @@
 use crate::game::cache::ValueFuncCache;
-use crate::game::common::IGame;
 use crate::game::mcts::ValueFunction;
 use crate::game::net::TwoHeadedNetBase;
-use crate::hex::hex_game::{HexGame, HexPosition};
+use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 use crate::hex::net::common;
 use std::sync::Arc;
 
-pub struct TwoHeadedNet<const CPU: bool> {
-    base: TwoHeadedNetBase<HexGame, CPU>,
+pub struct TwoHeadedNet<const BOARD_SIZE: usize, const CPU: bool> {
+    base: TwoHeadedNetBase<HexGame<BOARD_SIZE>, CPU>,
 }
 
-impl<const CPU: bool> TwoHeadedNet<CPU> {
+impl<const BOARD_SIZE: usize, const CPU: bool> TwoHeadedNet<BOARD_SIZE, CPU> {
     pub fn new(model_path: &str) -> Self {
         Self {
             base: TwoHeadedNetBase::new(model_path, None),
         }
     }
 
-    pub fn with_cache(model_path: &str, cache: Arc<ValueFuncCache<HexGame>>) -> Self {
+    pub fn with_cache(model_path: &str, cache: Arc<ValueFuncCache<HexGame<BOARD_SIZE>>>) -> Self {
         Self {
             base: TwoHeadedNetBase::new(model_path, Some(cache)),
         }
     }
 }
 
-impl<const CPU: bool> ValueFunction<HexGame> for TwoHeadedNet<CPU> {
-    fn evaluate(&mut self, position: &HexPosition) -> (f32, Vec<(<HexGame as IGame>::Move, f32)>) {
+impl<const BOARD_SIZE: usize, const CPU: bool> ValueFunction<HexGame<BOARD_SIZE>>
+    for TwoHeadedNet<BOARD_SIZE, CPU>
+{
+    fn evaluate(
+        &mut self,
+        position: &HexPosition<BOARD_SIZE>,
+    ) -> (f32, Vec<(HexMove<BOARD_SIZE>, f32)>) {
         self.base.evaluate(position, common::position_to_planes)
     }
 }

@@ -41,6 +41,7 @@ pub trait IGame: Sized {
     type Move: GameMove<Game = Self>;
     type Bitboard: GameBitboard<Game = Self>;
     const BOARD_SIZE: usize;
+    const MOVES_NUM: usize;
 
     fn new() -> Self;
     fn new_from_pos(pos: Self::Position) -> Self;

@@ -1,8 +1,9 @@
+use itertools::Itertools;
+
 use crate::game::common::{GameColor, GamePosition};
 use crate::game::self_play::{DataEntry, DataSerializer, SerializerBase};
-use crate::ttt::net::common::{self, MOVES_NUM};
+use crate::ttt::net::common;
 use crate::ttt::ttt_game::TttGame;
-use itertools::Itertools;
 
 pub struct TttSerializer;
 impl DataSerializer<TttGame> for TttSerializer {
@@ -20,6 +21,6 @@ impl DataSerializer<TttGame> for TttSerializer {
             .map(|p| p.get_raw() as u64)
             .collect_vec();
 
-        SerializerBase::write_entry::<TttGame, MOVES_NUM>(planes, entry.probs, winner, filename)
+        SerializerBase::write_entry::<TttGame>(planes, entry.probs, winner, filename)
     }
 }

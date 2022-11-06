@@ -43,8 +43,8 @@ def test_ttt_serialize_encode():
 
 def test_hex_serialize_encode():
     _test_serialize_encode(
-        "hex",
-        Hex(),
+        "hex11",
+        Hex(11),
         [
             "reeeeeeeeee"
             "eeeeeeeeeee"

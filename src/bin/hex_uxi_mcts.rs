@@ -1,8 +1,8 @@
-use clap::Parser;
-use cattus::game::mcts::{MCTSPlayer, ValueFunction};
-use cattus::hex::hex_game::HexGame;
+use cattus::game::mcts::MCTSPlayer;
+use cattus::hex::hex_game::HEX_STANDARD_BOARD_SIZE;
 use cattus::hex::net::two_headed_net::TwoHeadedNet;
 use cattus::hex::uxi;
+use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -18,8 +18,9 @@ fn main() {
 
     let args = Args::parse();
 
-    let value_func: Box<dyn ValueFunction<HexGame>> =
-        Box::new(TwoHeadedNet::<CPU>::new(&args.model_path));
+    let value_func = Box::new(TwoHeadedNet::<HEX_STANDARD_BOARD_SIZE, CPU>::new(
+        &args.model_path,
+    ));
     let player = Box::new(MCTSPlayer::new(args.sim_num, value_func));
     let mut engine = uxi::UXIEngine::new(player);
     engine.run();

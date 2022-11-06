@@ -80,7 +80,10 @@ def test_hex_two_headed():
     logging.basicConfig(
         level=logging.DEBUG,
         format='[Hex Simple Two Headed Test]: %(message)s')
-    _test_simple_two_headed("hex")
+    _test_simple_two_headed("hex5")
+    _test_simple_two_headed("hex7")
+    _test_simple_two_headed("hex9")
+    _test_simple_two_headed("hex11")
 
 
 def test_chess_two_headed():
@@ -88,3 +91,10 @@ def test_chess_two_headed():
         level=logging.DEBUG,
         format='[Chess Simple Two Headed Test]: %(message)s')
     _test_simple_two_headed("chess")
+
+
+if __name__ == "__main__":
+    test_ttt_two_headed()
+    test_hex_two_headed()
+    test_chess_two_headed()
+    print("test passed")

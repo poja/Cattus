@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import re
 import subprocess
 import sys
 import random
@@ -44,8 +45,9 @@ class TrainProcess:
 
         if self.cfg["game"] == "tictactoe":
             self.game = TicTacToe()
-        elif self.cfg["game"] == "hex":
-            self.game = Hex()
+        elif re.match("hex[0-9]+", self.cfg["game"]):
+            size = int(re.findall("hex([0-9]+)", self.cfg["game"])[0])
+            self.game = Hex(size)
         elif self.cfg["game"] == "chess":
             self.game = Chess()
         else:

@@ -1,11 +1,13 @@
 #[cfg(test)]
 mod tests {
-    use crate::game::common::{GameColor, GamePosition};
-    use crate::hex::hex_game::HexPosition;
+    use crate::game::common::{GameColor, GamePosition, IGame};
+    use crate::hex::hex_game::HexGameStandard;
+
+    type HexStandardPosition = <HexGameStandard as IGame>::Position;
 
     #[test]
     fn short_diagonal_wins() {
-        let pos = HexPosition::from_str(
+        let pos = HexStandardPosition::from_str(
             &"reeeeeeeeee\
             ereeeeeeeee\
             eereeeeeeee\
@@ -23,7 +25,7 @@ mod tests {
         assert!(pos.is_over());
         assert!(pos.get_winner() == Some(GameColor::Player1));
 
-        let pos = HexPosition::from_str(
+        let pos = HexStandardPosition::from_str(
             &"beeeeeeeeee\
             ebeeeeeeeee\
             eebeeeeeeee\
@@ -45,7 +47,7 @@ mod tests {
 
     #[test]
     fn almost_short_diagonal_doesnt_win() {
-        let pos = HexPosition::from_str(
+        let pos = HexStandardPosition::from_str(
             &"eeeeeeeeeee\
             ereeeeeeeee\
             eereeeeeeee\
@@ -62,7 +64,7 @@ mod tests {
         );
         assert!(!pos.is_over());
 
-        let pos = HexPosition::from_str(
+        let pos = HexStandardPosition::from_str(
             &"beeeeeeeeee\
             ebeeeeeeeee\
             eebeeeeeeee\
@@ -82,7 +84,7 @@ mod tests {
 
     #[test]
     fn long_diagonal_doesnt_win() {
-        let pos = HexPosition::from_str(
+        let pos = HexStandardPosition::from_str(
             &"eeeeeeeeeer\
             eeeeeeeeere\
             eeeeeeeeree\
@@ -99,7 +101,7 @@ mod tests {
         );
         assert!(!pos.is_over());
 
-        let pos = HexPosition::from_str(
+        let pos = HexStandardPosition::from_str(
             &"eeeeeeeeeeb\
             eeeeeeeeebe\
             eeeeeeeebee\
@@ -119,7 +121,7 @@ mod tests {
 
     #[test]
     fn flip() {
-        let pos = HexPosition::from_str(
+        let pos = HexStandardPosition::from_str(
             &"eebeeeeeeer\
         eeeeeeeeeee\
         eeeebeeeree\
