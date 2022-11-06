@@ -11,7 +11,7 @@ REMOVE_TMP_DIR_ON_FINISH = True
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_ttt_training")
-CONFIG_FILE = os.path.join(TMP_DIR, "config.json")
+CONFIG_FILE = os.path.join(TMP_DIR, "config.yaml")
 PYTHON_MAIN = os.path.join(CATTUS_TOP, "train", "main.py")
 
 

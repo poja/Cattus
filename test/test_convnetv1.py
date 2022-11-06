@@ -10,7 +10,7 @@ REMOVE_TMP_DIR_ON_FINISH = True
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_convnetv1")
-CONFIG_FILE = os.path.join(TMP_DIR, "config.json")
+CONFIG_FILE = os.path.join(TMP_DIR, "config.yaml")
 
 
 def _test_convnetv1(game_name):

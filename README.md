@@ -42,5 +42,5 @@ To run the training process, first one should install the python project:
 
 Then start the training process:
 ```bash
-python -m train.main  --config config.json
+python -m train.main  --config config.yaml
 ```
