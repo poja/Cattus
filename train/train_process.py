@@ -1,3 +1,4 @@
+import time
 import datetime
 import logging
 import os
@@ -86,12 +87,14 @@ class TrainProcess:
         if run_id is None:
             run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
         self.run_id = run_id
+        metrics_filename = os.path.join(self.cfg["metrics_dir"], self.run_id)
 
         best_model = str(self.base_model_path)
         latest_model = self.base_model_path
 
         for iter_num in range(self.cfg["self_play"]["iterations"]):
             logging.info(f"Training iteration {iter_num}")
+            self.metrics = {}
 
             # Generate training data using the best model
             self._self_play(best_model)
@@ -102,12 +105,17 @@ class TrainProcess:
             # Compare latest model to the current best, and switch if better
             best_model = self._compare_models(best_model, latest_model)
 
+            # Write iteration metrics
+            with open(metrics_filename, "a") as metrics_file:
+                metrics_file.write(json.dumps(self.metrics) + "\n")
+
     def _self_play(self, model_path):
         profile = "dev" if self.cfg["debug"] == "true" else "release"
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
         data_entries_dir = os.path.join(
             games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
 
+        self_play_start_time = time.time()
         subprocess.run(" ".join([
             "cargo", "run", "--profile", profile, "-q", "--bin",
             self.self_play_exec, "--",
@@ -126,6 +134,7 @@ class TrainProcess:
 			"--processing-unit", "CPU" if self.cfg["cpu"] else "GPU",
             "--cache-size", str(self.cfg["mcts"]["cache_size"])]),
             stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
+        self.metrics["self_play_duration"] = time.time() - self_play_start_time
 
     def _train(self, model_path, iter_num):
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
@@ -144,28 +153,26 @@ class TrainProcess:
             parser.get_after_batch_reshape_func())
         train_dataset = train_dataset.prefetch(4)
 
-
         lr = self.lr_scheduler.get_lr(
             iter_num * self.cfg["training"]["iteration_data_entries"])
         logging.debug("Training with learning rate %f", lr)
         keras.backend.set_value(model.optimizer.learning_rate, lr)
 
         logging.info("Fitting new model...")
+        training_start_time = time.time()
         history = model.fit(train_dataset, epochs=1, verbose=0).history
-        metrics = {
+        self.metrics.update({
             "value_loss": history["value_head_loss"][0],
             "policy_loss": history["policy_head_loss"][0],
             "value_accuracy": history["value_head_value_head_accuracy"][0],
             "policy_accuracy": history["policy_head_policy_head_accuracy"][0],
-        }
-        metrics_filename = os.path.join(self.cfg["metrics_dir"], self.run_id)
-        with open(metrics_filename, "a") as metrics_file:
-            metrics_file.write(json.dumps(metrics) + "\n")
+            "training_duration": time.time() - training_start_time
+        })
 
-        logging.info("Value loss {:.4f}".format(metrics["value_loss"]))
-        logging.info("Policy loss {:.4f}".format(metrics["policy_loss"]))
-        logging.info("Value accuracy {:.4f}".format(metrics["value_accuracy"]))
-        logging.info("Policy accuracy {:.4f}".format(metrics["policy_accuracy"]))
+        logging.info("Value loss {:.4f}".format(self.metrics["value_loss"]))
+        logging.info("Policy loss {:.4f}".format(self.metrics["policy_loss"]))
+        logging.info("Value accuracy {:.4f}".format(self.metrics["value_accuracy"]))
+        logging.info("Policy accuracy {:.4f}".format(self.metrics["policy_accuracy"]))
 
         return self._save_model(model)
 
@@ -180,6 +187,7 @@ class TrainProcess:
             data_entries_dir = os.path.join(
                 games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
 
+            compare_start_time = time.time()
             subprocess.run([
                 "cargo", "run", "--profile", profile, "-q", "--bin",
                 self.self_play_exec, "--",
@@ -201,6 +209,7 @@ class TrainProcess:
                 "--threads", str(self.cfg["training"]["compare"]["threads"]),
                 "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU"],
                 stderr=sys.stderr, stdout=sys.stdout, check=True)
+            self.metrics["model_compare_duration"] = time.time() - compare_start_time
 
             with open(compare_res_file, "r") as res_file:
                 res = json.load(res_file)
