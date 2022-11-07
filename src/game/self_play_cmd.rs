@@ -130,7 +130,7 @@ struct PlayerBuilder<Game: IGame> {
     explore_factor: f32,
     prior_noise_alpha: f32,
     prior_noise_epsilon: f32,
-    cache: Arc<ValueFuncCache<Game>>,
+    pub cache: Arc<ValueFuncCache<Game>>,
     metrics: Arc<Metrics>,
     cpu: bool,
 }
@@ -202,7 +202,7 @@ pub fn run_main<Game: IGame + 'static>(
     };
     let metrics = Arc::new(Metrics::new());
 
-    let player1_builder = Arc::new(PlayerBuilder::new(
+    let player1_builder = PlayerBuilder::new(
         Arc::clone(&network_builder),
         args.model1_path.clone(),
         args.sim_num,
@@ -212,7 +212,9 @@ pub fn run_main<Game: IGame + 'static>(
         args.cache_size,
         Arc::clone(&metrics),
         cpu,
-    ));
+    );
+    let player1_cache = Arc::clone(&player1_builder.cache);
+    let player1_builder = Arc::new(player1_builder);
 
     let player2_builder = if args.model1_path == args.model2_path {
         Arc::clone(&player1_builder)
@@ -240,6 +242,9 @@ pub fn run_main<Game: IGame + 'static>(
     .generate_data(args.games_num as usize, &args.out_dir1, &args.out_dir2)?;
 
     if args.summary_file != "_NONE_" {
+        let cache_hits = player1_cache.get_hits_counter();
+        let cache_uses = cache_hits + player1_cache.get_misses_counter();
+
         fs::write(
             args.summary_file,
             json::object! {
@@ -248,6 +253,7 @@ pub fn run_main<Game: IGame + 'static>(
                 draws: result.d,
                 net_run_duration_average_us: metrics.get_net_run_duration_average().as_micros() as u64,
                 search_duration_average_ms: metrics.get_search_duration_average().as_millis() as u64,
+                cache_hit_ratio: cache_hits as f32 / cache_uses as f32,
             }
             .dump(),
         )?;
