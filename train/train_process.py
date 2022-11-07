@@ -87,7 +87,8 @@ class TrainProcess:
         if run_id is None:
             run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
         self.run_id = run_id
-        metrics_filename = os.path.join(self.cfg["metrics_dir"], self.run_id)
+        metrics_filename = os.path.join(
+            self.cfg["metrics_dir"], f"{self.run_id}.txt")
 
         best_model = str(self.base_model_path)
         latest_model = self.base_model_path
@@ -112,6 +113,7 @@ class TrainProcess:
     def _self_play(self, model_path):
         profile = "dev" if self.cfg["debug"] == "true" else "release"
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
+        summary_file = os.path.join(games_dir, "selfplay_summary.json")
         data_entries_dir = os.path.join(
             games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
 
@@ -124,6 +126,7 @@ class TrainProcess:
             "--games-num", str(self.cfg["self_play"]["games_num"]),
             "--out-dir1", data_entries_dir,
             "--out-dir2", data_entries_dir,
+            "--summary-file", summary_file,
             "--sim-num", str(self.cfg["mcts"]["sim_num"]),
             "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
             "--temperature-policy", self.cfg["self_play"]["temperature_policy_str"],
@@ -135,6 +138,13 @@ class TrainProcess:
             "--cache-size", str(self.cfg["mcts"]["cache_size"])]),
             stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
         self.metrics["self_play_duration"] = time.time() - self_play_start_time
+
+        with open(summary_file, "r") as f:
+            summary = json.load(f)
+        self.metrics.update({
+            "net_run_duration_average_us": summary["net_run_duration_average_us"],
+            "search_duration_average_ms": summary["search_duration_average_ms"],
+        })
 
     def _train(self, model_path, iter_num):
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
@@ -198,7 +208,7 @@ class TrainProcess:
                 # take the opportunity to generate more games to main games directory
                 "--out-dir1", data_entries_dir,
                 "--out-dir2", tmp_games_dir,
-                "--result-file", compare_res_file,
+                "--summary-file", compare_res_file,
                 "--sim-num", str(self.cfg["mcts"]["sim_num"]),
                 "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
                 "--temperature-policy", self.cfg["training"]["compare"]["temperature_policy_str"],

@@ -1,6 +1,6 @@
 use crate::chess::chess_game::{ChessGame, ChessPosition};
 use crate::game::common::{GamePosition, IGame};
-use crate::game::mcts::ValueFunction;
+use crate::game::mcts::{ValueFunction, ValFuncDurationCallback};
 use crate::game::net;
 use once_cell::sync::Lazy;
 
@@ -59,14 +59,17 @@ impl ValueFunction<ChessGame> for TrivialNet {
         }
         val = 2.0 / (1.0 + (val * -10.0).exp()) - 1.0;
 
-        let moves_probs =
-            net::calc_moves_probs::<ChessGame>(position.get_legal_moves(), &POLICY);
+        let moves_probs = net::calc_moves_probs::<ChessGame>(position.get_legal_moves(), &POLICY);
 
         net::flip_score_if_needed((val, moves_probs), is_flipped)
     }
+    fn set_run_duration_callback(&mut self, _callback: Option<ValFuncDurationCallback>) {}
 }
 
-fn dot_product(bitmap: chess::BitBoard, weights: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE]) -> f32 {
+fn dot_product(
+    bitmap: chess::BitBoard,
+    weights: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE],
+) -> f32 {
     let mut res = 0.0;
     for idx in bitmap {
         res += weights[idx.to_int() as usize];
