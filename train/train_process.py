@@ -161,6 +161,7 @@ class TrainProcess:
         self.metrics.update({
             "net_run_duration_average_us": summary["net_run_duration_average_us"],
             "search_duration_average_ms": summary["search_duration_average_ms"],
+            "cache_hit_ratio": summary["cache_hit_ratio"],
         })
 
     def _train(self, model_path, iter_num):

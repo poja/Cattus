@@ -35,8 +35,6 @@ impl<Game: IGame> ValueFuncCache<Game> {
         position: &Game::Position,
         mut compute: impl FnMut(&Game::Position) -> (f32, Vec<(Game::Move, f32)>),
     ) -> (f32, Vec<(Game::Move, f32)>) {
-        // println!("{:?} {:?}", self.hits.load(Ordering::Relaxed), self.misses.load(Ordering::Relaxed));
-
         // Acquire the read lock and check if the position is in the cache
         {
             let cache = self.lock.read().unwrap();
@@ -76,5 +74,13 @@ impl<Game: IGame> ValueFuncCache<Game> {
             self.misses.fetch_add(1, Ordering::Relaxed);
             computed_val
         }
+    }
+
+    pub fn get_hits_counter(&self) -> usize {
+        self.hits.load(Ordering::Relaxed)
+    }
+
+    pub fn get_misses_counter(&self) -> usize {
+        self.misses.load(Ordering::Relaxed)
     }
 }
