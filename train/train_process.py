@@ -110,6 +110,8 @@ class TrainProcess:
         logging.info("base model:\t" + best_model)
         logging.info("metrics file:\t" + metrics_filename)
 
+        self._compile_selfplay_exe()
+
         for iter_num in range(self.cfg["self_play"]["iterations"]):
             logging.info(f"Training iteration {iter_num}")
             self.metrics = {}
@@ -271,6 +273,15 @@ class TrainProcess:
             self.cfg["models_dir"], f"model_{model_time}")
         model.save(model_path, save_format='tf')
         return model_path
+
+    def _compile_selfplay_exe(self):
+        logging.info("Building Self-play executable...")
+        profile = "dev" if self.cfg["debug"] == "true" else "release"
+        subprocess.run([
+            "cargo", "build",
+            "--profile", profile, "-q",
+            "--bin", self.self_play_exec],
+            stderr=sys.stderr, stdout=sys.stdout, check=True)
 
 
 class LearningRateScheduler:
