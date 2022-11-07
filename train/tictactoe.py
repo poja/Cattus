@@ -89,6 +89,8 @@ class TicTacToe(TrainableGame):
             inputs,
             residual_block_num=cfg["model"]["residual_block_num"],
             residual_filter_num=cfg["model"]["residual_filter_num"],
+            value_head_conv_output_channels_num=cfg["model"]["value_head_conv_output_channels_num"],
+            policy_head_conv_output_channels_num=cfg["model"]["policy_head_conv_output_channels_num"],
             moves_num=self.MOVE_NUM,
             l2reg=cfg["model"]["l2reg"],
             cpu=cfg["cpu"])

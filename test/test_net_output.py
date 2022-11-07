@@ -97,8 +97,10 @@ def _test_net_output(game_name, game, positions):
 def create_model(game):
     cfg = {
         "model": {
-            "residual_filter_num": 2,
-            "residual_block_num": 2,
+            "residual_filter_num": 1,
+            "residual_block_num": 1,
+            "value_head_conv_output_channels_num": 1,
+            "policy_head_conv_output_channels_num": 1,
             "l2reg": 0.00005,
         },
         "cpu": True
