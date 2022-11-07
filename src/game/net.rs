@@ -72,14 +72,14 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         }
 
         let mut val: f32 = args.fetch(output_scalar).unwrap()[0];
-        if val.is_nan() {
+        if !val.is_finite() {
             val = 0.0;
         }
 
         let moves_scores: Tensor<f32> = args.fetch(output_moves_scores).unwrap();
         let moves_scores = moves_scores
             .iter()
-            .map(|s| if s.is_nan() { f32::MIN } else { *s })
+            .map(|s| if s.is_finite() { *s } else { f32::MIN })
             .collect_vec();
 
         (val, moves_scores)

@@ -447,7 +447,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             let mut m = self.search_tree.edge_weight_mut(edge_id).unwrap();
             m.init_score =
                 (1.0 - self.prior_noise_epsilon) * m.init_score + self.prior_noise_epsilon * noise;
-            assert!(!m.init_score.is_nan());
+            assert!(m.init_score.is_finite());
         }
     }
 
