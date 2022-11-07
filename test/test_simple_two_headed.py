@@ -45,13 +45,13 @@ training:
     batch_size: 4
     learning_rate:
         - [       0.001]
-    compare:
-        temperature_policy:
-            - [       0.0]
-        games_num: 4
-        switching_winning_threshold: 0.55
-        warning_losing_threshold: 0.55
-        threads: 1
+model_compare:
+    temperature_policy:
+        - [       0.0]
+    games_num: 4
+    switching_winning_threshold: 0.55
+    warning_losing_threshold: 0.55
+    threads: 1
 cpu: true
 debug: true
 """)
