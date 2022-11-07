@@ -11,10 +11,9 @@ import copy
 import json
 import tempfile
 import shutil
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import tensorflow as tf
 import keras
+
 
 from train.hex import Hex
 from train.tictactoe import TicTacToe
@@ -25,6 +24,17 @@ from train import net_utils
 
 TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 CATTUS_TOP = os.path.abspath(os.path.join(TRAIN_DIR, ".."))
+
+
+def dictionary_to_str(d, indent=0):
+    s = ""
+    for key, value in d.items():
+        if isinstance(value, dict):
+            s += "  " * indent + str(key) + ":\n"
+            s += dictionary_to_str(value, indent+1)
+        else:
+            s += "  " * indent + str(key) + ": \t" + str(value) + "\n"
+    return s
 
 
 class TrainProcess:
@@ -90,8 +100,15 @@ class TrainProcess:
         metrics_filename = os.path.join(
             self.cfg["metrics_dir"], f"{self.run_id}.txt")
 
-        best_model = str(self.base_model_path)
+        best_model = self.base_model_path
         latest_model = self.base_model_path
+
+        logging.info("Starting training process with config:")
+        for line in dictionary_to_str(self.cfg).splitlines():
+            logging.info(line)
+        logging.info("run ID:\t" + self.run_id)
+        logging.info("base model:\t" + best_model)
+        logging.info("metrics file:\t" + metrics_filename)
 
         for iter_num in range(self.cfg["self_play"]["iterations"]):
             logging.info(f"Training iteration {iter_num}")
@@ -134,7 +151,7 @@ class TrainProcess:
             "--prior-noise-epsilon", str(self.cfg["mcts"]
                                          ["prior_noise_epsilon"]),
             "--threads", str(self.cfg["self_play"]["threads"]),
-			"--processing-unit", "CPU" if self.cfg["cpu"] else "GPU",
+            "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU",
             "--cache-size", str(self.cfg["mcts"]["cache_size"])]),
             stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
         self.metrics["self_play_duration"] = time.time() - self_play_start_time
@@ -181,8 +198,10 @@ class TrainProcess:
 
         logging.info("Value loss {:.4f}".format(self.metrics["value_loss"]))
         logging.info("Policy loss {:.4f}".format(self.metrics["policy_loss"]))
-        logging.info("Value accuracy {:.4f}".format(self.metrics["value_accuracy"]))
-        logging.info("Policy accuracy {:.4f}".format(self.metrics["policy_accuracy"]))
+        logging.info("Value accuracy {:.4f}".format(
+            self.metrics["value_accuracy"]))
+        logging.info("Policy accuracy {:.4f}".format(
+            self.metrics["policy_accuracy"]))
 
         return self._save_model(model)
 
@@ -219,7 +238,8 @@ class TrainProcess:
                 "--threads", str(self.cfg["training"]["compare"]["threads"]),
                 "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU"],
                 stderr=sys.stderr, stdout=sys.stdout, check=True)
-            self.metrics["model_compare_duration"] = time.time() - compare_start_time
+            self.metrics["model_compare_duration"] = time.time() - \
+                compare_start_time
 
             with open(compare_res_file, "r") as res_file:
                 res = json.load(res_file)
@@ -235,7 +255,8 @@ class TrainProcess:
                     shutil.move(os.path.join(
                         tmp_games_dir, filename), data_entries_dir)
             elif losing > self.cfg["training"]["compare"]["warning_losing_threshold"]:
-                logging.warn("New model is worse than previous one, losing ratio: %f", losing)
+                logging.warn(
+                    "New model is worse than previous one, losing ratio: %f", losing)
 
             logging.info("Best model: %s", best_model)
             return best_model
