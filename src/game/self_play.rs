@@ -1,8 +1,8 @@
 use itertools::Itertools;
 use std::fs;
+use std::ops::Deref;
 use std::path;
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
@@ -63,10 +63,11 @@ impl SerializerBase {
     }
 }
 
-struct GamesResults {
-    w1: AtomicU32,
-    w2: AtomicU32,
-    d: AtomicU32,
+#[derive(Copy, Clone)]
+pub struct GamesResults {
+    pub w1: u32,
+    pub w2: u32,
+    pub d: u32,
 }
 
 pub struct SelfPlayRunner<Game: IGame> {
@@ -100,8 +101,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
         games_num: usize,
         output_dir1: &String,
         output_dir2: &String,
-        result_file: &String,
-    ) -> std::io::Result<()> {
+    ) -> std::io::Result<GamesResults> {
         if games_num % 2 != 0 {
             panic!("Games num should be a multiple of 2");
         }
@@ -113,11 +113,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
             }
         }
 
-        let result = Arc::new(GamesResults {
-            w1: AtomicU32::new(0),
-            w2: AtomicU32::new(0),
-            d: AtomicU32::new(0),
-        });
+        let result = Arc::new(Mutex::new(GamesResults { w1: 0, w2: 0, d: 0 }));
 
         let job_builder = |thread_idx| {
             let start_idx = games_num * thread_idx / self.thread_num;
@@ -154,19 +150,8 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
             t.join().unwrap();
         }
 
-        if result_file != "_NONE_" {
-            fs::write(
-                result_file,
-                json::object! {
-                    player1_wins: result.w1.load(Ordering::Relaxed),
-                    player2_wins: result.w2.load(Ordering::Relaxed),
-                    draws: result.d.load(Ordering::Relaxed),
-                }
-                .dump(),
-            )?;
-        }
-
-        Ok(())
+        let res = *result.lock().unwrap().deref();
+        Ok(res)
     }
 }
 
@@ -177,7 +162,7 @@ struct SelfPlayWorker<Game: IGame> {
     serializer: Arc<dyn DataSerializer<Game>>,
     output_dir1: String,
     output_dir2: String,
-    results: Arc<GamesResults>,
+    results: Arc<Mutex<GamesResults>>,
     start_idx: usize,
     end_idx: usize,
 }
@@ -191,7 +176,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         serializer: Arc<dyn DataSerializer<Game>>,
         output_dir1: String,
         output_dir2: String,
-        results: Arc<GamesResults>,
+        results: Arc<Mutex<GamesResults>>,
         start_idx: usize,
         end_idx: usize,
     ) -> Self {
@@ -251,17 +236,22 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             }
 
             /* Update winning counters */
-            match winner {
-                None => &self.results.d,
-                Some(p) => {
-                    let res = match p {
-                        GameColor::Player1 => [&self.results.w1, &self.results.w2],
-                        GameColor::Player2 => [&self.results.w2, &self.results.w1],
-                    };
-                    res[(game_idx % 2) as usize]
-                }
+            {
+                let mut results = self.results.lock().unwrap();
+                let counter = match winner {
+                    None => &mut results.d,
+                    Some(p) => match (p, game_idx % 2) {
+                        (GameColor::Player1, 0) => &mut results.w1,
+                        (GameColor::Player1, 1) => &mut results.w2,
+                        (GameColor::Player2, 0) => &mut results.w2,
+                        (GameColor::Player2, 1) => &mut results.w1,
+                        (player, rem) => {
+                            panic!("Unexpected player and game index: {:?} {}", player, rem)
+                        }
+                    },
+                };
+                *counter += 1;
             }
-            .fetch_add(1, Ordering::Relaxed);
         }
         Ok(())
     }

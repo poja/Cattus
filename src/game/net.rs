@@ -1,8 +1,11 @@
-use crate::game::cache::ValueFuncCache;
-use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
 use itertools::Itertools;
 use std::sync::Arc;
+use std::time::Instant;
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
+
+use crate::game::cache::ValueFuncCache;
+use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
+use crate::game::mcts::ValFuncDurationCallback;
 
 pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
     bundle: SavedModelBundle,
@@ -10,6 +13,7 @@ pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
     value_head: Operation,
     policy_head: Operation,
     cache: Option<Arc<ValueFuncCache<Game>>>,
+    net_run_duration_callback: Option<ValFuncDurationCallback>,
 }
 
 impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
@@ -48,6 +52,7 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
             value_head,
             policy_head,
             cache,
+            net_run_duration_callback: None,
         }
     }
 
@@ -57,10 +62,14 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         let output_scalar = args.request_fetch(&self.value_head, 1);
         let output_moves_scores = args.request_fetch(&self.policy_head, 0);
 
+        let net_run_begin = Instant::now();
         self.bundle
             .session
             .run(&mut args)
             .expect("Error occurred during calculations");
+        if let Some(callback) = &self.net_run_duration_callback {
+            callback.call(net_run_begin.elapsed());
+        }
 
         let mut val: f32 = args.fetch(output_scalar).unwrap()[0];
         if val.is_nan() {
@@ -105,6 +114,10 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         let moves_probs = calc_moves_probs::<Game>(moves, &move_scores);
 
         (val, moves_probs)
+    }
+
+    pub fn set_net_run_duration_callback(&mut self, callback: Option<ValFuncDurationCallback>) {
+        self.net_run_duration_callback = callback;
     }
 }
 

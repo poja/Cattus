@@ -1,10 +1,4 @@
-use crate::chess::chess_game::{ChessGame, ChessPosition};
-use crate::game::common::{GamePosition, IGame};
-use crate::game::mcts::ValueFunction;
-use crate::game::net;
 use itertools::Itertools;
-
-use crate::chess::net::net_stockfish_utils::*;
 use pleco::core::masks::*;
 use pleco::core::mono_traits::*;
 use pleco::core::score::*;
@@ -17,8 +11,13 @@ use pleco::SQ;
 use pleco::{Board, PieceType, Player};
 use std::mem::MaybeUninit;
 
-pub struct StockfishNet {}
+use crate::chess::chess_game::{ChessGame, ChessPosition};
+use crate::chess::net::net_stockfish_utils::*;
+use crate::game::common::{GamePosition, IGame};
+use crate::game::mcts::{ValFuncDurationCallback, ValueFunction};
+use crate::game::net;
 
+pub struct StockfishNet;
 impl ValueFunction<ChessGame> for StockfishNet {
     fn evaluate(
         &mut self,
@@ -38,6 +37,7 @@ impl ValueFunction<ChessGame> for StockfishNet {
 
         net::flip_score_if_needed((val, moves_probs), is_flipped)
     }
+    fn set_run_duration_callback(&mut self, _callback: Option<ValFuncDurationCallback>) {}
 }
 
 /* Code copied from pleco github */

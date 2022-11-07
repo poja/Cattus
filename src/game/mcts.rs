@@ -6,8 +6,10 @@ use rand::prelude::*;
 use rand_distr::Dirichlet;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
+use std::time::{Duration, Instant};
 
 use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame, PlayerRand};
+use crate::game::utils::Callback;
 
 /// Monte Carlo Tree Search (MCTS) implementation
 
@@ -48,6 +50,8 @@ impl<Move: GameMove> MCTSEdge<Move> {
     }
 }
 
+pub type MctsSearchDurationCallback = Box<dyn Callback<Duration>>;
+
 pub struct MCTSPlayer<Game: IGame> {
     search_tree: DiGraph<MCTSNode<Game::Position>, MCTSEdge<Game::Move>>,
     root: Option<NodeIndex>,
@@ -58,6 +62,8 @@ pub struct MCTSPlayer<Game: IGame> {
     prior_noise_alpha: f32,
     prior_noise_epsilon: f32,
     value_func: Box<dyn ValueFunction<Game>>,
+
+    search_duration_callback: Option<MctsSearchDurationCallback>,
 }
 
 impl<Game: IGame> MCTSPlayer<Game> {
@@ -85,6 +91,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             prior_noise_epsilon,
             temperature: 1.0,
             value_func,
+            search_duration_callback: None,
         }
     }
 
@@ -319,6 +326,8 @@ impl<Game: IGame> MCTSPlayer<Game> {
         &mut self,
         position: &Game::Position,
     ) -> Vec<(Game::Move, f32)> {
+        let search_start_time = Instant::now();
+
         if self.root.is_some() {
             // Tree was saved from the last search
             // Look for the position in the first three layers of the tree
@@ -360,10 +369,16 @@ impl<Game: IGame> MCTSPlayer<Game> {
             .iter()
             .map(|&(_, simcount)| simcount)
             .sum();
-        moves_and_simcounts
+        let res = moves_and_simcounts
             .into_iter()
             .map(|(m, simcount)| (m, simcount as f32 / simcount_total as f32))
-            .collect_vec()
+            .collect_vec();
+
+        if let Some(callback) = &self.search_duration_callback {
+            callback.call(search_start_time.elapsed());
+        }
+
+        res
     }
 
     pub fn choose_move_from_probabilities(
@@ -435,6 +450,10 @@ impl<Game: IGame> MCTSPlayer<Game> {
             assert!(!m.init_score.is_nan());
         }
     }
+
+    pub fn set_search_duration_callback(&mut self, callback: Option<MctsSearchDurationCallback>) {
+        self.search_duration_callback = callback
+    }
 }
 
 impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
@@ -443,6 +462,8 @@ impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
         self.choose_move_from_probabilities(&moves)
     }
 }
+
+pub type ValFuncDurationCallback = MctsSearchDurationCallback;
 
 pub trait ValueFunction<Game: IGame> {
     /// Evaluate a position
@@ -453,10 +474,10 @@ pub trait ValueFunction<Game: IGame> {
     /// The scalar is the current position value in range [-1,1]. 1 if player1 is winning and -1 if player2 is winning
     /// The per-move probabilities should have a sum of 1, greater value is a better move
     fn evaluate(&mut self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>);
+    fn set_run_duration_callback(&mut self, callback: Option<ValFuncDurationCallback>);
 }
 
-pub struct ValueFunctionRand {}
-
+pub struct ValueFunctionRand;
 impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
     fn evaluate(&mut self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>) {
         let winner = if position.is_over() {
@@ -489,4 +510,5 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
 
         (val, moves_probs)
     }
+    fn set_run_duration_callback(&mut self, _callback: Option<ValFuncDurationCallback>) {}
 }
