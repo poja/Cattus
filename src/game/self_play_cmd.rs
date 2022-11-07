@@ -1,5 +1,6 @@
 use clap::Parser;
 use std::fs;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -44,19 +45,38 @@ struct SelfPlayArgs {
     cache_size: usize,
 }
 
-struct MetricsInner {
-    net_run_count: u32,
-    net_run_duration: Duration,
-    search_count: u32,
-    search_duration: Duration,
+#[derive(Copy, Clone)]
+struct MetricsData {
+    pub net_run_count: u32,
+    pub net_run_duration: Duration,
+    pub search_count: u32,
+    pub search_duration: Duration,
 }
+impl MetricsData {
+    fn get_net_run_duration_average(&self) -> Duration {
+        if self.net_run_count > 0 {
+            self.net_run_duration / self.net_run_count
+        } else {
+            Duration::ZERO
+        }
+    }
+
+    fn get_search_duration_average(&self) -> Duration {
+        if self.search_count > 0 {
+            self.search_duration / self.search_count
+        } else {
+            Duration::ZERO
+        }
+    }
+}
+
 struct Metrics {
-    data: Mutex<MetricsInner>,
+    data: Mutex<MetricsData>,
 }
 impl Metrics {
     fn new() -> Self {
         Self {
-            data: Mutex::new(MetricsInner {
+            data: Mutex::new(MetricsData {
                 net_run_count: 0,
                 net_run_duration: Duration::ZERO,
                 search_count: 0,
@@ -71,28 +91,14 @@ impl Metrics {
         data.net_run_duration += duration;
     }
 
-    fn get_net_run_duration_average(&self) -> Duration {
-        let data = self.data.lock().unwrap();
-        if data.net_run_count > 0 {
-            data.net_run_duration / data.net_run_count
-        } else {
-            Duration::ZERO
-        }
-    }
-
     fn add_search_duration(&self, duration: Duration) {
         let mut data = self.data.lock().unwrap();
         data.search_count += 1;
         data.search_duration += duration;
     }
 
-    fn get_search_duration_average(&self) -> Duration {
-        let data = self.data.lock().unwrap();
-        if data.search_count > 0 {
-            data.search_duration / data.search_count
-        } else {
-            Duration::ZERO
-        }
+    fn get_raw_data(&self) -> MetricsData {
+        *self.data.lock().unwrap().deref()
     }
 }
 
@@ -245,13 +251,17 @@ pub fn run_main<Game: IGame + 'static>(
         let cache_hits = player1_cache.get_hits_counter();
         let cache_uses = cache_hits + player1_cache.get_misses_counter();
 
+        let metrics = metrics.get_raw_data();
+
         fs::write(
             args.summary_file,
             json::object! {
                 player1_wins: result.w1,
                 player2_wins: result.w2,
                 draws: result.d,
+            net_activations_count: metrics.net_run_count,
                 net_run_duration_average_us: metrics.get_net_run_duration_average().as_micros() as u64,
+                search_count: metrics.search_count,
                 search_duration_average_ms: metrics.get_search_duration_average().as_millis() as u64,
                 cache_hit_ratio: cache_hits as f32 / cache_uses as f32,
             }

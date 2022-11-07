@@ -161,10 +161,13 @@ class TrainProcess:
         with open(summary_file, "r") as f:
             summary = json.load(f)
         self.metrics.update({
+            "net_activations_count": summary["net_activations_count"],
             "net_run_duration_average_us": summary["net_run_duration_average_us"],
+            "search_count": summary["search_count"],
             "search_duration_average_ms": summary["search_duration_average_ms"],
             "cache_hit_ratio": summary["cache_hit_ratio"],
         })
+
 
     def _train(self, model_path, iter_num):
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
