@@ -111,7 +111,15 @@ def residual_block(inputs, channels, name, l2reg, cpu):
     return tf.keras.layers.Activation('relu')(flow)
 
 
-def create_convnetv1(inputs, residual_block_num, residual_filter_num, moves_num, l2reg, cpu):
+def create_convnetv1(
+    inputs,
+    residual_block_num,
+    residual_filter_num,
+    value_head_conv_output_channels_num,
+    policy_head_conv_output_channels_num,
+    moves_num,
+    l2reg,
+    cpu):
     l2reg = tf.keras.regularizers.l2(l=l2reg)
 
     # single conv block
@@ -134,7 +142,7 @@ def create_convnetv1(inputs, residual_block_num, residual_filter_num, moves_num,
     # Value head
     flow_val = conv_block(flow,
                           filter_size=1,
-                          output_channels=2,
+                          output_channels=value_head_conv_output_channels_num,
                           name='value',
                           l2reg=l2reg,
                           cpu=cpu)
@@ -153,7 +161,7 @@ def create_convnetv1(inputs, residual_block_num, residual_filter_num, moves_num,
     # Policy head
     flow_pol = conv_block(flow,
                           filter_size=1,
-                          output_channels=2,  # accept as argument
+                          output_channels=policy_head_conv_output_channels_num,
                           name='policy',
                           l2reg=l2reg,
                           cpu=cpu)

@@ -41,6 +41,8 @@ model:
     type: "ConvNetV1"
     residual_block_num: 2
     residual_filter_num: 2
+    value_head_conv_output_channels_num: 4
+    policy_head_conv_output_channels_num: 4
     l2reg: 0.00005
 training:
     latest_data_entries: 1024
