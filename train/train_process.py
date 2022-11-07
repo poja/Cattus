@@ -130,7 +130,7 @@ class TrainProcess:
                 metrics_file.write(json.dumps(self.metrics) + "\n")
 
     def _self_play(self, model_path):
-        profile = "dev" if self.cfg["debug"] == "true" else "release"
+        profile = "dev" if self.cfg["debug"] else "release"
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
         summary_file = os.path.join(games_dir, "selfplay_summary.json")
         data_entries_dir = os.path.join(
@@ -217,7 +217,7 @@ class TrainProcess:
             compare_res_file = os.path.join(tmp_dirpath, "compare_result.json")
             tmp_games_dir = os.path.join(tmp_dirpath, "games")
 
-            profile = "dev" if self.cfg["debug"] == "true" else "release"
+            profile = "dev" if self.cfg["debug"] else "release"
             games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
             data_entries_dir = os.path.join(
                 games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
@@ -278,7 +278,7 @@ class TrainProcess:
 
     def _compile_selfplay_exe(self):
         logging.info("Building Self-play executable...")
-        profile = "dev" if self.cfg["debug"] == "true" else "release"
+        profile = "dev" if self.cfg["debug"] else "release"
         subprocess.run([
             "cargo", "build",
             "--profile", profile, "-q",
