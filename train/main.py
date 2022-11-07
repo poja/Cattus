@@ -1,23 +1,32 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
+import sys
 import argparse
 import yaml
 import logging
 from train.train_process import TrainProcess
 
 if __name__ == "__main__":
+    log_fmt = "%(asctime)s.%(msecs)03d %(levelname)s: %(message)s"
     logging.basicConfig(
         level=logging.DEBUG,
-        format="%(asctime)s.%(msecs)03d %(levelname)s: %(message)s",
+        format=log_fmt,
         datefmt="%Y-%m-%d %H:%M:%S")
     # tensorflow is also using the logging lib, change it different from global
     logging.getLogger("tensorflow").setLevel(logging.WARN)
 
     parser = argparse.ArgumentParser(description="Trainer")
     parser.add_argument("--config", type=str, required=True, help="configuration file")
-    parser.add_argument("--run-id", type=str, required=False, help="Name of this run, default is current time")
+    parser.add_argument("--run-id", type=str, help="Name of this run, default is current time")
+    parser.add_argument("--logfile", type=str, default=None, help="All logs will be printed to file")
     args = parser.parse_args()
+
+    if args.logfile is not None:
+        fileHandler = logging.FileHandler(args.logfile)
+        fileHandler.setFormatter(logging.Formatter(log_fmt))
+        logging.getLogger().addHandler(fileHandler)
+
 
     with open(args.config, "r") as config_file:
         config = yaml.safe_load(config_file)
