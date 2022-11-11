@@ -107,10 +107,10 @@ impl<Game: IGame> MCTSPlayer<Game> {
         assert!(e0_source == self.root.unwrap());
         positions.push(&self.search_tree[e0_source].position);
 
-        let positions = trajectory.iter().map(|idx| {
+        positions.extend(trajectory.iter().map(|idx| {
             let (_e_source, e_target) = self.search_tree.edge_endpoints(*idx).unwrap();
             &self.search_tree[e_target].position
-        });
+        }));
 
         let mut repetitions = HashMap::new();
         for pos in positions {
@@ -142,16 +142,13 @@ impl<Game: IGame> MCTSPlayer<Game> {
             };
             let leaf_pos = &self.search_tree[leaf_id].position;
 
-            let (eval, per_move_val);
-            if leaf_pos.is_over() || repetition_reached {
-                eval = if repetition_reached {
-                    0.0
-                } else {
-                    GameColor::to_idx(leaf_pos.get_winner()) as f32
-                };
+            let eval = if repetition_reached {
+                0.0
+            } else if leaf_pos.is_over() {
+                GameColor::to_idx(leaf_pos.get_winner()) as f32
             } else {
                 /* Run value function once to obtain "simulation" value and initial children scores (probabilities) */
-                (eval, per_move_val) = self.simulate(leaf_id);
+                let (eval, per_move_val) = self.simulate(leaf_id);
 
                 /* Expand leaf and assign initial scores */
                 self.create_children(leaf_id, per_move_val);
@@ -160,7 +157,9 @@ impl<Game: IGame> MCTSPlayer<Game> {
                 if leaf_id == self.root.unwrap() {
                     self.add_dirichlet_noise(leaf_id);
                 }
-            }
+
+                eval
+            };
 
             /* back propagate the position score to the parents */
             self.backpropagate(path_to_selection, eval)
