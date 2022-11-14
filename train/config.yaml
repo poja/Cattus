@@ -1,7 +1,7 @@
 %YAML 1.2
 ---
 game: "tictactoe"
-working_area: "{CATTUS_TOP}/workarea/"
+working_area: "{CATTUS_TOP}/workarea/{GAME_NAME}"
 mcts:
     sim_num: 140
     explore_factor: 1.41421
