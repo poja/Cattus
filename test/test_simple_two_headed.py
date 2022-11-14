@@ -54,6 +54,7 @@ model_compare:
     threads: 1
 cpu: true
 debug: true
+use_train_data_across_runs: false
 """)
 
         logging.info("Running self play and generating new models...")

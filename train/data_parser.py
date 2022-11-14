@@ -10,15 +10,15 @@ from pathlib import Path
 
 
 class DataParser:
-    def __init__(self, game, data_dir, cfg):
+    def __init__(self, game, train_data_dir, cfg):
         self.game = game
-        self.data_dir = data_dir
+        self.train_data_dir = train_data_dir
         self.cfg = cfg
 
         assert self.cfg["training"]["latest_data_entries"] >= self.cfg["training"]["iteration_data_entries"]
 
     def _data_entries_filenames_gen(self):
-        filenames = [str(p) for p in Path(self.data_dir).rglob("*.traindata")]
+        filenames = [str(p) for p in Path(self.train_data_dir).rglob("*.traindata")]
 
         # take the latests files
         latest_de = self.cfg["training"]["latest_data_entries"]
@@ -33,7 +33,7 @@ class DataParser:
             filenames = filenames[:iter_de]
 
         for filename in filenames:
-            yield os.path.join(self.data_dir, filename)
+            yield os.path.join(self.train_data_dir, filename)
 
     def _read_data_entry_gen(self, filenames_gen):
         for filename in filenames_gen:

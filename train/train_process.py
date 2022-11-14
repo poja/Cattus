@@ -170,13 +170,13 @@ class TrainProcess:
         })
 
     def _train(self, model_path, iter_num):
-        games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
-
         logging.debug("Loading current model")
         model = self.game.load_model(model_path, self.net_type)
 
         logging.debug("Loading games by current model")
-        parser = DataParser(self.game, games_dir, self.cfg)
+        train_data_dir = self.cfg["games_dir"] if self.cfg["use_train_data_across_runs"] else os.path.join(
+            self.cfg["games_dir"], self.run_id)
+        parser = DataParser(self.game, train_data_dir, self.cfg)
         train_dataset = tf.data.Dataset.from_generator(
             parser.generator, output_types=(tf.string, tf.string, tf.string))
         train_dataset = train_dataset.map(parser.get_parse_func())
