@@ -38,3 +38,6 @@ training:
         threads: 8
 cpu: true
 debug: false
+# If true, training data will be reused from multiple runs, always with preference to newer data
+# Suggested value: true
+use_train_data_across_runs: true

@@ -129,13 +129,13 @@ class TrainProcess:
             stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
 
     def _train(self, model_path, iter_num):
-        games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
-
         logging.debug("Loading current model")
         model = self.game.load_model(model_path, self.net_type)
 
         logging.debug("Loading games by current model")
-        parser = DataParser(self.game, games_dir, self.cfg)
+        train_data_dir = self.cfg["games_dir"] if self.cfg["use_train_data_across_runs"] else os.path.join(
+            self.cfg["games_dir"], self.run_id)
+        parser = DataParser(self.game, train_data_dir, self.cfg)
         train_dataset = tf.data.Dataset.from_generator(
             parser.generator, output_types=(tf.string, tf.string, tf.string))
         train_dataset = train_dataset.map(parser.get_parse_func())
@@ -144,7 +144,6 @@ class TrainProcess:
         train_dataset = train_dataset.map(
             parser.get_after_batch_reshape_func())
         train_dataset = train_dataset.prefetch(4)
-
 
         lr = self.lr_scheduler.get_lr(
             iter_num * self.cfg["training"]["iteration_data_entries"])
