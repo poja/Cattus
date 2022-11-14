@@ -198,19 +198,20 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         let mut player2 = self.player2_builder.build();
 
         for game_idx in self.start_idx..self.end_idx {
-            // if games_num < 10 || game_idx % (games_num / 10) == 0 {
-            //     let percentage = (((game_idx as f32) / games_num as f32) * 100.0) as u32;
-            //     println!("self play {}%", percentage);
-            // }
             let mut game = Game::new();
             let mut pos_probs_pairs = Vec::new();
+            let players_switch = game_idx % 2 == 1;
 
             let mut half_move_num = 0;
             while !game.is_over() {
-                let player = &mut match game.get_position().get_turn() {
-                    GameColor::Player1 => [&mut player1, &mut player2],
-                    GameColor::Player2 => [&mut player2, &mut player1],
-                }[(game_idx % 2) as usize];
+                let mut player = game.get_position().get_turn();
+                if players_switch {
+                    player = player.opposite()
+                }
+                let player = match player {
+                    GameColor::Player1 => &mut player1,
+                    GameColor::Player2 => &mut player2,
+                };
 
                 /* Generate probabilities from MCTS player */
                 player.set_temperature(
@@ -240,15 +241,15 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                 let mut results = self.results.lock().unwrap();
                 let counter = match winner {
                     None => &mut results.d,
-                    Some(p) => match (p, game_idx % 2) {
-                        (GameColor::Player1, 0) => &mut results.w1,
-                        (GameColor::Player1, 1) => &mut results.w2,
-                        (GameColor::Player2, 0) => &mut results.w2,
-                        (GameColor::Player2, 1) => &mut results.w1,
-                        (player, rem) => {
-                            panic!("Unexpected player and game index: {:?} {}", player, rem)
+                    Some(mut player) => {
+                        if players_switch {
+                            player = player.opposite();
                         }
-                    },
+                        match player {
+                            GameColor::Player1 => &mut results.w1,
+                            GameColor::Player2 => &mut results.w2,
+                        }
+                    }
                 };
                 *counter += 1;
             }
