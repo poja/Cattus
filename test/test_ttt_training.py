@@ -74,10 +74,10 @@ use_train_data_across_runs: false
 
         logging.info("Checking quality of training...")
         metrics = _get_metrics()
-        assert metrics['value_loss'] > 0
-        assert metrics['policy_loss'] > 0
-        assert metrics['value_accuracy'] > 0.6
-        assert metrics['policy_accuracy'] > 0.2
+        assert float(metrics['value_loss']) > 0
+        assert float(metrics['policy_loss']) > 0
+        assert float(metrics['value_accuracy']) > 0.6
+        assert float(metrics['policy_accuracy']) > 0.2
         logging.info("Training quality is sufficient")
 
     finally:
@@ -86,10 +86,15 @@ use_train_data_across_runs: false
 
 
 def _get_metrics():
-    path = Path(TMP_DIR) / 'metrics' / 'test'
+    path = Path(TMP_DIR) / 'metrics' / 'test.csv'
     with path.open('r') as f:
-        last_metric = f.readlines()[-1]
-        return json.loads(last_metric)
+        lines = f.readlines()
+        columns = lines[0].split(",")
+        last_metric = lines[-1].split(",")
+        metrics = {}
+        for i in range(len(columns)):
+            metrics[columns[i]] = last_metric[i]
+        return metrics
 
 
 if __name__ == "__main__":

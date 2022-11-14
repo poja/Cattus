@@ -99,7 +99,7 @@ class TrainProcess:
             run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
         self.run_id = run_id
         metrics_filename = os.path.join(
-            self.cfg["metrics_dir"], f"{self.run_id}.txt")
+            self.cfg["metrics_dir"], f"{self.run_id}.csv")
 
         best_model = self.base_model_path
         latest_model = self.base_model_path
@@ -127,8 +127,7 @@ class TrainProcess:
             best_model = self._compare_models(best_model, latest_model)
 
             # Write iteration metrics
-            with open(metrics_filename, "a") as metrics_file:
-                metrics_file.write(json.dumps(self.metrics) + "\n")
+            self._write_metrics(metrics_filename)
 
     def _self_play(self, model_path):
         profile = "dev" if self.cfg["debug"] else "release"
@@ -286,6 +285,34 @@ class TrainProcess:
             "--profile", profile, "-q",
             "--bin", self.self_play_exec],
             stderr=sys.stderr, stdout=sys.stdout, check=True)
+
+    def _write_metrics(self, filename):
+        columns = [
+            "value_loss",
+            "policy_loss",
+            "value_accuracy",
+            "policy_accuracy",
+            "trained_model_win_rate",
+            "net_run_duration_average_us",
+            "net_activations_count",
+            "search_duration_average_ms",
+            "search_count",
+            "cache_hit_ratio",
+            "self_play_duration",
+            "training_duration",
+            "model_compare_duration",
+        ]
+
+        values = [str(self.metrics[metric]) for metric in columns]
+
+        # write columns
+        if not os.path.exists(filename):
+            with open(filename, "w") as metrics_file:
+                metrics_file.write(",".join(columns) + "\n")
+
+        # write values
+        with open(filename, "a") as metrics_file:
+            metrics_file.write(",".join(values) + "\n")
 
 
 class LearningRateScheduler:
