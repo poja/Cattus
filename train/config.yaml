@@ -5,9 +5,8 @@
 game: "tictactoe"
 
 # Path to working area where models, games and metrics are saved
-# {CATTUS_TOP} can be used
-working_area: "{CATTUS_TOP}/workarea/"
-
+# {CATTUS_TOP}, {GAME_NUM} can be used
+working_area: "{CATTUS_TOP}/workarea/{GAME_NAME}"
 mcts:
     # Number of simulation performed at each search
     # suggested value: 600-1400

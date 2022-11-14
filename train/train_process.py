@@ -42,10 +42,11 @@ class TrainProcess:
         self.cfg = copy.deepcopy(cfg)
 
         working_area = self.cfg["working_area"]
-        working_area = working_area.format(CATTUS_TOP=CATTUS_TOP)
+        working_area = working_area.format(CATTUS_TOP=CATTUS_TOP, GAME_NAME=self.cfg["game"])
         self.cfg["working_area"] = working_area
         working_area = Path(working_area)
-        assert working_area.exists()
+        if not working_area.exists():
+            os.mkdir(working_area)
 
         self.cfg["games_dir"] = working_area / "games"
         self.cfg["games_dir"].mkdir(exist_ok=True)
