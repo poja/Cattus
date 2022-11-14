@@ -252,6 +252,7 @@ class TrainProcess:
             w1, w2, d = res["player1_wins"], res["player2_wins"], res["draws"]
             total_games = w1 + w2 + d
             winning, losing = w2 / total_games, w1 / total_games
+            self.metrics["trained_model_win_rate"] = winning
 
             if winning > self.cfg["model_compare"]["switching_winning_threshold"]:
                 best_model = latest_model
