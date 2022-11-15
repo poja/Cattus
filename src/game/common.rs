@@ -1,4 +1,6 @@
-use rand::Rng;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
+use rand_distr::Distribution;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
@@ -92,7 +94,20 @@ pub trait GameBitboard {
     fn set(&mut self, idx: usize, val: bool);
 }
 
-pub struct PlayerRand {}
+pub struct PlayerRand {
+    rand: StdRng,
+}
+impl PlayerRand {
+    pub fn new() -> Self {
+        Self::from_seed(rand::thread_rng().gen())
+    }
+
+    pub fn from_seed(seed: u64) -> Self {
+        Self {
+            rand: StdRng::seed_from_u64(seed),
+        }
+    }
+}
 
 impl<Game: IGame> GamePlayer<Game> for PlayerRand {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
@@ -100,8 +115,8 @@ impl<Game: IGame> GamePlayer<Game> for PlayerRand {
         if moves.is_empty() {
             None
         } else {
-            let mut rng = rand::thread_rng();
-            Some(moves[rng.gen_range(0..moves.len()) as usize])
+            let dist = rand::distributions::Uniform::from(0..moves.len());
+            Some(moves[dist.sample(&mut self.rand) as usize])
         }
     }
 }

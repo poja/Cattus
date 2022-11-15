@@ -483,8 +483,8 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
             position.get_winner()
         } else {
             // Play randomly and return the simulation game result
-            let mut player1 = PlayerRand {};
-            let mut player2 = PlayerRand {};
+            let mut player1 = PlayerRand::new();
+            let mut player2 = PlayerRand::new();
             let mut game = Game::new_from_pos(*position);
 
             let (_final_pos, winner) = game.play_until_over(&mut player1, &mut player2);
