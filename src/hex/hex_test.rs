@@ -1,6 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use crate::game::common::{GameColor, GamePosition, IGame};
+    use rand::rngs::StdRng;
+    use rand::{Rng, RngCore, SeedableRng};
+    use std::collections::HashSet;
+
+    use crate::game::common::GamePlayer;
+    use crate::game::common::{GameColor, GameMove, GamePosition, IGame, PlayerRand};
     use crate::hex::hex_game::HexGameStandard;
 
     type HexStandardPosition = <HexGameStandard as IGame>::Position;
@@ -139,5 +144,42 @@ mod tests {
         assert!(pos.get_turn() == GameColor::Player2);
         assert!(pos.get_flip().get_turn() == GameColor::Player1);
         assert!(pos.get_flip().get_flip() == pos);
+    }
+
+    #[test]
+    fn flip_rand() {
+        let seed: u64 = rand::thread_rng().gen();
+        println!("[{}] Using seed {}", stringify!(flip_rand), seed);
+        let mut rand = StdRng::seed_from_u64(seed);
+
+        let games_num = 100;
+        for _ in 0..games_num {
+            let mut player: Box<dyn GamePlayer<HexGameStandard>> =
+                Box::new(PlayerRand::from_seed(rand.next_u64() ^ 0xe4655449311aee87));
+            let mut game = HexGameStandard::new();
+
+            while !game.is_over() {
+                let pos = *game.get_position();
+                let pos_t = pos.get_flip();
+
+                /* Assert flip of flip is original */
+                assert!(pos == pos_t.get_flip());
+
+                /* Assert flip of moves of flip are original moves */
+                type Move = <HexGameStandard as IGame>::Move;
+                let moves: HashSet<Move> = HashSet::from_iter(pos.get_legal_moves());
+                let moves_tt: HashSet<Move> =
+                    HashSet::from_iter(pos_t.get_legal_moves().into_iter().map(|m| m.get_flip()));
+                assert!(moves == moves_tt);
+
+                /* Assert game result is the same */
+                assert!(pos.is_over() == pos_t.is_over());
+                if pos.is_over() {
+                    assert!(pos.get_winner() == pos_t.get_winner().map(|w| w.opposite()));
+                }
+
+                game.play_single_turn(player.next_move(&game.get_position()).unwrap());
+            }
+        }
     }
 }
