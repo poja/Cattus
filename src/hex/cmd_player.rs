@@ -1,14 +1,14 @@
-use crate::game::common::{GamePlayer, GamePosition, IGame};
-use crate::hex::hex_game::{HexGameStandard, HexMove};
 use std::io;
 
-pub struct HexPlayerCmd {}
+use crate::game::common::{GamePlayer, GamePosition, IGame};
+use crate::hex::hex_game::{HexGame, HexMove};
 
-impl GamePlayer<HexGameStandard> for HexPlayerCmd {
+pub struct HexPlayerCmd;
+impl<const BOARD_SIZE: usize> GamePlayer<HexGame<BOARD_SIZE>> for HexPlayerCmd {
     fn next_move(
         &mut self,
-        position: &<HexGameStandard as IGame>::Position,
-    ) -> Option<<HexGameStandard as IGame>::Move> {
+        position: &<HexGame<BOARD_SIZE> as IGame>::Position,
+    ) -> Option<<HexGame<BOARD_SIZE> as IGame>::Move> {
         let read_usize = || -> Option<usize> {
             let mut line = String::new();
             io::stdin()
