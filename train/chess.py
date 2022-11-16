@@ -31,7 +31,8 @@ class Chess(TrainableGame):
     def load_data_entry(self, path):
         with open(path, "rb") as f:
             entry_bytes = f.read()
-        assert self.ENTRY_FORMAT.sizeof() == len(entry_bytes)
+        assert len(entry_bytes) == self.ENTRY_FORMAT.sizeof(), "invalid training data file: {} ({} != {})".format(
+            path, len(entry_bytes), self.ENTRY_FORMAT.sizeof())
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
         planes = np.array(entry.planes, dtype=np.uint64)
         moves_bitmap = np.array(entry.moves_bitmap, dtype=np.uint8)
