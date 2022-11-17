@@ -15,6 +15,7 @@ import struct
 
 
 def mask_illegal_moves(target, output):
+    output = tf.cast(output, tf.float32)
     legal_moves = tf.greater_equal(target, 0)
     output = tf.where(legal_moves, output, tf.zeros_like(output) - 1.0e10)
     target = tf.nn.relu(target)
