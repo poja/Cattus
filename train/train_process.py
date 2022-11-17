@@ -37,12 +37,20 @@ def dictionary_to_str(d, indent=0):
     return s
 
 
+def prepare_cmd(*args):
+    if None in args:
+        raise ValueError(
+            "CMD error: None at index {}".format(args.index(None)))
+    return " ".join([str(arg) for arg in args])
+
+
 class TrainProcess:
     def __init__(self, cfg):
         self.cfg = copy.deepcopy(cfg)
 
         working_area = self.cfg["working_area"]
-        working_area = working_area.format(CATTUS_TOP=CATTUS_TOP, GAME_NAME=self.cfg["game"])
+        working_area = working_area.format(
+            CATTUS_TOP=CATTUS_TOP, GAME_NAME=self.cfg["game"])
         self.cfg["working_area"] = working_area
         working_area = Path(working_area)
         if not working_area.exists():
@@ -139,24 +147,23 @@ class TrainProcess:
             games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
 
         self_play_start_time = time.time()
-        subprocess.run(" ".join([
+        subprocess.run(prepare_cmd(
             "cargo", "run", "--profile", profile, "-q", "--bin",
             self.self_play_exec, "--",
             "--model1-path", model_path,
             "--model2-path", model_path,
-            "--games-num", str(self.cfg["self_play"]["games_num"]),
+            "--games-num", self.cfg["self_play"]["games_num"],
             "--out-dir1", data_entries_dir,
             "--out-dir2", data_entries_dir,
             "--summary-file", summary_file,
-            "--sim-num", str(self.cfg["mcts"]["sim_num"]),
-            "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
+            "--sim-num", self.cfg["mcts"]["sim_num"],
+            "--explore-factor", self.cfg["mcts"]["explore_factor"],
             "--temperature-policy", self.cfg["self_play"]["temperature_policy_str"],
-            "--prior-noise-alpha", str(self.cfg["mcts"]["prior_noise_alpha"]),
-            "--prior-noise-epsilon", str(self.cfg["mcts"]
-                                         ["prior_noise_epsilon"]),
-            "--threads", str(self.cfg["self_play"]["threads"]),
+            "--prior-noise-alpha", self.cfg["mcts"]["prior_noise_alpha"],
+            "--prior-noise-epsilon", self.cfg["mcts"]["prior_noise_epsilon"],
+            "--threads", self.cfg["self_play"]["threads"],
             "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU",
-            "--cache-size", str(self.cfg["mcts"]["cache_size"])]),
+            "--cache-size", self.cfg["mcts"]["cache_size"]),
             stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
         self.metrics["self_play_duration"] = time.time() - self_play_start_time
 
@@ -230,26 +237,24 @@ class TrainProcess:
                 games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
 
             compare_start_time = time.time()
-            subprocess.run([
+            subprocess.run(prepare_cmd(
                 "cargo", "run", "--profile", profile, "-q", "--bin",
                 self.self_play_exec, "--",
                 "--model1-path", best_model,
                 "--model2-path", latest_model,
-                "--games-num", str(self.cfg["model_compare"]["games_num"]),
+                "--games-num", self.cfg["model_compare"]["games_num"],
                 # take the opportunity to generate more games to main games directory
                 "--out-dir1", data_entries_dir,
                 "--out-dir2", tmp_games_dir,
                 "--summary-file", compare_res_file,
-                "--sim-num", str(self.cfg["mcts"]["sim_num"]),
-                "--explore-factor", str(self.cfg["mcts"]["explore_factor"]),
+                "--sim-num", self.cfg["mcts"]["sim_num"],
+                "--explore-factor", self.cfg["mcts"]["explore_factor"],
                 "--temperature-policy", self.cfg["model_compare"]["temperature_policy_str"],
-                "--prior-noise-alpha", str(self.cfg["mcts"]
-                                           ["prior_noise_alpha"]),
-                "--prior-noise-epsilon", str(self.cfg["mcts"]
-                                             ["prior_noise_epsilon"]),
-                "--threads", str(self.cfg["model_compare"]["threads"]),
-                "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU"],
-                stderr=sys.stderr, stdout=sys.stdout, check=True)
+                "--prior-noise-alpha", self.cfg["mcts"]["prior_noise_alpha"],
+                "--prior-noise-epsilon", self.cfg["mcts"]["prior_noise_epsilon"],
+                "--threads", self.cfg["model_compare"]["threads"],
+                "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU"),
+                stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
             self.metrics["model_compare_duration"] = time.time() - \
                 compare_start_time
 
@@ -287,11 +292,11 @@ class TrainProcess:
     def _compile_selfplay_exe(self):
         logging.info("Building Self-play executable...")
         profile = "dev" if self.cfg["debug"] else "release"
-        subprocess.run([
+        subprocess.run(prepare_cmd(
             "cargo", "build",
             "--profile", profile, "-q",
-            "--bin", self.self_play_exec],
-            stderr=sys.stderr, stdout=sys.stdout, check=True)
+            "--bin", self.self_play_exec),
+            stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
 
     def _write_metrics(self, filename):
         columns = [
