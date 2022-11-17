@@ -86,10 +86,8 @@ def test_hex_convnetv1():
     logging.basicConfig(
         level=logging.DEBUG,
         format='[Hex ConvNetV1 Test]: %(message)s')
-    _test_convnetv1("hex5")
-    _test_convnetv1("hex7")
-    _test_convnetv1("hex9")
-    _test_convnetv1("hex11")
+    for size in [4, 5, 7, 9, 11]:
+        _test_convnetv1(f"hex{size}")
 
 
 def test_chess_convnetv1():

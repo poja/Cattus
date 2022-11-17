@@ -81,10 +81,8 @@ def test_hex_two_headed():
     logging.basicConfig(
         level=logging.DEBUG,
         format='[Hex Simple Two Headed Test]: %(message)s')
-    _test_simple_two_headed("hex5")
-    _test_simple_two_headed("hex7")
-    _test_simple_two_headed("hex9")
-    _test_simple_two_headed("hex11")
+    for size in [4, 5, 7, 9, 11]:
+        _test_simple_two_headed(f"hex{size}")
 
 
 def test_chess_two_headed():
