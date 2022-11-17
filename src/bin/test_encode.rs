@@ -24,6 +24,7 @@ fn main() -> std::io::Result<()> {
     let args = Args::parse();
     let tensor = match args.game.as_str() {
         "tictactoe" => create_tensor_tictactoe(&args),
+        "hex4" => create_tensor_hex::<4>(&args),
         "hex5" => create_tensor_hex::<5>(&args),
         "hex7" => create_tensor_hex::<7>(&args),
         "hex9" => create_tensor_hex::<9>(&args),

@@ -62,6 +62,7 @@ fn run_main<const BOARD_SIZE: usize>(args: Args) {
 fn main() {
     let args = Args::parse();
     match args.board_size {
+        4 => run_main::<4>(args),
         5 => run_main::<5>(args),
         7 => run_main::<7>(args),
         9 => run_main::<9>(args),

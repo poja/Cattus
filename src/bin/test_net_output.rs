@@ -28,6 +28,7 @@ fn main() -> std::io::Result<()> {
 
     let outputs = match args.game.as_str() {
         "tictactoe" => run_net_tictactoe(&args),
+        "hex4" => run_net_hex::<4>(&args),
         "hex5" => run_net_hex::<5>(&args),
         "hex7" => run_net_hex::<7>(&args),
         "hex9" => run_net_hex::<9>(&args),

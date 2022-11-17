@@ -1,7 +1,7 @@
 %YAML 1.2
 ---
 # The game type
-# tictactoe, hex5, hex7, hex9, hex11, chess
+# tictactoe, hex4, hex5, hex7, hex9, hex11, chess
 game: "tictactoe"
 
 # Path to working area where models, games and metrics are saved

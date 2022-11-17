@@ -25,6 +25,7 @@ fn main() -> std::io::Result<()> {
     let args = Args::parse();
     match args.game.as_str() {
         "tictactoe" => test_tictactoe(args),
+        "hex4" => test_hex::<4>(args),
         "hex5" => test_hex::<5>(args),
         "hex7" => test_hex::<7>(args),
         "hex9" => test_hex::<9>(args),
