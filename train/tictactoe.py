@@ -50,25 +50,35 @@ class TicTacToe(TrainableGame):
         l2reg = tf.keras.regularizers.l2(l=cfg["model"]["l2reg"])
 
         inputs = Input(
-             shape=self._get_input_shape(cfg),
+            shape=self._get_input_shape(cfg),
             name="input_planes")
 
         # Shared part
         flow = tf.keras.layers.Flatten()(inputs)
-        flow = Dense(units=9, activation="relu", kernel_regularizer=l2reg)(flow)
-        flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
-        flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
-        flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        flow = Dense(units=9, activation="relu",
+                     kernel_regularizer=l2reg)(flow)
+        flow = Dense(units=27, activation="relu",
+                     kernel_regularizer=l2reg)(flow)
+        flow = Dense(units=27, activation="relu",
+                     kernel_regularizer=l2reg)(flow)
+        flow = Dense(units=27, activation="relu",
+                     kernel_regularizer=l2reg)(flow)
 
         # Flow diverges to "value" side
-        flow_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
-        flow_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow_val)
-        head_val = Dense(units=1, activation="tanh", name="value_head", kernel_regularizer=l2reg)(flow_val)
+        flow_val = Dense(units=27, activation="relu",
+                         kernel_regularizer=l2reg)(flow)
+        flow_val = Dense(units=27, activation="relu",
+                         kernel_regularizer=l2reg)(flow_val)
+        head_val = Dense(units=1, activation="tanh",
+                         name="value_head", kernel_regularizer=l2reg)(flow_val)
 
         # Flow diverges to "probs" side
-        flow_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
-        flow_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow_probs)
-        head_probs = Dense(units=self.MOVE_NUM, name="policy_head", kernel_regularizer=l2reg)(flow_probs)
+        flow_probs = Dense(units=27, activation="relu",
+                           kernel_regularizer=l2reg)(flow)
+        flow_probs = Dense(units=27, activation="relu",
+                           kernel_regularizer=l2reg)(flow_probs)
+        head_probs = Dense(units=self.MOVE_NUM, name="policy_head",
+                           kernel_regularizer=l2reg)(flow_probs)
 
         model = Model(inputs=inputs, outputs=[head_val, head_probs])
 
