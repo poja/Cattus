@@ -130,6 +130,8 @@ class TrainProcess:
             self._write_metrics(metrics_filename)
 
     def _self_play(self, model_path):
+        logging.info("Self playing using model: %s", model_path)
+
         profile = "dev" if self.cfg["debug"] else "release"
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
         summary_file = os.path.join(games_dir, "selfplay_summary.json")
@@ -211,6 +213,11 @@ class TrainProcess:
         return self._save_model(model)
 
     def _compare_models(self, best_model, latest_model):
+        if self.cfg["model_compare"]["games_num"] == 0:
+            logging.debug(
+                "Skipping model comparison, considering latest model as best")
+            return latest_model
+
         logging.info("Comparing latest model to best model...")
         tmp_dirpath = tempfile.mkdtemp()
         try:
@@ -252,6 +259,7 @@ class TrainProcess:
             total_games = w1 + w2 + d
             winning, losing = w2 / total_games, w1 / total_games
             self.metrics["trained_model_win_rate"] = winning
+            logging.debug(f"Trained model winning rate: {winning}")
 
             if winning > self.cfg["model_compare"]["switching_winning_threshold"]:
                 best_model = latest_model
@@ -264,7 +272,6 @@ class TrainProcess:
                 logging.warn(
                     "New model is worse than previous one, losing ratio: %f", losing)
 
-            logging.info("Best model: %s", best_model)
             return best_model
         finally:
             shutil.rmtree(tmp_dirpath)
@@ -303,7 +310,7 @@ class TrainProcess:
             "model_compare_duration",
         ]
 
-        values = [str(self.metrics[metric]) for metric in columns]
+        values = [str(self.metrics.get(metric, "")) for metric in columns]
 
         # write columns
         if not os.path.exists(filename):

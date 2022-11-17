@@ -91,6 +91,7 @@ training:
         - [786432, 0.001]
         - [       0.0001]
 
+# Model comparison used to determine which model will be used to generate training data using self play
 model_compare:
     # Softmax temperature used during model comparison
     # Use 0 for best model performance and better comparison
@@ -99,6 +100,7 @@ model_compare:
 
     # Number of games played to compare two models
     # must be multiple of 2
+    # If zero, no comparison games will be played, and the trained model will always be considered as the new best model
     # suggested value: > 30
     games_num: 20
 
