@@ -19,7 +19,8 @@ def _test_simple_two_headed(game_name):
 
     try:
         with open(CONFIG_FILE, "w") as f:
-            f.write(f"""%YAML 1.2
+            f.write(
+                f"""%YAML 1.2
 ---
 game: "{game_name}"
 working_area: {TMP_DIR}
@@ -55,15 +56,17 @@ model_compare:
 cpu: true
 debug: true
 use_train_data_across_runs: false
-""")
+"""
+            )
 
         logging.info("Running self play and generating new models...")
         python = sys.executable
-        subprocess.check_call(" ".join(
-            [python, "-m", "train.main", "--config", CONFIG_FILE]),
+        subprocess.check_call(
+            " ".join([python, "-m", "train.main", "--config", CONFIG_FILE]),
             env=dict(os.environ, PYTHONPATH=CATTUS_TOP),
             stderr=subprocess.STDOUT,
-            shell=True)
+            shell=True,
+        )
 
     finally:
         if REMOVE_TMP_DIR_ON_FINISH:
@@ -71,24 +74,18 @@ use_train_data_across_runs: false
 
 
 def test_ttt_two_headed():
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='[TTT Simple Two Headed Test]: %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format="[TTT Simple Two Headed Test]: %(message)s")
     _test_simple_two_headed("tictactoe")
 
 
 def test_hex_two_headed():
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='[Hex Simple Two Headed Test]: %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format="[Hex Simple Two Headed Test]: %(message)s")
     for size in [4, 5, 7, 9, 11]:
         _test_simple_two_headed(f"hex{size}")
 
 
 def test_chess_two_headed():
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='[Chess Simple Two Headed Test]: %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format="[Chess Simple Two Headed Test]: %(message)s")
     _test_simple_two_headed("chess")
 
 

@@ -20,7 +20,8 @@ def _test_convnetv1(game_name):
 
     try:
         with open(CONFIG_FILE, "w") as f:
-            f.write(f"""%YAML 1.2
+            f.write(
+                f"""%YAML 1.2
 ---
 game: "{game_name}"
 working_area: {TMP_DIR}
@@ -60,15 +61,17 @@ model_compare:
 cpu: true
 debug: true
 use_train_data_across_runs: false
-""")
+"""
+            )
 
         logging.info("Running self play and generating new models...")
         python = sys.executable
-        subprocess.check_call(" ".join(
-            [python, "-m", "train.main", "--config", CONFIG_FILE]),
+        subprocess.check_call(
+            " ".join([python, "-m", "train.main", "--config", CONFIG_FILE]),
             env=dict(os.environ, PYTHONPATH=CATTUS_TOP),
             stderr=subprocess.STDOUT,
-            shell=True)
+            shell=True,
+        )
 
     finally:
         if REMOVE_TMP_DIR_ON_FINISH:
@@ -76,25 +79,20 @@ use_train_data_across_runs: false
 
 
 def test_ttt_convnetv1():
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='[TTT ConvNetV1 Test]: %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format="[TTT ConvNetV1 Test]: %(message)s")
     _test_convnetv1("tictactoe")
 
 
 def test_hex_convnetv1():
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='[Hex ConvNetV1 Test]: %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format="[Hex ConvNetV1 Test]: %(message)s")
     for size in [4, 5, 7, 9, 11]:
         _test_convnetv1(f"hex{size}")
 
 
 def test_chess_convnetv1():
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='[Chess ConvNetV1 Test]: %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format="[Chess ConvNetV1 Test]: %(message)s")
     _test_convnetv1("chess")
+
 
 if __name__ == "__main__":
     test_ttt_convnetv1()

@@ -16,9 +16,7 @@ PYTHON_MAIN = os.path.join(CATTUS_TOP, "train", "main.py")
 
 
 def test_ttt_training():
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='[TicTactToe Training Test]: %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format="[TicTactToe Training Test]: %(message)s")
 
     if os.path.exists(TMP_DIR):
         shutil.rmtree(TMP_DIR)
@@ -26,7 +24,8 @@ def test_ttt_training():
 
     try:
         with open(CONFIG_FILE, "w") as f:
-            f.write(f"""%YAML 1.2
+            f.write(
+                f"""%YAML 1.2
 ---
 game: "tictactoe"
 working_area: {TMP_DIR}
@@ -63,7 +62,8 @@ model_compare:
 cpu: true
 debug: false
 use_train_data_across_runs: false
-""")
+"""
+            )
 
         logging.info("Running self play and generating new models...")
         subprocess.check_call([
@@ -74,10 +74,10 @@ use_train_data_across_runs: false
 
         logging.info("Checking quality of training...")
         metrics = _get_metrics()
-        assert float(metrics['value_loss']) > 0
-        assert float(metrics['policy_loss']) > 0
-        assert float(metrics['value_accuracy']) > 0.6
-        assert float(metrics['policy_accuracy']) > 0.2
+        assert float(metrics["value_loss"]) > 0
+        assert float(metrics["policy_loss"]) > 0
+        assert float(metrics["value_accuracy"]) > 0.6
+        assert float(metrics["policy_accuracy"]) > 0.2
         logging.info("Training quality is sufficient")
 
     finally:
@@ -86,8 +86,8 @@ use_train_data_across_runs: false
 
 
 def _get_metrics():
-    path = Path(TMP_DIR) / 'metrics' / 'test.csv'
-    with path.open('r') as f:
+    path = Path(TMP_DIR) / "metrics" / "test.csv"
+    with path.open("r") as f:
         lines = f.readlines()
         columns = lines[0].split(",")
         last_metric = lines[-1].split(",")
