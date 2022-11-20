@@ -6,7 +6,6 @@ import keras
 
 
 class TrainableGame(ABC):
-
     def create_model(self, net_type: str, cfg: dict) -> keras.Model:
         pass
 

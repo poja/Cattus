@@ -21,9 +21,7 @@ TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_serialize_encode")
 SERIALIZE_FILE = os.path.join(TMP_DIR, "serialize_res.json")
 ENCODE_FILE = os.path.join(TMP_DIR, "encode_res.json")
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="[Serialize Encode Test]: %(message)s")
+logging.basicConfig(level=logging.DEBUG, format="[Serialize Encode Test]: %(message)s")
 
 
 def test_ttt_serialize_encode():
@@ -37,7 +35,7 @@ def test_ttt_serialize_encode():
             "o___x_o__x",
             "oo__x____x",
             "oo__o__oxx",
-        ]
+        ],
     )
 
 
@@ -81,8 +79,8 @@ def test_hex_serialize_encode():
             "eeeeeeeeree"
             "eeeeeeeeere"
             "eeeeeeeeeer"
-            "r"
-        ]
+            "r",
+        ],
     )
 
 
@@ -96,7 +94,7 @@ def test_chess_serialize_encode():
             "8/1p6/3QR3/6k1/1P2b3/2P3K1/6b1/6r1/ w - - 0 1",
             "4k2r/6r1/8/8/8/8/3R4/R3K3 w Qk - 0 1",
             "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e3 0 1",
-        ]
+        ],
     )
 
 
@@ -126,8 +124,7 @@ def _test_serialize_encode(game_name, game, positions):
             packed_entry = game.load_data_entry(SERIALIZE_FILE)
             nparr_entry = DataParser.unpack_planes(packed_entry, game, cpu)
             bytes_entry = DataParser.serialize(nparr_entry, game)
-            data_parser_tensor = DataParser.bytes_entry_to_tensor(
-                bytes_entry, game, cpu)
+            data_parser_tensor = DataParser.bytes_entry_to_tensor(bytes_entry, game, cpu)
             planes_dpt, _ = data_parser_tensor
 
             with open(ENCODE_FILE, "r") as encode_file:
@@ -137,17 +134,16 @@ def _test_serialize_encode(game_name, game, positions):
             if planes_rust_shape != planes_dpt.shape:
                 print("game", game_name)
                 print("position", position)
-                raise ValueError("planes tensor shape mismatch",
-                                 planes_rust_shape, planes_dpt.shape)
+                raise ValueError("planes tensor shape mismatch", planes_rust_shape, planes_dpt.shape)
 
             planes_dpt = planes_dpt.numpy().flatten()
-            planes_rust = np.array(
-                rust_tensor_data["data"], dtype=np.float32)
+            planes_rust = np.array(rust_tensor_data["data"], dtype=np.float32)
             if (planes_rust != planes_dpt).any():
-
-                raise ValueError(f"Planes tensor mismatch."
-                                 f"(Game: {game_name}, Position: {position}, "
-                                 f"Rust planes: {planes_rust}, Data parser planes: {planes_dpt})")
+                raise ValueError(
+                    f"Planes tensor mismatch."
+                    f"(Game: {game_name}, Position: {position}, "
+                    f"Rust planes: {planes_rust}, Data parser planes: {planes_dpt})"
+                )
         finally:
             if REMOVE_TMP_DIR_ON_FINISH:
                 shutil.rmtree(TMP_DIR)

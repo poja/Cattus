@@ -23,16 +23,13 @@ ASSERT_PYTHON_OUTPUT_EQ_REPEAT = 8
 ASSERT_RUST_OUTPUT_EQ_REPEAT = 8
 
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[Net Output Test]: %(message)s')
+logging.basicConfig(level=logging.DEBUG, format="[Net Output Test]: %(message)s")
 
 
 def is_outputs_equals(o1, o2):
     val1, probs1 = o1
     val2, probs2 = o2
-    return math.isclose(val1, val2, rel_tol=1e-5) and \
-        np.isclose(probs1, probs2, rtol=1e-3, atol=0).all()
+    return math.isclose(val1, val2, rel_tol=1e-5) and np.isclose(probs1, probs2, rtol=1e-3, atol=0).all()
 
 
 def _test_net_output(game_name, game, positions):
@@ -57,13 +54,11 @@ def _test_net_output(game_name, game, positions):
             shape = tuple(tensor_data["shape"])
             tensor = np.array(tensor_data["data"], dtype=np.float32)
             tensor = tensor.reshape(shape)
-            assert shape == (1, game.BOARD_SIZE,
-                             game.BOARD_SIZE, game.PLANES_NUM)
+            assert shape == (1, game.BOARD_SIZE, game.BOARD_SIZE, game.PLANES_NUM)
 
             # Run model from Python and assert all outputs are equal
             py_outputs = [model(tensor) for _ in range(ASSERT_PYTHON_OUTPUT_EQ_REPEAT)]
-            py_outputs = [(val.numpy().item(), probs.numpy())
-                          for (val, probs) in py_outputs]
+            py_outputs = [(val.numpy().item(), probs.numpy()) for (val, probs) in py_outputs]
             py_output = py_outputs[0]
             for out_other in py_outputs:
                 assert is_outputs_equals(py_output, out_other)
@@ -81,8 +76,7 @@ def _test_net_output(game_name, game, positions):
             with open(OUTPUT_FILE, "r") as output_file:
                 output = json.load(output_file)
             rs_outputs = zip(output["vals"], output["probs"])
-            rs_outputs = [(val, np.array(probs))
-                          for (val, probs) in rs_outputs]
+            rs_outputs = [(val, np.array(probs)) for (val, probs) in rs_outputs]
             rs_output = rs_outputs[0]
             for out_other in rs_outputs:
                 assert is_outputs_equals(rs_output, out_other)
@@ -103,10 +97,10 @@ def create_model(game):
             "policy_head_conv_output_channels_num": 1,
             "l2reg": 0.00005,
         },
-        "cpu": True
+        "cpu": True,
     }
     model = game.create_model("ConvNetV1", cfg)
-    model.save(MODEL_PATH, save_format='tf')
+    model.save(MODEL_PATH, save_format="tf")
     return model
 
 
@@ -121,7 +115,7 @@ def test_ttt_net_output():
             "o___x_o__x",
             "oo__x____x",
             "oo__o__oxx",
-        ]
+        ],
     )
 
 
@@ -165,8 +159,8 @@ def test_hex_net_output():
             "eeeeeeeeree"
             "eeeeeeeeere"
             "eeeeeeeeeer"
-            "r"
-        ]
+            "r",
+        ],
     )
 
 
@@ -180,7 +174,7 @@ def test_chess_net_output():
             "8/1p6/3QR3/6k1/1P2b3/2P3K1/6b1/6r1/ w - - 0 1",
             "4k2r/6r1/8/8/8/8/3R4/R3K3 w Qk - 0 1",
             "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e3 0 1",
-        ]
+        ],
     )
 
 
