@@ -2,47 +2,23 @@
 ---
 # The game type
 # tictactoe, hex4, hex5, hex7, hex9, hex11, chess
-game: "tictactoe"
+game: "chess"
+
+# Number of iterations of (self-play, train, compare)
+# suggested value: > 100
+iterations: 100
+
+# Runs on CPU if true, else on GPU
+cpu: true
+
+# Use debug executable if true, else uses release executables
+debug: false
 
 # Path to working area where models, games and metrics are saved
 # {CATTUS_TOP}, {GAME_NUM} can be used
 working_area: "{CATTUS_TOP}/workarea/{GAME_NAME}"
-mcts:
-    # Number of simulation performed at each search
-    # suggested value: 600-1400
-    sim_num: 600
 
-    # Explore vs exploit factor
-    # suggested value: sqrt(2)
-    explore_factor: 1.41421
-
-    # Dirichlet noise added to root level prior edges scores
-    # suggested value: (0.03, 0.25)
-    prior_noise_alpha: 0.03
-    prior_noise_epsilon: 0.25
-
-    # Network output cache size
-    cache_size: 1000000
-
-self_play:
-    # Number of iterations of (self-play, train, compare)
-    # suggested value: > 100
-    iterations: 100
-
-    # Softmax temperature
-    # suggested value: 1.0 for the first 30 moves, 0.0 for the reset of the game
-    temperature_policy:
-        - [30,    1.0]
-        - [       0.0]
-
-    # Number of games played in each self play iteration
-    # must be multiple of 2
-    # suggested value: > 100
-    games_num: 100
-
-    # Number of threads used during self play
-    threads: 8
-
+# Model architecture
 model:
     # Path to the base model for the training process
     # [none] create new model
@@ -69,10 +45,41 @@ model:
     # suggested value: 8-32
     policy_head_conv_output_channels_num: 8
 
-    # L2 regularization factor
-    # suggested value: 10^-4
-    l2reg: 0.00005
+# Monte Carlo Tree Search alg params
+mcts:
+    # Number of simulation performed at each search
+    # suggested value: 600-1400
+    sim_num: 600
 
+    # Explore vs exploit factor
+    # suggested value: sqrt(2)
+    explore_factor: 1.41421
+
+    # Dirichlet noise added to root level prior edges scores
+    # suggested value: (0.03, 0.25)
+    prior_noise_alpha: 0.03
+    prior_noise_epsilon: 0.25
+
+    # Network output cache size
+    cache_size: 1000000
+
+# Self play parameters
+self_play:
+    # Softmax temperature
+    # suggested value: 1.0 for the first 30 moves, 0.0 for the reset of the game
+    temperature_policy:
+        - [30,    1.0]
+        - [       0.0]
+
+    # Number of games played in each self play iteration
+    # must be multiple of 2
+    # suggested value: > 100
+    games_num: 100
+
+    # Number of threads used during self play
+    threads: 8
+
+# Model training parameters
 training:
     # The number of latest entries considered as training data
     # suggested value: (1-16) * iteration_data_entries
@@ -86,10 +93,21 @@ training:
     # suggested value: 64-256
     batch_size: 128
 
+    # Learning rate used to train the model
+    # [iteration_threshold, lr]
+    # suggested value: 10^-2, 10^-3, each for third of the training, 10^-4 until infinity
     learning_rate:
-        - [262144, 0.01]
-        - [786432, 0.001]
-        - [       0.0001]
+        - [8,   0.01]
+        - [24,  0.001]
+        - [     0.0001]
+
+    # L2 regularization factor
+    # suggested value: 10^-4
+    l2reg: 0.00005
+
+    # If true, training data will be reused from multiple runs, always with preference to newer data
+    # Suggested value: true
+    use_train_data_across_runs: true
 
 # Model comparison used to determine which model will be used to generate training data using self play
 model_compare:
@@ -112,13 +130,3 @@ model_compare:
 
     # Number of threads used to during model comparison
     threads: 8
-
-# Runs on CPU if true, else on GPU
-cpu: true
-
-# Use debug executable if true, else uses release executables
-debug: false
-
-# If true, training data will be reused from multiple runs, always with preference to newer data
-# Suggested value: true
-use_train_data_across_runs: true

@@ -117,7 +117,7 @@ def create_convnetv1(
     l2reg,
     cpu,
 ):
-    l2reg = tf.keras.regularizers.l2(l=l2reg)
+    l2reg = tf.keras.regularizers.l2(l=l2reg) if l2reg else None
 
     # single conv block
     flow = conv_block(
