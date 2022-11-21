@@ -162,7 +162,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             };
 
             /* back propagate the position score to the parents */
-            self.backpropagate(path_to_selection, eval)
+            self.backpropagate(path_to_selection, eval);
         }
     }
 

@@ -19,7 +19,7 @@ struct Args {
     sim_num: u32,
     #[clap(long, default_value = "1.41421")]
     explore_factor: f32,
-    #[clap(long, default_value = "1.0")]
+    #[clap(long, default_value = "0.0")]
     temperature_policy: String,
     #[clap(long, default_value = "0.0")]
     prior_noise_alpha: f32,
