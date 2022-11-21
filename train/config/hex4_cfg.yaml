@@ -1,10 +1,10 @@
 %YAML 1.2
 ---
 game: "hex4"
-working_area: "{CATTUS_TOP}/workarea/{GAME_NAME}"
+iterations: 100
 cpu: true
 debug: false
-use_train_data_across_runs: true
+working_area: "{CATTUS_TOP}/workarea/{GAME_NAME}"
 
 model:
     base: "[none]"
@@ -13,7 +13,6 @@ model:
     residual_filter_num: 16
     value_head_conv_output_channels_num: 16
     policy_head_conv_output_channels_num: 16
-    l2reg: 0.0001
 
 mcts:
     sim_num: 1400
@@ -23,7 +22,6 @@ mcts:
     cache_size: 1000000
 
 self_play:
-    iterations: 100
     temperature_policy:
         - [8,     1.0]
         - [       0.0]
@@ -34,11 +32,12 @@ training:
     latest_data_entries: 262144
     iteration_data_entries: 32768
     batch_size: 64
-
     learning_rate:
-        - [1572864, 0.01]
-        - [3145728, 0.001]
-        - [       0.0001]
+        - [48,  0.01]
+        - [96,  0.001]
+        - [     0.0001]
+    l2reg: 0.0001
+    use_train_data_across_runs: true
 
 model_compare:
     temperature_policy:

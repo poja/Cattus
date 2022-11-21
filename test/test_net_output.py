@@ -95,7 +95,6 @@ def create_model(game):
             "residual_block_num": 1,
             "value_head_conv_output_channels_num": 1,
             "policy_head_conv_output_channels_num": 1,
-            "l2reg": 0.00005,
         },
         "cpu": True,
     }

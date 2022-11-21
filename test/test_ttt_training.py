@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from pathlib import Path
@@ -28,7 +27,13 @@ def test_ttt_training():
                 f"""%YAML 1.2
 ---
 game: "tictactoe"
+iterations: 3
+cpu: true
+debug: false
 working_area: {TMP_DIR}
+model:
+    base: "[none]"
+    type: "simple_two_headed"
 mcts:
     sim_num: 1000
     explore_factor: 1.41421
@@ -36,22 +41,19 @@ mcts:
     prior_noise_epsilon: 0.2
     cache_size: 1000
 self_play:
-    iterations: 3
     temperature_policy:
         - [30,    1.0]
         - [       0.0]
     games_num: 200
     threads: 1
-model:
-    base: "[none]"
-    type: "simple_two_headed"
-    l2reg: 0.00005
 training:
     latest_data_entries: 1024
     iteration_data_entries: 128
     batch_size: 4
     learning_rate:
         - [       0.001]
+    l2reg: 0.00005
+    use_train_data_across_runs: false
 model_compare:
     temperature_policy:
         - [       0.0]
@@ -59,9 +61,6 @@ model_compare:
     switching_winning_threshold: 0.55
     warning_losing_threshold: 0.55
     threads: 1
-cpu: true
-debug: false
-use_train_data_across_runs: false
 """
             )
 

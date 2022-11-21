@@ -116,7 +116,7 @@ class TrainProcess:
 
         self._compile_selfplay_exe()
 
-        for iter_num in range(self.cfg["self_play"]["iterations"]):
+        for iter_num in range(self.cfg["iterations"]):
             logging.info(f"Training iteration {iter_num}")
             self.metrics = {}
 
@@ -180,7 +180,7 @@ class TrainProcess:
         logging.debug("Loading games by current model")
         train_data_dir = (
             self.cfg["games_dir"]
-            if self.cfg["use_train_data_across_runs"]
+            if self.cfg["training"]["use_train_data_across_runs"]
             else os.path.join(self.cfg["games_dir"], self.run_id)
         )
         parser = DataParser(self.game, train_data_dir, self.cfg)
@@ -190,7 +190,7 @@ class TrainProcess:
         train_dataset = train_dataset.map(parser.get_after_batch_reshape_func())
         train_dataset = train_dataset.prefetch(4)
 
-        lr = self.lr_scheduler.get_lr(iter_num * self.cfg["training"]["iteration_data_entries"])
+        lr = self.lr_scheduler.get_lr(iter_num)
         logging.debug("Training with learning rate %f", lr)
         keras.backend.set_value(model.optimizer.learning_rate, lr)
 
@@ -326,19 +326,19 @@ class LearningRateScheduler:
         for (idx, elm) in enumerate(cfg[:-1]):
             assert len(elm) == 2
             if idx > 0:
-                # assert the steps thresholds are ordered
+                # assert the iters thresholds are ordered
                 assert elm[0] > cfg[idx - 1][0]
             thresholds.append((elm[0], elm[1]))
         self.thresholds = thresholds
 
-        # last elm, no step threshold
+        # last elm, no iter threshold
         final_lr = cfg[-1]
         assert len(final_lr) == 1
         self.final_lr = final_lr[0]
 
-    def get_lr(self, training_step):
+    def get_lr(self, training_iter):
         for (threshold, lr) in self.thresholds:
-            if training_step < threshold:
+            if training_iter < threshold:
                 return lr
         return self.final_lr
 

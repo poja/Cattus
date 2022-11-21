@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import shutil
@@ -24,19 +23,10 @@ def _test_convnetv1(game_name):
                 f"""%YAML 1.2
 ---
 game: "{game_name}"
+iterations: 2
+cpu: true
+debug: true
 working_area: {TMP_DIR}
-mcts:
-    sim_num: 10
-    explore_factor: 1.41421
-    prior_noise_alpha: 0.0
-    prior_noise_epsilon: 0.2
-    cache_size: 1000
-self_play:
-    iterations: 2
-    temperature_policy:
-        - [       0.0]
-    games_num: 8
-    threads: 1
 model:
     base: "[none]"
     type: "ConvNetV1"
@@ -44,13 +34,25 @@ model:
     residual_filter_num: 2
     value_head_conv_output_channels_num: 4
     policy_head_conv_output_channels_num: 4
-    l2reg: 0.00005
+mcts:
+    sim_num: 10
+    explore_factor: 1.41421
+    prior_noise_alpha: 0.0
+    prior_noise_epsilon: 0.2
+    cache_size: 1000
+self_play:
+    temperature_policy:
+        - [       0.0]
+    games_num: 8
+    threads: 1
 training:
     latest_data_entries: 1024
     iteration_data_entries: 128
     batch_size: 4
     learning_rate:
         - [       0.001]
+    l2reg: 0.00005
+    use_train_data_across_runs: false
 model_compare:
     temperature_policy:
         - [       0.0]
@@ -58,9 +60,6 @@ model_compare:
     switching_winning_threshold: 0.55
     warning_losing_threshold: 0.55
     threads: 1
-cpu: true
-debug: true
-use_train_data_across_runs: false
 """
             )
 

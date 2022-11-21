@@ -1,4 +1,3 @@
-import sys
 import numpy as np
 import tensorflow as tf
 from keras import optimizers, Input
@@ -50,7 +49,8 @@ class Hex(TrainableGame):
         return shape_cpu if cfg["cpu"] else shape_gpu
 
     def _create_model_simple_two_headed(self, cfg):
-        l2reg = tf.keras.regularizers.l2(l=cfg["model"]["l2reg"])
+        l2reg = cfg["model"].get("l2reg", 0)
+        l2reg = tf.keras.regularizers.l2(l=l2reg) if l2reg else None
         inputs = Input(shape=self._get_input_shape(cfg), name="input_planes")
         flow = tf.keras.layers.Flatten()(inputs)
 
@@ -88,7 +88,7 @@ class Hex(TrainableGame):
             value_head_conv_output_channels_num=cfg["model"]["value_head_conv_output_channels_num"],
             policy_head_conv_output_channels_num=cfg["model"]["policy_head_conv_output_channels_num"],
             moves_num=self.MOVE_NUM,
-            l2reg=cfg["model"]["l2reg"],
+            l2reg=cfg["model"].get("l2reg", 0),
             cpu=cfg["cpu"],
         )
         model = Model(inputs=inputs, outputs=outputs)

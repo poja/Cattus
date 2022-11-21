@@ -1,4 +1,3 @@
-import sys
 import numpy as np
 import tensorflow as tf
 from keras import optimizers, Input
@@ -84,7 +83,7 @@ class Chess(TrainableGame):
             value_head_conv_output_channels_num=cfg["model"]["value_head_conv_output_channels_num"],
             policy_head_conv_output_channels_num=cfg["model"]["policy_head_conv_output_channels_num"],
             moves_num=self.MOVE_NUM,
-            l2reg=cfg["model"]["l2reg"],
+            l2reg=cfg["model"].get("l2reg", 0),
             cpu=cfg["cpu"],
         )
         model = Model(inputs=inputs, outputs=outputs)
