@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import numpy as np
 import tensorflow as tf
-import struct
 
 
 # N: number of images in the batch
@@ -44,8 +42,9 @@ def value_head_accuracy(target, output):
     return 1 - tf.abs(target - output) / 2
 
 
-def batch_norm(input, name, scale=False):
-    return tf.keras.layers.BatchNormalization(epsilon=1e-5, axis=1, center=True, scale=scale, name=name)(input)  # ?
+def batch_norm(input, name, cpu, scale=False):
+    axis = 3 if cpu else 1
+    return tf.keras.layers.BatchNormalization(epsilon=1e-5, axis=axis, center=True, scale=scale, name=name)(input)
 
 
 def conv_block(inputs, filter_size, output_channels, name, l2reg, cpu, bn_scale=False):
@@ -63,7 +62,7 @@ def conv_block(inputs, filter_size, output_channels, name, l2reg, cpu, bn_scale=
         name=name + "/conv2d",
     )(inputs)
     # batch normalization
-    flow = batch_norm(flow, name=name + "/bn", scale=bn_scale)
+    flow = batch_norm(flow, name=name + "/bn", cpu=cpu, scale=bn_scale)
     # a rectifier nonlinearity
     return tf.keras.layers.Activation("relu")(flow)
 
@@ -83,7 +82,7 @@ def residual_block(inputs, channels, name, l2reg, cpu):
         name=name + "/1/conv2d",
     )(inputs)
     # batch normalization
-    flow = batch_norm(flow, name + "/1/bn", scale=False)
+    flow = batch_norm(flow, name + "/1/bn", cpu=cpu, scale=False)
     # a rectifier nonlinearity
     flow = tf.keras.layers.Activation("relu")(flow)
 
@@ -99,7 +98,7 @@ def residual_block(inputs, channels, name, l2reg, cpu):
         name=name + "/2/conv2d",
     )(flow)
     # batch normalization
-    flow = batch_norm(flow, name + "/2/bn", scale=True)
+    flow = batch_norm(flow, name + "/2/bn", cpu=cpu, scale=True)
     # ... (squeeze_excitation)
     #  skip connection adding input to the block
     flow = tf.keras.layers.add([inputs, flow])
