@@ -33,23 +33,27 @@ debug: false
 working_area: {TMP_DIR}
 model:
     base: "[none]"
-    type: "simple_two_headed"
+    type: "ConvNetV1"
+    residual_block_num: 5
+    residual_filter_num: 8
+    value_head_conv_output_channels_num: 8
+    policy_head_conv_output_channels_num: 8
 mcts:
-    sim_num: 1000
+    sim_num: 600
     explore_factor: 1.41421
     prior_noise_alpha: 0.0
     prior_noise_epsilon: 0.2
-    cache_size: 1000
+    cache_size: 1000000
 self_play:
     temperature_policy:
-        - [30,    1.0]
-        - [       0.0]
-    games_num: 200
-    threads: 1
+        - [5,   1.0]
+        - [     0.0]
+    games_num: 100
+    threads: 8
 training:
-    latest_data_entries: 1024
-    iteration_data_entries: 128
-    batch_size: 4
+    latest_data_entries: 3000
+    iteration_data_entries: 3000
+    batch_size: 16
     learning_rate:
         - [       0.001]
     l2reg: 0.00005
@@ -57,10 +61,10 @@ training:
 model_compare:
     temperature_policy:
         - [       0.0]
-    games_num: 4
+    games_num: 0
     switching_winning_threshold: 0.55
     warning_losing_threshold: 0.55
-    threads: 1
+    threads: 8
 """
             )
 
@@ -76,7 +80,7 @@ model_compare:
         assert float(metrics["value_loss"]) > 0
         assert float(metrics["policy_loss"]) > 0
         assert float(metrics["value_accuracy"]) > 0.6
-        assert float(metrics["policy_accuracy"]) > 0.2
+        assert float(metrics["policy_accuracy"]) > 0.4
         logging.info("Training quality is sufficient")
 
     finally:
