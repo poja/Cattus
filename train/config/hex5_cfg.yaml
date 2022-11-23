@@ -1,6 +1,6 @@
 %YAML 1.2
 ---
-game: "hex4"
+game: "hex5"
 iterations: 75
 cpu: true
 debug: false
@@ -23,14 +23,14 @@ mcts:
 
 self_play:
     temperature_policy:
-        - [8,     1.0]
+        - [10,     1.0]
         - [       0.0]
     games_num: 100
     threads: 8
 
 training:
-    latest_data_entries: 262144
-    iteration_data_entries: 32768
+    latest_data_entries: 36864
+    iteration_data_entries: 12288
     batch_size: 64
     learning_rate:
         - [25,  0.01]
@@ -42,7 +42,7 @@ training:
 model_compare:
     temperature_policy:
         - [       0.0]
-    games_num: 30
+    games_num: 0
     switching_winning_threshold: 0.55
     warning_losing_threshold: 0.55
     threads: 8
