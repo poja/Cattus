@@ -6,7 +6,7 @@ from keras.models import Model
 import keras
 from construct import Struct, Array, Int64ul, Float32l, Int8sl
 
-from train.trainable_game import TrainableGame
+from train.trainable_game import TrainableGame, DataEntryParseError
 from train import net_utils
 
 
@@ -30,9 +30,10 @@ class Hex(TrainableGame):
     def load_data_entry(self, path):
         with open(path, "rb") as f:
             entry_bytes = f.read()
-        assert len(entry_bytes) == self.ENTRY_FORMAT.sizeof(), "invalid training data file: {} ({} != {})".format(
-            path, len(entry_bytes), self.ENTRY_FORMAT.sizeof()
-        )
+        if len(entry_bytes) != self.ENTRY_FORMAT.sizeof():
+            raise DataEntryParseError(
+                "invalid training data file: {} ({} != {})".format(path, len(entry_bytes), self.ENTRY_FORMAT.sizeof())
+            )
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
         # planes of 128bit are saved as two 64bit values
         planes = np.array(entry.planes, dtype=np.uint64).reshape((self.PLANES_NUM, 2))
