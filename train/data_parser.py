@@ -127,3 +127,11 @@ class DataParser:
 
     def get_after_batch_reshape_func(self):
         return functools.partial(DataParser._after_batch_reshape_func, self)
+
+    def create_train_dataset(self):
+        train_dataset = tf.data.Dataset.from_generator(self.generator, output_types=(tf.string, tf.string, tf.string))
+        train_dataset = train_dataset.map(self.get_parse_func())
+        train_dataset = train_dataset.batch(self.cfg["training"]["batch_size"], drop_remainder=True)
+        train_dataset = train_dataset.map(self.get_after_batch_reshape_func())
+        train_dataset = train_dataset.prefetch(4)
+        return train_dataset

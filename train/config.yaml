@@ -8,6 +8,10 @@ game: "chess"
 # suggested value: > 100
 iterations: 100
 
+# Number of trained models
+# Multiple models will be trained, and the best one will generate the training data
+model_num: 1
+
 # Runs on CPU if true, else on GPU
 cpu: true
 
@@ -108,6 +112,10 @@ training:
     # If true, training data will be reused from multiple runs, always with preference to newer data
     # Suggested value: true
     use_train_data_across_runs: true
+
+    # Number of threads used during training
+    # Capped by the number of models maintained, as model can't be trained in parallel
+    threads: 8
 
 # Model comparison used to determine which model will be used to generate training data using self play
 model_compare:

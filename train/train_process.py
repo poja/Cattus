@@ -1,25 +1,24 @@
-import time
+import copy
 import datetime
+import json
 import logging
+import multiprocessing
 import os
+import random
 import re
+import shutil
 import subprocess
 import sys
-import random
-from pathlib import Path
-import copy
-import json
 import tempfile
-import shutil
-import tensorflow as tf
+import time
+from pathlib import Path
+
 import keras
 
-
-from train.hex import Hex
-from train.tictactoe import TicTacToe
 from train.chess import Chess
 from train.data_parser import DataParser
-
+from train.hex import Hex
+from train.tictactoe import TicTacToe
 
 TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
 CATTUS_TOP = os.path.abspath(os.path.join(TRAIN_DIR, ".."))
@@ -48,17 +47,13 @@ class TrainProcess:
 
         working_area = self.cfg["working_area"]
         working_area = working_area.format(CATTUS_TOP=CATTUS_TOP, GAME_NAME=self.cfg["game"])
-        self.cfg["working_area"] = working_area
         working_area = Path(working_area)
-        if not working_area.exists():
-            os.makedirs(working_area)
-
+        self.cfg["working_area"] = working_area
         self.cfg["games_dir"] = working_area / "games"
-        self.cfg["games_dir"].mkdir(exist_ok=True)
         self.cfg["models_dir"] = working_area / "models"
-        self.cfg["models_dir"].mkdir(exist_ok=True)
         self.cfg["metrics_dir"] = working_area / "metrics"
-        self.cfg["metrics_dir"].mkdir(exist_ok=True)
+        for path in (self.cfg[key] for key in ["working_area", "games_dir", "models_dir", "metrics_dir"]):
+            os.makedirs(path, exist_ok=True)
 
         if self.cfg["game"] == "tictactoe":
             self.game = TicTacToe()
@@ -93,6 +88,7 @@ class TrainProcess:
             self.cfg["model_compare"]["temperature_policy"]
         )
 
+        self.cfg["model_num"] = self.cfg.get("model_num", 1)
         assert self.cfg["model_compare"]["switching_winning_threshold"] >= 0.5
         assert self.cfg["model_compare"]["warning_losing_threshold"] >= 0.5
 
@@ -104,14 +100,18 @@ class TrainProcess:
         self.run_id = run_id
         metrics_filename = os.path.join(self.cfg["metrics_dir"], f"{self.run_id}.csv")
 
-        best_model = self.base_model_path
-        latest_model = self.base_model_path
+        best_model = (self.game.load_model(self.base_model_path, self.net_type), self.base_model_path)
+        latest_models = [best_model]
+        if self.cfg["model_num"] > 1:
+            for _ in range(self.cfg["model_num"] - 1):
+                model = self.game.create_model(self.net_type, self.cfg)
+                latest_models.append((model, self._save_model(model)))
 
         logging.info("Starting training process with config:")
         for line in dictionary_to_str(self.cfg).splitlines():
             logging.info(line)
         logging.info("run ID:\t" + self.run_id)
-        logging.info("base model:\t" + best_model)
+        logging.info("base model:\t" + self.base_model_path)
         logging.info("metrics file:\t" + metrics_filename)
 
         self._compile_selfplay_exe()
@@ -123,16 +123,17 @@ class TrainProcess:
             # Generate training data using the best model
             self._self_play(best_model)
 
-            # Train latest model from training data
-            latest_model = self._train(latest_model, iter_num)
+            # Train latest models from training data
+            latest_models = self._train(latest_models, iter_num)
 
             # Compare latest model to the current best, and switch if better
-            best_model = self._compare_models(best_model, latest_model)
+            best_model = self._compare_models(best_model, latest_models)
 
             # Write iteration metrics
             self._write_metrics(metrics_filename)
 
-    def _self_play(self, model_path):
+    def _self_play(self, best_model):
+        _model, model_path = best_model
         logging.info("Self playing using model: %s", model_path)
 
         profile = "dev" if self.cfg["debug"] else "release"
@@ -174,72 +175,125 @@ class TrainProcess:
             }
         )
 
-    def _train(self, model_path, iter_num):
-        logging.debug("Loading current model")
-        model = self.game.load_model(model_path, self.net_type)
-
-        logging.debug("Loading games by current model")
+    def _train(self, models, iter_num):
         train_data_dir = (
             self.cfg["games_dir"]
             if self.cfg["training"]["use_train_data_across_runs"]
             else os.path.join(self.cfg["games_dir"], self.run_id)
         )
-        parser = DataParser(self.game, train_data_dir, self.cfg)
-        train_dataset = tf.data.Dataset.from_generator(parser.generator, output_types=(tf.string, tf.string, tf.string))
-        train_dataset = train_dataset.map(parser.get_parse_func())
-        train_dataset = train_dataset.batch(self.cfg["training"]["batch_size"], drop_remainder=True)
-        train_dataset = train_dataset.map(parser.get_after_batch_reshape_func())
-        train_dataset = train_dataset.prefetch(4)
 
         lr = self.lr_scheduler.get_lr(iter_num)
-        logging.debug("Training with learning rate %f", lr)
-        keras.backend.set_value(model.optimizer.learning_rate, lr)
+        logging.debug("Training models with learning rate %f", lr)
 
-        logging.info("Fitting new model...")
-        training_start_time = time.time()
-        history = model.fit(train_dataset, epochs=1, verbose=0).history
-        self.metrics.update(
-            {
-                "value_loss": history["value_head_loss"][0],
-                "policy_loss": history["policy_head_loss"][0],
-                "value_accuracy": history["value_head_value_head_accuracy"][0],
-                "policy_accuracy": history["policy_head_policy_head_accuracy"][0],
-                "training_duration": time.time() - training_start_time,
-            }
-        )
+        values_loss = [None] * len(models)
+        policy_loss = [None] * len(models)
+        value_accuracy = [None] * len(models)
+        policy_accuracy = [None] * len(models)
+        training_duration = [None] * len(models)
+        trained_models = [None] * len(models)
 
-        logging.info("Value loss {:.4f}".format(self.metrics["value_loss"]))
-        logging.info("Policy loss {:.4f}".format(self.metrics["policy_loss"]))
-        logging.info("Value accuracy {:.4f}".format(self.metrics["value_accuracy"]))
-        logging.info("Policy accuracy {:.4f}".format(self.metrics["policy_accuracy"]))
+        def train_models(model_list):
+            for (model_idx, (model, _model_path)) in model_list:
+                parser = DataParser(self.game, train_data_dir, self.cfg)
+                train_dataset = parser.create_train_dataset()
 
-        return self._save_model(model)
+                keras.backend.set_value(model.optimizer.learning_rate, lr)
 
-    def _compare_models(self, best_model, latest_model):
+                training_start_time = time.time()
+                history = model.fit(train_dataset, epochs=1, verbose=0).history
+                train_dur = time.time() - training_start_time
+
+                values_loss[model_idx] = history["value_head_loss"][0]
+                policy_loss[model_idx] = history["policy_head_loss"][0]
+                value_accuracy[model_idx] = history["value_head_value_head_accuracy"][0]
+                policy_accuracy[model_idx] = history["policy_head_policy_head_accuracy"][0]
+                training_duration[model_idx] = train_dur
+
+                trained_models[model_idx] = (model, self._save_model(model))
+
+        # Divide the training into jobs
+        models = list(enumerate(models))
+        workers_num = min(self.cfg["training"].get("threads", 1), len(models))
+        jobs = []
+        for idx in range(workers_num):
+            i = idx / workers_num * len(models)
+            j = (idx + 1) / workers_num * len(models)
+            jobs.append(models[int(i) : int(j)])
+
+        # Execute all jobs
+        with multiprocessing.pool.ThreadPool(len(jobs)) as pool:
+            pool.map(train_models, jobs)
+
+        for model_idx in range(len(models)):
+            logging.info(f"Model{model_idx} training metrics:")
+            logging.info("\tValue loss      {:.4f}".format(values_loss[model_idx]))
+            logging.info("\tPolicy loss     {:.4f}".format(policy_loss[model_idx]))
+            logging.info("\tValue accuracy  {:.4f}".format(value_accuracy[model_idx]))
+            logging.info("\tPolicy accuracy {:.4f}".format(policy_accuracy[model_idx]))
+
+            self.metrics.update(
+                {
+                    f"value_loss_{model_idx}": values_loss[model_idx],
+                    f"policy_loss_{model_idx}": policy_loss[model_idx],
+                    f"value_accuracy_{model_idx}": value_accuracy[model_idx],
+                    f"policy_accuracy_{model_idx}": policy_accuracy[model_idx],
+                }
+            )
+        self.metrics["training_duration"] = sum(training_duration)
+
+        return trained_models
+
+    def _compare_models(self, best_model, latest_models):
         if self.cfg["model_compare"]["games_num"] == 0:
+            assert len(latest_models) == 1, "Model comparison can be skipped only when one model is trained"
             logging.debug("Skipping model comparison, considering latest model as best")
-            return latest_model
+            return latest_models[0]
 
-        logging.info("Comparing latest model to best model...")
+        logging.info("Comparing latest models to best model...")
+        for (model_idx, (latest_model, latest_model_path)) in enumerate(latest_models):
+            # Compare the best model to the latest/trained model
+            tmp_dirpath = tempfile.mkdtemp()
+            try:
+                # take the opportunity to generate more games to main games directory
+                games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
+                best_games_dir = os.path.join(games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
+                trained_games_dir = os.path.join(tmp_dirpath, "games")
+
+                compare_start_time = time.time()
+                best_wr, trained_wr = self._compare_model_impl(
+                    best_model[1], latest_model_path, best_games_dir, trained_games_dir
+                )
+                winning, losing = trained_wr, 1 - best_wr
+                self.metrics["model_compare_duration"] = time.time() - compare_start_time
+                self.metrics[f"trained_model_win_rate_{model_idx}"] = winning
+                logging.debug(f"Trained model winning rate: {winning}")
+
+                if winning > self.cfg["model_compare"]["switching_winning_threshold"]:
+                    best_model = (latest_model, latest_model_path)
+                    # In case the new model is the new best model, take the opportunity and use the new games generated
+                    # by the comparison stage as training data in future training steps
+                    for filename in os.listdir(trained_games_dir):
+                        shutil.move(os.path.join(trained_games_dir, filename), best_games_dir)
+                elif len(latest_models) == 1 and losing > self.cfg["model_compare"]["warning_losing_threshold"]:
+                    logging.warn("New model is worse than previous one, losing ratio: %f", losing)
+            finally:
+                shutil.rmtree(tmp_dirpath)
+        return best_model
+
+    def _compare_model_impl(self, model1_path, model2_path, model1_games_dir, model2_games_dir):
         tmp_dirpath = tempfile.mkdtemp()
         try:
             compare_res_file = os.path.join(tmp_dirpath, "compare_result.json")
-            tmp_games_dir = os.path.join(tmp_dirpath, "games")
-
             profile = "dev" if self.cfg["debug"] else "release"
-            games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
-            data_entries_dir = os.path.join(games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
 
-            compare_start_time = time.time()
             subprocess.run(prepare_cmd(
                 "cargo", "run", "--profile", profile, "-q", "--bin",
                 self.self_play_exec, "--",
-                "--model1-path", best_model,
-                "--model2-path", latest_model,
+                "--model1-path", model1_path,
+                "--model2-path", model2_path,
                 "--games-num", self.cfg["model_compare"]["games_num"],
-                # take the opportunity to generate more games to main games directory
-                "--out-dir1", data_entries_dir,
-                "--out-dir2", tmp_games_dir,
+                "--out-dir1", model1_games_dir,
+                "--out-dir2", model2_games_dir,
                 "--summary-file", compare_res_file,
                 "--sim-num", self.cfg["mcts"]["sim_num"],
                 "--explore-factor", self.cfg["mcts"]["explore_factor"],
@@ -249,26 +303,11 @@ class TrainProcess:
                 "--threads", self.cfg["model_compare"]["threads"],
                 "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU"),
                 stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
-            self.metrics["model_compare_duration"] = time.time() - compare_start_time
-
             with open(compare_res_file, "r") as res_file:
                 res = json.load(res_file)
             w1, w2, d = res["player1_wins"], res["player2_wins"], res["draws"]
             total_games = w1 + w2 + d
-            winning, losing = w2 / total_games, w1 / total_games
-            self.metrics["trained_model_win_rate"] = winning
-            logging.debug(f"Trained model winning rate: {winning}")
-
-            if winning > self.cfg["model_compare"]["switching_winning_threshold"]:
-                best_model = latest_model
-                # In case the new model is the new best model, take the opportunity and use the new games generated by
-                # the comparison stage as training data in future training steps
-                for filename in os.listdir(tmp_games_dir):
-                    shutil.move(os.path.join(tmp_games_dir, filename), data_entries_dir)
-            elif losing > self.cfg["model_compare"]["warning_losing_threshold"]:
-                logging.warn("New model is worse than previous one, losing ratio: %f", losing)
-
-            return best_model
+            return w1 / total_games, w2 / total_games
         finally:
             shutil.rmtree(tmp_dirpath)
 
@@ -290,12 +329,9 @@ class TrainProcess:
         )
 
     def _write_metrics(self, filename):
+        per_model_columns = ["value_loss", "policy_loss", "value_accuracy", "policy_accuracy", "trained_model_win_rate"]
+        per_model_columns = [[f"{col}_{m_idx}" for col in per_model_columns] for m_idx in range(self.cfg["model_num"])]
         columns = [
-            "value_loss",
-            "policy_loss",
-            "value_accuracy",
-            "policy_accuracy",
-            "trained_model_win_rate",
             "net_run_duration_average_us",
             "batch_size_average",
             "net_activations_count",
@@ -305,7 +341,7 @@ class TrainProcess:
             "self_play_duration",
             "training_duration",
             "model_compare_duration",
-        ]
+        ] + sum(per_model_columns, [])
 
         values = [str(self.metrics.get(metric, "")) for metric in columns]
 
