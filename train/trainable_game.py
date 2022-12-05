@@ -14,3 +14,8 @@ class TrainableGame(ABC):
 
     def load_data_entry(self, path: str, cfg: dict) -> ():
         pass
+
+
+class DataEntryParseError(ValueError):
+    def __init__(self, message, errors):
+        super().__init__(message)

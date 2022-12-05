@@ -8,6 +8,8 @@ import random
 import functools
 from pathlib import Path
 
+from train.trainable_game import DataEntryParseError
+
 
 class DataParser:
     def __init__(self, game, train_data_dir, cfg):
@@ -37,7 +39,10 @@ class DataParser:
 
     def _read_data_entry_gen(self, filenames_gen):
         for filename in filenames_gen:
-            yield self.game.load_data_entry(filename)
+            try:
+                yield self.game.load_data_entry(filename)
+            except DataEntryParseError:
+                pass
 
     @staticmethod
     def unpack_planes(packed_entry, game, cpu):
