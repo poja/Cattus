@@ -1,0 +1,50 @@
+%YAML 1.2
+---
+game: "tictactoe"
+iterations: 30
+model_num: 4
+cpu: true
+debug: false
+working_area: "{CATTUS_TOP}/workarea/{GAME_NAME}"
+
+model:
+    base: "[none]"
+    type: "ConvNetV1"
+    residual_block_num: 5
+    residual_filter_num: 8
+    value_head_conv_output_channels_num: 8
+    policy_head_conv_output_channels_num: 8
+
+mcts:
+    sim_num: 300
+    explore_factor: 1.41421
+    prior_noise_alpha: 0.03
+    prior_noise_epsilon: 0.25
+    cache_size: 1000000
+
+self_play:
+    temperature_policy:
+        - [3,     1.0]
+        - [       0.0]
+    games_num: 40
+    threads: 8
+
+training:
+    latest_data_entries: 1440
+    iteration_data_entries: 360
+    batch_size: 32
+    learning_rate:
+        - [10,  0.01]
+        - [20,  0.001]
+        - [     0.0001]
+    l2reg: 0.0001
+    use_train_data_across_runs: true
+    threads: 4
+
+model_compare:
+    temperature_policy:
+        - [       0.0]
+    games_num: 30
+    switching_winning_threshold: 0.55
+    warning_losing_threshold: 0.55
+    threads: 8

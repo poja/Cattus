@@ -1,6 +1,5 @@
 .vscode/
 target/
-model/
 old/
 .idea
 __pycache__/

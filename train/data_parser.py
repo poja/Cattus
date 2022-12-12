@@ -8,6 +8,8 @@ import random
 import functools
 from pathlib import Path
 
+from train.trainable_game import DataEntryParseError
+
 
 class DataParser:
     def __init__(self, game, train_data_dir, cfg):
@@ -37,7 +39,10 @@ class DataParser:
 
     def _read_data_entry_gen(self, filenames_gen):
         for filename in filenames_gen:
-            yield self.game.load_data_entry(filename)
+            try:
+                yield self.game.load_data_entry(filename)
+            except DataEntryParseError:
+                pass
 
     @staticmethod
     def unpack_planes(packed_entry, game, cpu):
@@ -122,3 +127,11 @@ class DataParser:
 
     def get_after_batch_reshape_func(self):
         return functools.partial(DataParser._after_batch_reshape_func, self)
+
+    def create_train_dataset(self):
+        train_dataset = tf.data.Dataset.from_generator(self.generator, output_types=(tf.string, tf.string, tf.string))
+        train_dataset = train_dataset.map(self.get_parse_func())
+        train_dataset = train_dataset.batch(self.cfg["training"]["batch_size"], drop_remainder=True)
+        train_dataset = train_dataset.map(self.get_after_batch_reshape_func())
+        train_dataset = train_dataset.prefetch(4)
+        return train_dataset
