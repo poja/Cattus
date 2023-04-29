@@ -33,7 +33,7 @@ fn run_main<const BOARD_SIZE: usize>(args: Args) {
     let mut player1 = HexPlayerCmd {};
 
     let cache = Arc::new(ValueFuncCache::new(args.cache_size));
-    let value_func = Box::new(TwoHeadedNet::<BOARD_SIZE, true>::with_cache(
+    let value_func = Arc::new(TwoHeadedNet::<BOARD_SIZE, true>::with_cache(
         &args.model_path,
         cache,
     ));

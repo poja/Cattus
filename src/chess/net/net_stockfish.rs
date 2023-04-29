@@ -14,15 +14,12 @@ use std::mem::MaybeUninit;
 use crate::chess::chess_game::{ChessGame, ChessPosition};
 use crate::chess::net::net_stockfish_utils::*;
 use crate::game::common::{GamePosition, IGame};
-use crate::game::mcts::{ValFuncDurationCallback, ValueFunction};
+use crate::game::mcts::{NetStatistics, ValueFunction};
 use crate::game::net;
 
 pub struct StockfishNet;
 impl ValueFunction<ChessGame> for StockfishNet {
-    fn evaluate(
-        &mut self,
-        position: &ChessPosition,
-    ) -> (f32, Vec<(<ChessGame as IGame>::Move, f32)>) {
+    fn evaluate(&self, position: &ChessPosition) -> (f32, Vec<(<ChessGame as IGame>::Move, f32)>) {
         let (position, is_flipped) = net::flip_pos_if_needed(*position);
         let board = Board::from_fen(&position.fen()).unwrap();
 
@@ -37,7 +34,10 @@ impl ValueFunction<ChessGame> for StockfishNet {
 
         net::flip_score_if_needed((val, moves_probs), is_flipped)
     }
-    fn set_run_duration_callback(&mut self, _callback: Option<ValFuncDurationCallback>) {}
+
+    fn get_statistics(&self) -> NetStatistics {
+        NetStatistics::empty()
+    }
 }
 
 /* Code copied from pleco github */
