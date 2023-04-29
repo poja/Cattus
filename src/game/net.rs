@@ -1,11 +1,73 @@
 use itertools::Itertools;
-use std::sync::Arc;
-use std::time::Instant;
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
-use crate::game::mcts::ValFuncDurationCallback;
+
+use super::mcts::NetStatistics;
+
+struct BatchData<Game: IGame> {
+    samples: Vec<Vec<Game::Bitboard>>,
+    res: Option<Vec<(f32, Vec<f32>)>>,
+}
+
+/* The batch is currently collecting samples, until it has batch_size of them */
+const BATCH_STATE_COLLECT: u8 = 0;
+/* The batch is currently computed by one of the threads */
+const BATCH_STATE_COMPUTATION: u8 = 1;
+/* The batch computation is done, the results are available to all threads */
+const BATCH_STATE_DONE: u8 = 2;
+
+/* The size of each batch that will be send to the GPU */
+/* On CPU, no batches are needed */
+const GPU_BATCH_SIZE: usize = 16;
+const BATCH_WAIT_UNTIL_FULL_POLL_FREQ_US: u64 = 300;
+const BATCH_WAIT_UNTIL_FULL_TIMEOUT_US: u64 = 3000;
+
+struct Batch<Game: IGame> {
+    data: Mutex<BatchData<Game>>,
+    state: AtomicU8,
+}
+impl<Game: IGame> Batch<Game> {
+    fn new_empty() -> Self {
+        Self {
+            data: Mutex::new(BatchData {
+                samples: vec![],
+                res: None,
+            }),
+            state: AtomicU8::new(BATCH_STATE_COLLECT),
+        }
+    }
+}
+
+struct NextBatchManager<Game: IGame> {
+    next_batch: Arc<Batch<Game>>,
+    batch_idx: usize,
+}
+impl<Game: IGame> NextBatchManager<Game> {
+    fn new_empty() -> Self {
+        Self {
+            next_batch: Arc::new(Batch::new_empty()),
+            batch_idx: 0,
+        }
+    }
+
+    /// Release the current 'next_batch'.
+    /// The thread calling this function has the responsibility to compute the result of the batch.
+    fn advance_batch(&mut self) {
+        self.next_batch = Arc::new(Batch::new_empty());
+        self.batch_idx += 1;
+    }
+}
+
+struct Statistics {
+    activation_count: usize,
+    run_duration_sum: Duration,
+    batch_size_sum: usize,
+}
 
 pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
     bundle: SavedModelBundle,
@@ -13,7 +75,11 @@ pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
     value_head: Operation,
     policy_head: Operation,
     cache: Option<Arc<ValueFuncCache<Game>>>,
-    net_run_duration_callback: Option<ValFuncDurationCallback>,
+
+    next_batch_manager: Mutex<NextBatchManager<Game>>,
+    max_batch_size: usize,
+
+    stats: Mutex<Statistics>,
 }
 
 impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
@@ -52,11 +118,17 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
             value_head,
             policy_head,
             cache,
-            net_run_duration_callback: None,
+            next_batch_manager: Mutex::new(NextBatchManager::new_empty()),
+            max_batch_size: if CPU { 1 } else { GPU_BATCH_SIZE },
+            stats: Mutex::new(Statistics {
+                activation_count: 0,
+                run_duration_sum: Duration::ZERO,
+                batch_size_sum: 0,
+            }),
         }
     }
 
-    pub fn run_net(&self, input: Tensor<f32>) -> (f32, Vec<f32>) {
+    pub fn run_net(&self, input: Tensor<f32>) -> Vec<(f32, Vec<f32>)> {
         let mut args = SessionRunArgs::new();
         args.add_feed(&self.input_op, 0, &input);
         let output_scalar = args.request_fetch(&self.value_head, 1);
@@ -67,26 +139,42 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
             .session
             .run(&mut args)
             .expect("Error occurred during calculations");
-        if let Some(callback) = &self.net_run_duration_callback {
-            callback.call(net_run_begin.elapsed());
-        }
+        let run_duration = net_run_begin.elapsed();
 
-        let mut val: f32 = args.fetch(output_scalar).unwrap()[0];
-        if !val.is_finite() {
-            val = 0.0;
-        }
-
+        let vals: Tensor<f32> = args.fetch(output_scalar).unwrap();
         let moves_scores: Tensor<f32> = args.fetch(output_moves_scores).unwrap();
-        let moves_scores = moves_scores
-            .iter()
-            .map(|s| if s.is_finite() { *s } else { f32::MIN })
+        let batch_size = vals.shape()[0].unwrap() as usize;
+
+        let ret = (0..batch_size)
+            .into_iter()
+            .map(|sample_idx| {
+                let mut val: f32 = vals[sample_idx];
+                if !val.is_finite() {
+                    val = 0.0;
+                }
+
+                let sample_len = moves_scores.len() / batch_size;
+                let sample_scores = moves_scores
+                    [sample_idx * sample_len..((sample_idx + 1) * sample_len)]
+                    .iter()
+                    .map(|s| if s.is_finite() { *s } else { f32::MIN })
+                    .collect_vec();
+
+                (val, sample_scores)
+            })
             .collect_vec();
 
-        (val, moves_scores)
+        // update stats
+        let mut stats = self.stats.lock().unwrap();
+        stats.activation_count += 1;
+        stats.batch_size_sum += batch_size;
+        stats.run_duration_sum += run_duration;
+
+        ret
     }
 
     pub fn evaluate(
-        &mut self,
+        &self,
         position: &Game::Position,
         to_planes: impl Fn(&Game::Position) -> Vec<Game::Bitboard>,
     ) -> (f32, Vec<(Game::Move, f32)>) {
@@ -106,18 +194,120 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         pos: &Game::Position,
         to_planes: &impl Fn(&Game::Position) -> Vec<Game::Bitboard>,
     ) -> (f32, Vec<(Game::Move, f32)>) {
-        let planes = to_planes(pos);
-        let input = planes_to_tensor::<Game, CPU>(planes);
-        let (val, move_scores) = self.run_net(input);
+        /* Add a new sample to the current batch */
+        let batch;
+        let batch_idx;
+        let sample_idx;
+        let mut run_net = {
+            let mut next_batch_manager = self.next_batch_manager.lock().unwrap();
+            batch = Arc::clone(&(next_batch_manager.next_batch));
+            batch_idx = next_batch_manager.batch_idx;
+            let batch_is_full = {
+                let mut batch_data = batch.data.lock().unwrap();
+                assert!(batch_data.samples.len() < self.max_batch_size);
+                sample_idx = batch_data.samples.len();
+                batch_data.samples.push(to_planes(pos));
+                batch_data.samples.len() >= self.max_batch_size
+            };
+            if batch_is_full {
+                let cmp_res = batch.state.compare_exchange(
+                    BATCH_STATE_COLLECT,
+                    BATCH_STATE_COMPUTATION,
+                    Ordering::SeqCst,
+                    /* doesn't matter */ Ordering::Relaxed,
+                );
+                assert!(cmp_res.is_ok());
 
+                next_batch_manager.advance_batch();
+
+                debug_assert!({
+                    let next_batch_data = next_batch_manager.next_batch.data.lock().unwrap();
+                    next_batch_data.samples.len() == 0
+                });
+                debug_assert!({
+                    let batch_data = batch.data.lock().unwrap();
+                    batch_data.samples.len() == self.max_batch_size
+                });
+            }
+            batch_is_full
+        };
+
+        /*
+         * If the batch was not full, we wait until another thread will fill it and run the network on
+         * the whole batch. If too much time pass, we compute it ourselves.
+         */
+        let sample_res;
+        let wait_start_time = Instant::now();
+        let mut maybe_compute_ourselves = true;
+        loop {
+            if run_net {
+                /* The batch is either full or we waited too much. Run the network on batch */
+                let mut batch_data = batch.data.lock().unwrap();
+                assert!(batch_data.res.is_none());
+                let res = self.run_net(planes_to_tensor::<Game, CPU>(&batch_data.samples));
+                sample_res = res[sample_idx].clone();
+                batch_data.res = Some(res);
+
+                let cmp_res = batch.state.compare_exchange(
+                    BATCH_STATE_COMPUTATION,
+                    BATCH_STATE_DONE,
+                    Ordering::SeqCst,
+                    /* doesn't matter */ Ordering::Relaxed,
+                );
+                assert!(cmp_res.is_ok());
+                break;
+            }
+
+            /* wait a little bit */
+            std::thread::sleep(Duration::from_micros(BATCH_WAIT_UNTIL_FULL_POLL_FREQ_US));
+            {
+                /* check if another thread computed the result */
+                if batch.state.load(Ordering::SeqCst) == BATCH_STATE_DONE {
+                    let batch_data = batch.data.lock().unwrap();
+                    let samples_result = batch_data.res.as_ref().unwrap();
+                    sample_res = samples_result[sample_idx].clone();
+                    break;
+                }
+            }
+
+            if maybe_compute_ourselves
+                && wait_start_time.elapsed()
+                    >= Duration::from_micros(BATCH_WAIT_UNTIL_FULL_TIMEOUT_US)
+            {
+                /* Too much time passed. We compute the result ourselves */
+                let mut next_batch_manager = self.next_batch_manager.lock().unwrap();
+                if batch_idx == next_batch_manager.batch_idx {
+                    /* Our batch is the 'next_batch', meaning no other thread started computing the result */
+                    /* create a new empty batch as next_batch and prepare to run the network ourselves */
+                    let cmp_res = batch.state.compare_exchange(
+                        BATCH_STATE_COLLECT,
+                        BATCH_STATE_COMPUTATION,
+                        Ordering::SeqCst,
+                        /* doesn't matter */ Ordering::Relaxed,
+                    );
+                    assert!(cmp_res.is_ok());
+                    next_batch_manager.advance_batch();
+                    run_net = true;
+                } else {
+                    /* Our batch is not the 'next_batch', meaning other thread is going to compute the result */
+                    maybe_compute_ourselves = false;
+                }
+            }
+        }
+
+        let (val, move_scores) = sample_res;
         let moves = pos.get_legal_moves();
         let moves_probs = calc_moves_probs::<Game>(moves, &move_scores);
-
         (val, moves_probs)
     }
 
-    pub fn set_net_run_duration_callback(&mut self, callback: Option<ValFuncDurationCallback>) {
-        self.net_run_duration_callback = callback;
+    pub fn get_statistics(&self) -> NetStatistics {
+        let stats = self.stats.lock().unwrap();
+        NetStatistics {
+            activation_count: Some(stats.activation_count),
+            run_duration_average: Some(stats.run_duration_sum / stats.activation_count as u32),
+            batch_size_average: Some(stats.batch_size_sum as f32 / stats.activation_count as f32),
+        }
     }
 }
 
@@ -142,42 +332,48 @@ pub fn calc_moves_probs<Game: IGame>(
     moves.into_iter().zip(probs.into_iter()).collect_vec()
 }
 
-pub fn planes_to_tensor<Game: IGame, const CPU: bool>(planes: Vec<Game::Bitboard>) -> Tensor<f32> {
-    let planes_num = planes.len();
-
-    let mut encoded_position = vec![0.0; planes_num * Game::BOARD_SIZE * Game::BOARD_SIZE];
-    for (plane_idx, plane) in planes.into_iter().enumerate() {
-        for square in 0..(Game::BOARD_SIZE * Game::BOARD_SIZE) {
-            let idx = if CPU {
-                square * planes_num + plane_idx
-            } else {
-                plane_idx * Game::BOARD_SIZE * Game::BOARD_SIZE + square
-            };
-            encoded_position[idx] = match plane.get(square) {
-                true => 1.0,
-                false => 0.0,
-            };
-        }
-    }
-
+pub fn planes_to_tensor<Game: IGame, const CPU: bool>(
+    samples: &Vec<Vec<Game::Bitboard>>,
+) -> Tensor<f32> {
+    let batch_size = samples.len() as u64;
+    let planes_num = samples[0].len() as u64;
     let dims = if CPU {
         [
-            1,
+            batch_size,
             Game::BOARD_SIZE as u64,
             Game::BOARD_SIZE as u64,
-            planes_num as u64,
+            planes_num,
         ]
     } else {
         [
-            1,
-            planes_num as u64,
+            batch_size,
+            planes_num,
             Game::BOARD_SIZE as u64,
             Game::BOARD_SIZE as u64,
         ]
     };
-    Tensor::new(&dims)
-        .with_values(&encoded_position)
-        .expect("Can't create input tensor")
+    let mut tensor = Tensor::new(&dims);
+
+    for (sample_idx, sample) in samples.into_iter().enumerate() {
+        for (plane_idx, plane) in sample.into_iter().enumerate() {
+            for r in 0..(Game::BOARD_SIZE as u64) {
+                for c in 0..(Game::BOARD_SIZE as u64) {
+                    let indices = if CPU {
+                        [sample_idx as u64, r, c, plane_idx as u64]
+                    } else {
+                        [sample_idx as u64, plane_idx as u64, r, c]
+                    };
+                    let val = match plane.get((r as usize) * Game::BOARD_SIZE + c as usize) {
+                        true => 1.0,
+                        false => 0.0,
+                    };
+                    tensor.set(&indices, val);
+                }
+            }
+        }
+    }
+
+    tensor
 }
 
 pub fn flip_pos_if_needed<Position: GamePosition>(pos: Position) -> (Position, bool) {

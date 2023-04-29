@@ -167,6 +167,7 @@ class TrainProcess:
             {
                 "net_activations_count": summary["net_activations_count"],
                 "net_run_duration_average_us": summary["net_run_duration_average_us"],
+                "batch_size_average": summary["batch_size_average"],
                 "search_count": summary["search_count"],
                 "search_duration_average_ms": summary["search_duration_average_ms"],
                 "cache_hit_ratio": summary["cache_hit_ratio"],
@@ -296,6 +297,7 @@ class TrainProcess:
             "policy_accuracy",
             "trained_model_win_rate",
             "net_run_duration_average_us",
+            "batch_size_average",
             "net_activations_count",
             "search_duration_average_ms",
             "search_count",

@@ -6,6 +6,7 @@ use rand::prelude::*;
 use rand_distr::Dirichlet;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame, PlayerRand};
@@ -50,7 +51,7 @@ impl<Move: GameMove> MCTSEdge<Move> {
     }
 }
 
-pub type MctsSearchDurationCallback = Box<dyn Callback<Duration>>;
+pub type MctsSearchDurationCallback = Box<dyn Callback<Duration> + Sync + Send>;
 
 pub struct MCTSPlayer<Game: IGame> {
     search_tree: DiGraph<MCTSNode<Game::Position>, MCTSEdge<Game::Move>>,
@@ -61,13 +62,13 @@ pub struct MCTSPlayer<Game: IGame> {
     temperature: f32,
     prior_noise_alpha: f32,
     prior_noise_epsilon: f32,
-    value_func: Box<dyn ValueFunction<Game>>,
+    value_func: Arc<dyn ValueFunction<Game>>,
 
     search_duration_callback: Option<MctsSearchDurationCallback>,
 }
 
 impl<Game: IGame> MCTSPlayer<Game> {
-    pub fn new(sim_num: u32, value_func: Box<dyn ValueFunction<Game>>) -> Self {
+    pub fn new(sim_num: u32, value_func: Arc<dyn ValueFunction<Game>>) -> Self {
         Self::new_custom(sim_num, std::f32::consts::SQRT_2, 0.0, 0.0, value_func)
     }
 
@@ -76,7 +77,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         explore_factor: f32,
         prior_noise_alpha: f32,
         prior_noise_epsilon: f32,
-        value_func: Box<dyn ValueFunction<Game>>,
+        value_func: Arc<dyn ValueFunction<Game>>,
     ) -> Self {
         assert!(sim_num > 0);
         assert!(explore_factor >= 0.0);
@@ -462,9 +463,22 @@ impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
     }
 }
 
-pub type ValFuncDurationCallback = MctsSearchDurationCallback;
+pub struct NetStatistics {
+    pub activation_count: Option<usize>,
+    pub run_duration_average: Option<Duration>,
+    pub batch_size_average: Option<f32>,
+}
+impl NetStatistics {
+    pub fn empty() -> Self {
+        Self {
+            activation_count: None,
+            run_duration_average: None,
+            batch_size_average: None,
+        }
+    }
+}
 
-pub trait ValueFunction<Game: IGame> {
+pub trait ValueFunction<Game: IGame>: Sync + Send {
     /// Evaluate a position
     ///
     /// position - The position to evaluate
@@ -472,13 +486,14 @@ pub trait ValueFunction<Game: IGame> {
     /// Returns a tuple of a scalar value score of the position and per-move scores/probabilities.
     /// The scalar is the current position value in range [-1,1]. 1 if player1 is winning and -1 if player2 is winning
     /// The per-move probabilities should have a sum of 1, greater value is a better move
-    fn evaluate(&mut self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>);
-    fn set_run_duration_callback(&mut self, callback: Option<ValFuncDurationCallback>);
+    fn evaluate(&self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>);
+
+    fn get_statistics(&self) -> NetStatistics;
 }
 
 pub struct ValueFunctionRand;
 impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
-    fn evaluate(&mut self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>) {
+    fn evaluate(&self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>) {
         let winner = if position.is_over() {
             position.get_winner()
         } else {
@@ -509,5 +524,8 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
 
         (val, moves_probs)
     }
-    fn set_run_duration_callback(&mut self, _callback: Option<ValFuncDurationCallback>) {}
+
+    fn get_statistics(&self) -> NetStatistics {
+        NetStatistics::empty()
+    }
 }
