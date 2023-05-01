@@ -611,6 +611,7 @@ impl<'a, 'b> EvaluationInner<'a> {
                     }
                 }
             } else if piece == PieceType::Q {
+                #[allow(invalid_value)]
                 let mut pinners: BitBoard = unsafe { MaybeUninit::uninit().assume_init() };
                 let pieces = self.board.piece_two_bb(PieceType::B, PieceType::R, them);
                 self.board.slider_blockers(pieces, s, &mut pinners);
