@@ -51,7 +51,7 @@ class TrainProcess:
         self.cfg["working_area"] = working_area
         working_area = Path(working_area)
         if not working_area.exists():
-            os.mkdir(working_area)
+            os.makedirs(working_area)
 
         self.cfg["games_dir"] = working_area / "games"
         self.cfg["games_dir"].mkdir(exist_ok=True)
