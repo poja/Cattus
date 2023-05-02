@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use cattus::chess::chess_game::ChessGame;
 use cattus::chess::cmd_player::ChessPlayerCmd;
 use cattus::chess::net::net_trivial::TrivialNet;
@@ -14,7 +16,7 @@ fn color_to_str(c: Option<GameColor>) -> String {
 
 fn main() {
     let mut player1 = ChessPlayerCmd {};
-    let value_func = Box::new(TrivialNet {});
+    let value_func = Arc::new(TrivialNet {});
     let mut player2 = MCTSPlayer::new(10000, value_func);
     let mut game = ChessGame::new();
 

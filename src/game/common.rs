@@ -85,7 +85,7 @@ pub trait GamePlayer<Game: IGame> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move>;
 }
 
-pub trait GameBitboard {
+pub trait GameBitboard: Clone + Copy {
     type Game: IGame<Bitboard = Self>;
 
     fn new() -> Self;

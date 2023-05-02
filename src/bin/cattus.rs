@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use clap::Parser;
 use cattus::chess::chess_game::ChessGame;
 use cattus::chess::net::net_stockfish::StockfishNet;
@@ -17,7 +19,7 @@ struct PlayerBuilder {
 }
 impl Builder<MCTSPlayer<ChessGame>> for PlayerBuilder {
     fn build(&self) -> MCTSPlayer<ChessGame> {
-        let value_func = Box::new(StockfishNet {});
+        let value_func = Arc::new(StockfishNet {});
         MCTSPlayer::new(self.sim_num, value_func)
     }
 }

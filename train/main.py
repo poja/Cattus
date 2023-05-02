@@ -27,5 +27,12 @@ if __name__ == "__main__":
     with open(args.config, "r") as config_file:
         config = yaml.safe_load(config_file)
 
+    if True or not config["cpu"]:
+        # To prevent "Could not create cudnn handle: CUDNN_STATUS_NOT_INITIALIZED"
+        import tensorflow as tf
+        gpus = tf.config.list_physical_devices('GPU')
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+
     tp = TrainProcess(config)
     tp.run_training_loop(run_id=args.run_id)

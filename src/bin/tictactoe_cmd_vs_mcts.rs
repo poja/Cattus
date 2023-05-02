@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use clap::Parser;
 use cattus::game::common::{GamePosition, IGame};
 use cattus::game::mcts::MCTSPlayer;
@@ -17,7 +19,7 @@ fn main() {
 
     let args = Args::parse();
 
-    let value_func = Box::new(TwoHeadedNet::<CPU>::new(&args.model_path));
+    let value_func = Arc::new(TwoHeadedNet::<CPU>::new(&args.model_path));
     let mut player1 = MCTSPlayer::new(1000, value_func);
 
     let mut player2 = TttPlayerCmd {};

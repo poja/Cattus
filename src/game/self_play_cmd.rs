@@ -1,4 +1,5 @@
 use clap::Parser;
+use itertools::Itertools;
 use std::fs;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -47,20 +48,10 @@ struct SelfPlayArgs {
 
 #[derive(Copy, Clone)]
 struct MetricsData {
-    pub net_run_count: u32,
-    pub net_run_duration: Duration,
     pub search_count: u32,
     pub search_duration: Duration,
 }
 impl MetricsData {
-    fn get_net_run_duration_average(&self) -> Duration {
-        if self.net_run_count > 0 {
-            self.net_run_duration / self.net_run_count
-        } else {
-            Duration::ZERO
-        }
-    }
-
     fn get_search_duration_average(&self) -> Duration {
         if self.search_count > 0 {
             self.search_duration / self.search_count
@@ -77,18 +68,10 @@ impl Metrics {
     fn new() -> Self {
         Self {
             data: Mutex::new(MetricsData {
-                net_run_count: 0,
-                net_run_duration: Duration::ZERO,
                 search_count: 0,
                 search_duration: Duration::ZERO,
             }),
         }
-    }
-
-    fn add_net_run_duration(&self, duration: Duration) {
-        let mut data = self.data.lock().unwrap();
-        data.net_run_count += 1;
-        data.net_run_duration += duration;
     }
 
     fn add_search_duration(&self, duration: Duration) {
@@ -99,15 +82,6 @@ impl Metrics {
 
     fn get_raw_data(&self) -> MetricsData {
         *self.data.lock().unwrap().deref()
-    }
-}
-
-struct NetRunDurationCallback {
-    metrics: Arc<Metrics>,
-}
-impl Callback<Duration> for NetRunDurationCallback {
-    fn call(&self, duration: Duration) {
-        self.metrics.add_net_run_duration(duration)
     }
 }
 
@@ -130,60 +104,43 @@ pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
 }
 
 struct PlayerBuilder<Game: IGame> {
-    network_builder: Arc<dyn INNetworkBuilder<Game>>,
-    model_path: String,
+    network: Arc<dyn ValueFunction<Game>>,
     sim_num: u32,
     explore_factor: f32,
     prior_noise_alpha: f32,
     prior_noise_epsilon: f32,
-    pub cache: Arc<ValueFuncCache<Game>>,
     metrics: Arc<Metrics>,
-    cpu: bool,
 }
 
 impl<Game: IGame> PlayerBuilder<Game> {
     #[allow(clippy::too_many_arguments)]
     fn new(
-        network_builder: Arc<dyn INNetworkBuilder<Game>>,
-        model_path: String,
+        network: Arc<dyn ValueFunction<Game>>,
         sim_num: u32,
         explore_factor: f32,
         prior_noise_alpha: f32,
         prior_noise_epsilon: f32,
-        cache_size: usize,
         metrics: Arc<Metrics>,
-        cpu: bool,
     ) -> Self {
         Self {
-            network_builder,
-            model_path,
+            network,
             sim_num,
             explore_factor,
             prior_noise_alpha,
             prior_noise_epsilon,
-            cache: Arc::new(ValueFuncCache::new(cache_size)),
             metrics,
-            cpu,
         }
     }
 }
 
 impl<Game: IGame> Builder<MCTSPlayer<Game>> for PlayerBuilder<Game> {
     fn build(&self) -> MCTSPlayer<Game> {
-        let mut value_func: Box<dyn ValueFunction<Game>> =
-            self.network_builder
-                .build_net(&self.model_path, Arc::clone(&self.cache), self.cpu);
-
-        value_func.set_run_duration_callback(Some(Box::new(NetRunDurationCallback {
-            metrics: Arc::clone(&self.metrics),
-        })));
-
         let mut player = MCTSPlayer::new_custom(
             self.sim_num,
             self.explore_factor,
             self.prior_noise_alpha,
             self.prior_noise_epsilon,
-            value_func,
+            Arc::clone(&self.network),
         );
 
         player.set_search_duration_callback(Some(Box::new(SearchDurationCallback {
@@ -194,12 +151,43 @@ impl<Game: IGame> Builder<MCTSPlayer<Game>> for PlayerBuilder<Game> {
     }
 }
 
+struct CacheBuilder<Game: IGame> {
+    max_size: usize,
+    caches: Vec<Arc<ValueFuncCache<Game>>>,
+}
+impl<Game: IGame> CacheBuilder<Game> {
+    fn new(max_size: usize) -> Self {
+        Self {
+            max_size,
+            caches: vec![],
+        }
+    }
+    fn build_cache(&mut self) -> Arc<ValueFuncCache<Game>> {
+        let cache = Arc::new(ValueFuncCache::new(self.max_size));
+        self.caches.push(Arc::clone(&cache));
+        return cache;
+    }
+
+    fn get_hits_counter(&self) -> usize {
+        self.caches
+            .iter()
+            .map(|cache| cache.get_hits_counter())
+            .sum()
+    }
+
+    fn get_misses_counter(&self) -> usize {
+        self.caches
+            .iter()
+            .map(|cache| cache.get_misses_counter())
+            .sum()
+    }
+}
+
 pub fn run_main<Game: IGame + 'static>(
     network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {
     let args = SelfPlayArgs::parse();
-    let network_builder = Arc::from(network_builder);
 
     let cpu = match args.processing_unit.to_uppercase().as_str() {
         "CPU" => true,
@@ -207,34 +195,37 @@ pub fn run_main<Game: IGame + 'static>(
         unknown_pu => panic!("unknown processing unit '{unknown_pu}'"),
     };
     let metrics = Arc::new(Metrics::new());
+    let mut cache_builder = CacheBuilder::new(args.cache_size);
+    let mut nets = vec![];
 
-    let player1_builder = PlayerBuilder::new(
-        Arc::clone(&network_builder),
-        args.model1_path.clone(),
+    let player1_net =
+        Arc::from(network_builder.build_net(&args.model1_path, cache_builder.build_cache(), cpu));
+    nets.push(Arc::clone(&player1_net));
+    let player1_builder = Arc::new(PlayerBuilder::new(
+        player1_net,
         args.sim_num,
         args.explore_factor,
         args.prior_noise_alpha,
         args.prior_noise_epsilon,
-        args.cache_size,
         Arc::clone(&metrics),
-        cpu,
-    );
-    let player1_cache = Arc::clone(&player1_builder.cache);
-    let player1_builder = Arc::new(player1_builder);
+    ));
 
     let player2_builder = if args.model1_path == args.model2_path {
         Arc::clone(&player1_builder)
     } else {
+        let player2_net = Arc::from(network_builder.build_net(
+            &args.model2_path,
+            cache_builder.build_cache(),
+            cpu,
+        ));
+        nets.push(Arc::clone(&player2_net));
         Arc::new(PlayerBuilder::new(
-            Arc::clone(&network_builder),
-            args.model2_path,
+            player2_net,
             args.sim_num,
             args.explore_factor,
             args.prior_noise_alpha,
             args.prior_noise_epsilon,
-            args.cache_size,
             Arc::clone(&metrics),
-            cpu,
         ))
     };
 
@@ -248,8 +239,28 @@ pub fn run_main<Game: IGame + 'static>(
     .generate_data(args.games_num as usize, &args.out_dir1, &args.out_dir2)?;
 
     if args.summary_file != "_NONE_" {
-        let cache_hits = player1_cache.get_hits_counter();
-        let cache_uses = cache_hits + player1_cache.get_misses_counter();
+        let cache_hits = cache_builder.get_hits_counter();
+        let cache_uses = cache_hits + cache_builder.get_misses_counter();
+
+        let nets_stats = nets.iter().map(|net| net.get_statistics()).collect_vec();
+        let net_activation_count: usize = nets_stats
+            .iter()
+            .map(|net_stats| net_stats.activation_count.unwrap())
+            .sum();
+        let net_run_duration_average: Duration = nets_stats
+            .iter()
+            .map(|net_stats| {
+                net_stats.run_duration_average.unwrap() * net_stats.activation_count.unwrap() as u32
+            })
+            .sum::<Duration>()
+            / net_activation_count as u32;
+        let batch_size_average: f32 = nets_stats
+            .iter()
+            .map(|net_stats| {
+                net_stats.batch_size_average.unwrap() * net_stats.activation_count.unwrap() as f32
+            })
+            .sum::<f32>()
+            / net_activation_count as f32;
 
         let metrics = metrics.get_raw_data();
 
@@ -259,8 +270,9 @@ pub fn run_main<Game: IGame + 'static>(
                 player1_wins: result.w1,
                 player2_wins: result.w2,
                 draws: result.d,
-            net_activations_count: metrics.net_run_count,
-                net_run_duration_average_us: metrics.get_net_run_duration_average().as_micros() as u64,
+                net_activations_count: net_activation_count,
+                net_run_duration_average_us: net_run_duration_average.as_micros() as u64,
+                batch_size_average: batch_size_average,
                 search_count: metrics.search_count,
                 search_duration_average_ms: metrics.get_search_duration_average().as_millis() as u64,
                 cache_hit_ratio: cache_hits as f32 / cache_uses as f32,

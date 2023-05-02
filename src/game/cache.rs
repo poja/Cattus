@@ -77,10 +77,10 @@ impl<Game: IGame> ValueFuncCache<Game> {
     }
 
     pub fn get_hits_counter(&self) -> usize {
-        self.hits.load(Ordering::Relaxed)
+        self.hits.load(Ordering::SeqCst)
     }
 
     pub fn get_misses_counter(&self) -> usize {
-        self.misses.load(Ordering::Relaxed)
+        self.misses.load(Ordering::SeqCst)
     }
 }

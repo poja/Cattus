@@ -1,6 +1,6 @@
 use crate::chess::chess_game::{ChessGame, ChessPosition};
 use crate::game::common::{GamePosition, IGame};
-use crate::game::mcts::{ValueFunction, ValFuncDurationCallback};
+use crate::game::mcts::{ValueFunction, NetStatistics};
 use crate::game::net;
 use once_cell::sync::Lazy;
 
@@ -10,7 +10,7 @@ pub struct TrivialNet {}
 
 impl ValueFunction<ChessGame> for TrivialNet {
     fn evaluate(
-        &mut self,
+        &self,
         position: &ChessPosition,
     ) -> (f32, Vec<(<ChessGame as IGame>::Move, f32)>) {
         let (position, is_flipped) = net::flip_pos_if_needed(*position);
@@ -63,7 +63,10 @@ impl ValueFunction<ChessGame> for TrivialNet {
 
         net::flip_score_if_needed((val, moves_probs), is_flipped)
     }
-    fn set_run_duration_callback(&mut self, _callback: Option<ValFuncDurationCallback>) {}
+
+    fn get_statistics(&self) -> NetStatistics {
+        NetStatistics::empty()
+    }
 }
 
 fn dot_product(
