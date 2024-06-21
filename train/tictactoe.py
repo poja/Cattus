@@ -1,13 +1,13 @@
+import keras
 import numpy as np
 import tensorflow as tf
-from keras import optimizers, Input
+from construct import Array, Float32l, Int8sl, Int64ul, Struct
+from keras import Input, optimizers
 from keras.layers import Dense
 from keras.models import Model
-import keras
-from construct import Struct, Array, Int64ul, Float32l, Int8sl
 
-from train.trainable_game import TrainableGame, DataEntryParseError
 from train import net_utils
+from train.trainable_game import DataEntryParseError, TrainableGame
 
 
 class TtoNetType:
@@ -31,7 +31,9 @@ class TicTacToe(TrainableGame):
             entry_bytes = f.read()
         if len(entry_bytes) != self.ENTRY_FORMAT.sizeof():
             raise DataEntryParseError(
-                "invalid training data file: {} ({} != {})".format(path, len(entry_bytes), self.ENTRY_FORMAT.sizeof())
+                "invalid training data file: {} ({} != {})".format(
+                    path, len(entry_bytes), self.ENTRY_FORMAT.sizeof()
+                )
             )
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
         planes = np.array(entry.planes, dtype=np.uint64)
@@ -62,13 +64,21 @@ class TicTacToe(TrainableGame):
 
         # Flow diverges to "value" side
         flow_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
-        flow_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow_val)
-        head_val = Dense(units=1, activation="tanh", name="value_head", kernel_regularizer=l2reg)(flow_val)
+        flow_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(
+            flow_val
+        )
+        head_val = Dense(
+            units=1, activation="tanh", name="value_head", kernel_regularizer=l2reg
+        )(flow_val)
 
         # Flow diverges to "probs" side
         flow_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
-        flow_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow_probs)
-        head_probs = Dense(units=self.MOVE_NUM, name="policy_head", kernel_regularizer=l2reg)(flow_probs)
+        flow_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(
+            flow_probs
+        )
+        head_probs = Dense(
+            units=self.MOVE_NUM, name="policy_head", kernel_regularizer=l2reg
+        )(flow_probs)
 
         model = Model(inputs=inputs, outputs=[head_val, head_probs])
 
@@ -76,8 +86,14 @@ class TicTacToe(TrainableGame):
         opt = optimizers.Adam(learning_rate=0.001)
         model.compile(
             optimizer=opt,
-            loss={"value_head": tf.keras.losses.MeanSquaredError(), "policy_head": net_utils.loss_cross_entropy},
-            metrics={"value_head": net_utils.value_head_accuracy, "policy_head": net_utils.policy_head_accuracy},
+            loss={
+                "value_head": tf.keras.losses.MeanSquaredError(),
+                "policy_head": net_utils.loss_cross_entropy,
+            },
+            metrics={
+                "value_head": net_utils.value_head_accuracy,
+                "policy_head": net_utils.policy_head_accuracy,
+            },
         )
         return model
 
@@ -87,8 +103,12 @@ class TicTacToe(TrainableGame):
             inputs,
             residual_block_num=cfg["model"]["residual_block_num"],
             residual_filter_num=cfg["model"]["residual_filter_num"],
-            value_head_conv_output_channels_num=cfg["model"]["value_head_conv_output_channels_num"],
-            policy_head_conv_output_channels_num=cfg["model"]["policy_head_conv_output_channels_num"],
+            value_head_conv_output_channels_num=cfg["model"][
+                "value_head_conv_output_channels_num"
+            ],
+            policy_head_conv_output_channels_num=cfg["model"][
+                "policy_head_conv_output_channels_num"
+            ],
             moves_num=self.MOVE_NUM,
             l2reg=cfg["model"].get("l2reg", 0),
             cpu=cfg["cpu"],
@@ -99,8 +119,14 @@ class TicTacToe(TrainableGame):
         opt = optimizers.Adam(learning_rate=0.001)
         model.compile(
             optimizer=opt,
-            loss={"value_head": tf.keras.losses.MeanSquaredError(), "policy_head": net_utils.loss_cross_entropy},
-            metrics={"value_head": net_utils.value_head_accuracy, "policy_head": net_utils.policy_head_accuracy},
+            loss={
+                "value_head": tf.keras.losses.MeanSquaredError(),
+                "policy_head": net_utils.loss_cross_entropy,
+            },
+            metrics={
+                "value_head": net_utils.value_head_accuracy,
+                "policy_head": net_utils.policy_head_accuracy,
+            },
         )
         return model
 

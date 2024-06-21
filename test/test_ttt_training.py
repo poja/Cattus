@@ -1,9 +1,8 @@
 import logging
 import os
-from pathlib import Path
 import shutil
 import subprocess
-
+from pathlib import Path
 
 REMOVE_TMP_DIR_ON_FINISH = True
 
@@ -15,7 +14,9 @@ PYTHON_MAIN = os.path.join(CATTUS_TOP, "train", "main.py")
 
 
 def test_ttt_training():
-    logging.basicConfig(level=logging.DEBUG, format="[TicTactToe Training Test]: %(message)s")
+    logging.basicConfig(
+        level=logging.DEBUG, format="[TicTactToe Training Test]: %(message)s"
+    )
 
     if os.path.exists(TMP_DIR):
         shutil.rmtree(TMP_DIR)
@@ -69,11 +70,10 @@ model_compare:
             )
 
         logging.info("Running self play and generating new models...")
-        subprocess.check_call([
-            "python", PYTHON_MAIN,
-            "--config", CONFIG_FILE,
-            "--run-id", "test"],
-            stderr=subprocess.STDOUT)
+        subprocess.check_call(
+            ["python", PYTHON_MAIN, "--config", CONFIG_FILE, "--run-id", "test"],
+            stderr=subprocess.STDOUT,
+        )
 
         logging.info("Checking quality of training...")
         metrics = _get_metrics()

@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-
 import tensorflow as tf
-
 
 # N: number of images in the batch
 # H: height of the image
@@ -22,7 +19,9 @@ def mask_illegal_moves(target, output):
 
 def loss_cross_entropy(target, output):
     target, output = mask_illegal_moves(target, output)
-    policy_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(target), logits=output)
+    policy_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
+        labels=tf.stop_gradient(target), logits=output
+    )
     return tf.reduce_mean(input_tensor=policy_cross_entropy)
 
 
@@ -33,7 +32,10 @@ def loss_const_0(target, output):
 def policy_head_accuracy(target, output):
     target, output = mask_illegal_moves(target, output)
     return tf.reduce_mean(
-        tf.cast(tf.equal(tf.argmax(input=target, axis=1), tf.argmax(input=output, axis=1)), tf.float32)
+        tf.cast(
+            tf.equal(tf.argmax(input=target, axis=1), tf.argmax(input=output, axis=1)),
+            tf.float32,
+        )
     )
 
 
@@ -44,7 +46,9 @@ def value_head_accuracy(target, output):
 
 def batch_norm(input, name, cpu, scale=False):
     axis = 3 if cpu else 1
-    return tf.keras.layers.BatchNormalization(epsilon=1e-5, axis=axis, center=True, scale=scale, name=name)(input)
+    return tf.keras.layers.BatchNormalization(
+        epsilon=1e-5, axis=axis, center=True, scale=scale, name=name
+    )(input)
 
 
 def conv_block(inputs, filter_size, output_channels, name, l2reg, cpu, bn_scale=False):
@@ -132,23 +136,47 @@ def create_convnetv1(
 
     # multiple residual blocks
     for block_idx in range(residual_block_num):
-        flow = residual_block(flow, residual_filter_num, name="residual_{}".format(block_idx + 1), l2reg=l2reg, cpu=cpu)
+        flow = residual_block(
+            flow,
+            residual_filter_num,
+            name="residual_{}".format(block_idx + 1),
+            l2reg=l2reg,
+            cpu=cpu,
+        )
 
     # Value head
     flow_val = conv_block(
-        flow, filter_size=1, output_channels=value_head_conv_output_channels_num, name="value", l2reg=l2reg, cpu=cpu
+        flow,
+        filter_size=1,
+        output_channels=value_head_conv_output_channels_num,
+        name="value",
+        l2reg=l2reg,
+        cpu=cpu,
     )
     flow_val = tf.keras.layers.Flatten()(flow_val)
     flow_val = tf.keras.layers.Dense(
-        128, kernel_initializer="glorot_normal", kernel_regularizer=l2reg, activation="relu", name="value/dense1"
+        128,
+        kernel_initializer="glorot_normal",
+        kernel_regularizer=l2reg,
+        activation="relu",
+        name="value/dense1",
     )(flow_val)
     head_val = tf.keras.layers.Dense(
-        1, kernel_initializer="glorot_normal", kernel_regularizer=l2reg, activation="tanh", name="value_head"
+        1,
+        kernel_initializer="glorot_normal",
+        kernel_regularizer=l2reg,
+        activation="tanh",
+        name="value_head",
     )(flow_val)
 
     # Policy head
     flow_pol = conv_block(
-        flow, filter_size=1, output_channels=policy_head_conv_output_channels_num, name="policy", l2reg=l2reg, cpu=cpu
+        flow,
+        filter_size=1,
+        output_channels=policy_head_conv_output_channels_num,
+        name="policy",
+        l2reg=l2reg,
+        cpu=cpu,
     )
     flow_pol = tf.keras.layers.Flatten()(flow_pol)
     head_pol = tf.keras.layers.Dense(
