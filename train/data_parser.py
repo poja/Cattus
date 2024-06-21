@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
-
+import functools
 import os
+import random
+import struct
+from pathlib import Path
+
 import numpy as np
 import tensorflow as tf
-import struct
-import random
-import functools
-from pathlib import Path
 
 from train.trainable_game import DataEntryParseError
 
@@ -17,7 +16,10 @@ class DataParser:
         self.train_data_dir = train_data_dir
         self.cfg = cfg
 
-        assert self.cfg["training"]["latest_data_entries"] >= self.cfg["training"]["iteration_data_entries"]
+        assert (
+            self.cfg["training"]["latest_data_entries"]
+            >= self.cfg["training"]["iteration_data_entries"]
+        )
 
     def _data_entries_filenames_gen(self):
         filenames = [str(p) for p in Path(self.train_data_dir).rglob("*.traindata")]
@@ -50,7 +52,10 @@ class DataParser:
         assert len(planes) == game.PLANES_NUM
         plane_size = game.BOARD_SIZE * game.BOARD_SIZE
         planes = [np.frombuffer(plane, dtype=np.uint8) for plane in planes]
-        planes = [np.unpackbits(plane, count=plane_size, bitorder="little") for plane in planes]
+        planes = [
+            np.unpackbits(plane, count=plane_size, bitorder="little")
+            for plane in planes
+        ]
         planes = np.array(planes, dtype=np.float32)
         planes = np.reshape(planes, (game.PLANES_NUM, game.BOARD_SIZE, game.BOARD_SIZE))
         if cpu:
@@ -113,7 +118,9 @@ class DataParser:
         return planes, (winner, probs)
 
     def _parse_func(self, planes, probs, winner):
-        return DataParser.bytes_entry_to_tensor((planes, probs, winner), self.game, self.cfg["cpu"])
+        return DataParser.bytes_entry_to_tensor(
+            (planes, probs, winner), self.game, self.cfg["cpu"]
+        )
 
     def get_parse_func(self):
         return functools.partial(DataParser._parse_func, self)
@@ -129,9 +136,13 @@ class DataParser:
         return functools.partial(DataParser._after_batch_reshape_func, self)
 
     def create_train_dataset(self):
-        train_dataset = tf.data.Dataset.from_generator(self.generator, output_types=(tf.string, tf.string, tf.string))
+        train_dataset = tf.data.Dataset.from_generator(
+            self.generator, output_types=(tf.string, tf.string, tf.string)
+        )
         train_dataset = train_dataset.map(self.get_parse_func())
-        train_dataset = train_dataset.batch(self.cfg["training"]["batch_size"], drop_remainder=True)
+        train_dataset = train_dataset.batch(
+            self.cfg["training"]["batch_size"], drop_remainder=True
+        )
         train_dataset = train_dataset.map(self.get_after_batch_reshape_func())
         train_dataset = train_dataset.prefetch(4)
         return train_dataset

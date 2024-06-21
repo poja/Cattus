@@ -74,18 +74,24 @@ model_compare:
 
 
 def test_ttt_two_headed():
-    logging.basicConfig(level=logging.DEBUG, format="[TTT Simple Two Headed Test]: %(message)s")
+    logging.basicConfig(
+        level=logging.DEBUG, format="[TTT Simple Two Headed Test]: %(message)s"
+    )
     _test_simple_two_headed("tictactoe")
 
 
 def test_hex_two_headed():
-    logging.basicConfig(level=logging.DEBUG, format="[Hex Simple Two Headed Test]: %(message)s")
+    logging.basicConfig(
+        level=logging.DEBUG, format="[Hex Simple Two Headed Test]: %(message)s"
+    )
     for size in [4, 5, 7, 9, 11]:
         _test_simple_two_headed(f"hex{size}")
 
 
 def test_chess_two_headed():
-    logging.basicConfig(level=logging.DEBUG, format="[Chess Simple Two Headed Test]: %(message)s")
+    logging.basicConfig(
+        level=logging.DEBUG, format="[Chess Simple Two Headed Test]: %(message)s"
+    )
     _test_simple_two_headed("chess")
 
 

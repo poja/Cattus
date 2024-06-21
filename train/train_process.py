@@ -46,13 +46,18 @@ class TrainProcess:
         self.cfg = copy.deepcopy(cfg)
 
         working_area = self.cfg["working_area"]
-        working_area = working_area.format(CATTUS_TOP=CATTUS_TOP, GAME_NAME=self.cfg["game"])
+        working_area = working_area.format(
+            CATTUS_TOP=CATTUS_TOP, GAME_NAME=self.cfg["game"]
+        )
         working_area = Path(working_area)
         self.cfg["working_area"] = working_area
         self.cfg["games_dir"] = working_area / "games"
         self.cfg["models_dir"] = working_area / "models"
         self.cfg["metrics_dir"] = working_area / "metrics"
-        for path in (self.cfg[key] for key in ["working_area", "games_dir", "models_dir", "metrics_dir"]):
+        for path in (
+            self.cfg[key]
+            for key in ["working_area", "games_dir", "models_dir", "metrics_dir"]
+        ):
             os.makedirs(path, exist_ok=True)
 
         if self.cfg["game"] == "tictactoe":
@@ -71,13 +76,18 @@ class TrainProcess:
         if base_model_path == "[none]":
             model = self.game.create_model(self.net_type, self.cfg)
             assert model.get_layer("value_head").output_shape == (None, 1)
-            assert model.get_layer("policy_head").output_shape == (None, self.game.MOVE_NUM)
+            assert model.get_layer("policy_head").output_shape == (
+                None,
+                self.game.MOVE_NUM,
+            )
             base_model_path = self._save_model(model)
         elif base_model_path == "[latest]":
             logging.warning("Choosing latest model based on directory name format")
             all_models = list(self.cfg["models_dir"].iterdir())
             if len(all_models) == 0:
-                raise ValueError("Model [latest] was requested, but no existing models were found.")
+                raise ValueError(
+                    "Model [latest] was requested, but no existing models were found."
+                )
             base_model_path = sorted(all_models)[-1]
         self.base_model_path = str(base_model_path)
 
@@ -100,7 +110,10 @@ class TrainProcess:
         self.run_id = run_id
         metrics_filename = os.path.join(self.cfg["metrics_dir"], f"{self.run_id}.csv")
 
-        best_model = (self.game.load_model(self.base_model_path, self.net_type), self.base_model_path)
+        best_model = (
+            self.game.load_model(self.base_model_path, self.net_type),
+            self.base_model_path,
+        )
         latest_models = [best_model]
         if self.cfg["model_num"] > 1:
             for _ in range(self.cfg["model_num"] - 1):
@@ -139,27 +152,55 @@ class TrainProcess:
         profile = "dev" if self.cfg["debug"] else "release"
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
         summary_file = os.path.join(games_dir, "selfplay_summary.json")
-        data_entries_dir = os.path.join(games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
+        data_entries_dir = os.path.join(
+            games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+        )
 
         self_play_start_time = time.time()
-        subprocess.run(prepare_cmd(
-            "cargo", "run", "--profile", profile, "-q", "--bin",
-            self.self_play_exec, "--",
-            "--model1-path", model_path,
-            "--model2-path", model_path,
-            "--games-num", self.cfg["self_play"]["games_num"],
-            "--out-dir1", data_entries_dir,
-            "--out-dir2", data_entries_dir,
-            "--summary-file", summary_file,
-            "--sim-num", self.cfg["mcts"]["sim_num"],
-            "--explore-factor", self.cfg["mcts"]["explore_factor"],
-            "--temperature-policy", self.cfg["self_play"]["temperature_policy_str"],
-            "--prior-noise-alpha", self.cfg["mcts"]["prior_noise_alpha"],
-            "--prior-noise-epsilon", self.cfg["mcts"]["prior_noise_epsilon"],
-            "--threads", self.cfg["self_play"]["threads"],
-            "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU",
-            "--cache-size", self.cfg["mcts"]["cache_size"]),
-            stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
+        subprocess.run(
+            prepare_cmd(
+                "cargo",
+                "run",
+                "--profile",
+                profile,
+                "-q",
+                "--bin",
+                self.self_play_exec,
+                "--",
+                "--model1-path",
+                model_path,
+                "--model2-path",
+                model_path,
+                "--games-num",
+                self.cfg["self_play"]["games_num"],
+                "--out-dir1",
+                data_entries_dir,
+                "--out-dir2",
+                data_entries_dir,
+                "--summary-file",
+                summary_file,
+                "--sim-num",
+                self.cfg["mcts"]["sim_num"],
+                "--explore-factor",
+                self.cfg["mcts"]["explore_factor"],
+                "--temperature-policy",
+                self.cfg["self_play"]["temperature_policy_str"],
+                "--prior-noise-alpha",
+                self.cfg["mcts"]["prior_noise_alpha"],
+                "--prior-noise-epsilon",
+                self.cfg["mcts"]["prior_noise_epsilon"],
+                "--threads",
+                self.cfg["self_play"]["threads"],
+                "--processing-unit",
+                "CPU" if self.cfg["cpu"] else "GPU",
+                "--cache-size",
+                self.cfg["mcts"]["cache_size"],
+            ),
+            stderr=sys.stderr,
+            stdout=sys.stdout,
+            shell=True,
+            check=True,
+        )
         self.metrics["self_play_duration"] = time.time() - self_play_start_time
 
         with open(summary_file, "r") as f:
@@ -193,7 +234,7 @@ class TrainProcess:
         trained_models = [None] * len(models)
 
         def train_models(model_list):
-            for (model_idx, (model, _model_path)) in model_list:
+            for model_idx, (model, _model_path) in model_list:
                 parser = DataParser(self.game, train_data_dir, self.cfg)
                 train_dataset = parser.create_train_dataset()
 
@@ -206,7 +247,9 @@ class TrainProcess:
                 values_loss[model_idx] = history["value_head_loss"][0]
                 policy_loss[model_idx] = history["policy_head_loss"][0]
                 value_accuracy[model_idx] = history["value_head_value_head_accuracy"][0]
-                policy_accuracy[model_idx] = history["policy_head_policy_head_accuracy"][0]
+                policy_accuracy[model_idx] = history[
+                    "policy_head_policy_head_accuracy"
+                ][0]
                 training_duration[model_idx] = train_dur
 
                 trained_models[model_idx] = (model, self._save_model(model))
@@ -245,18 +288,22 @@ class TrainProcess:
 
     def _compare_models(self, best_model, latest_models):
         if self.cfg["model_compare"]["games_num"] == 0:
-            assert len(latest_models) == 1, "Model comparison can be skipped only when one model is trained"
+            assert (
+                len(latest_models) == 1
+            ), "Model comparison can be skipped only when one model is trained"
             logging.debug("Skipping model comparison, considering latest model as best")
             return latest_models[0]
 
         logging.info("Comparing latest models to best model...")
-        for (model_idx, (latest_model, latest_model_path)) in enumerate(latest_models):
+        for model_idx, (latest_model, latest_model_path) in enumerate(latest_models):
             # Compare the best model to the latest/trained model
             tmp_dirpath = tempfile.mkdtemp()
             try:
                 # take the opportunity to generate more games to main games directory
                 games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
-                best_games_dir = os.path.join(games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
+                best_games_dir = os.path.join(
+                    games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+                )
                 trained_games_dir = os.path.join(tmp_dirpath, "games")
 
                 compare_start_time = time.time()
@@ -264,7 +311,9 @@ class TrainProcess:
                     best_model[1], latest_model_path, best_games_dir, trained_games_dir
                 )
                 winning, losing = trained_wr, 1 - best_wr
-                self.metrics["model_compare_duration"] = time.time() - compare_start_time
+                self.metrics["model_compare_duration"] = (
+                    time.time() - compare_start_time
+                )
                 self.metrics[f"trained_model_win_rate_{model_idx}"] = winning
                 logging.debug(f"Trained model winning rate: {winning}")
 
@@ -273,36 +322,70 @@ class TrainProcess:
                     # In case the new model is the new best model, take the opportunity and use the new games generated
                     # by the comparison stage as training data in future training steps
                     for filename in os.listdir(trained_games_dir):
-                        shutil.move(os.path.join(trained_games_dir, filename), best_games_dir)
-                elif len(latest_models) == 1 and losing > self.cfg["model_compare"]["warning_losing_threshold"]:
-                    logging.warn("New model is worse than previous one, losing ratio: %f", losing)
+                        shutil.move(
+                            os.path.join(trained_games_dir, filename), best_games_dir
+                        )
+                elif (
+                    len(latest_models) == 1
+                    and losing > self.cfg["model_compare"]["warning_losing_threshold"]
+                ):
+                    logging.warn(
+                        "New model is worse than previous one, losing ratio: %f", losing
+                    )
             finally:
                 shutil.rmtree(tmp_dirpath)
         return best_model
 
-    def _compare_model_impl(self, model1_path, model2_path, model1_games_dir, model2_games_dir):
+    def _compare_model_impl(
+        self, model1_path, model2_path, model1_games_dir, model2_games_dir
+    ):
         tmp_dirpath = tempfile.mkdtemp()
         try:
             compare_res_file = os.path.join(tmp_dirpath, "compare_result.json")
             profile = "dev" if self.cfg["debug"] else "release"
 
-            subprocess.run(prepare_cmd(
-                "cargo", "run", "--profile", profile, "-q", "--bin",
-                self.self_play_exec, "--",
-                "--model1-path", model1_path,
-                "--model2-path", model2_path,
-                "--games-num", self.cfg["model_compare"]["games_num"],
-                "--out-dir1", model1_games_dir,
-                "--out-dir2", model2_games_dir,
-                "--summary-file", compare_res_file,
-                "--sim-num", self.cfg["mcts"]["sim_num"],
-                "--explore-factor", self.cfg["mcts"]["explore_factor"],
-                "--temperature-policy", self.cfg["model_compare"]["temperature_policy_str"],
-                "--prior-noise-alpha", self.cfg["mcts"]["prior_noise_alpha"],
-                "--prior-noise-epsilon", self.cfg["mcts"]["prior_noise_epsilon"],
-                "--threads", self.cfg["model_compare"]["threads"],
-                "--processing-unit", "CPU" if self.cfg["cpu"] else "GPU"),
-                stderr=sys.stderr, stdout=sys.stdout, shell=True, check=True)
+            subprocess.run(
+                prepare_cmd(
+                    "cargo",
+                    "run",
+                    "--profile",
+                    profile,
+                    "-q",
+                    "--bin",
+                    self.self_play_exec,
+                    "--",
+                    "--model1-path",
+                    model1_path,
+                    "--model2-path",
+                    model2_path,
+                    "--games-num",
+                    self.cfg["model_compare"]["games_num"],
+                    "--out-dir1",
+                    model1_games_dir,
+                    "--out-dir2",
+                    model2_games_dir,
+                    "--summary-file",
+                    compare_res_file,
+                    "--sim-num",
+                    self.cfg["mcts"]["sim_num"],
+                    "--explore-factor",
+                    self.cfg["mcts"]["explore_factor"],
+                    "--temperature-policy",
+                    self.cfg["model_compare"]["temperature_policy_str"],
+                    "--prior-noise-alpha",
+                    self.cfg["mcts"]["prior_noise_alpha"],
+                    "--prior-noise-epsilon",
+                    self.cfg["mcts"]["prior_noise_epsilon"],
+                    "--threads",
+                    self.cfg["model_compare"]["threads"],
+                    "--processing-unit",
+                    "CPU" if self.cfg["cpu"] else "GPU",
+                ),
+                stderr=sys.stderr,
+                stdout=sys.stdout,
+                shell=True,
+                check=True,
+            )
             with open(compare_res_file, "r") as res_file:
                 res = json.load(res_file)
             w1, w2, d = res["player1_wins"], res["player2_wins"], res["draws"]
@@ -312,7 +395,9 @@ class TrainProcess:
             shutil.rmtree(tmp_dirpath)
 
     def _save_model(self, model):
-        model_time = datetime.datetime.now().strftime("%y%m%d_%H%M%S") + "_{0:04x}".format(random.randint(0, 1 << 16))
+        model_time = datetime.datetime.now().strftime(
+            "%y%m%d_%H%M%S"
+        ) + "_{0:04x}".format(random.randint(0, 1 << 16))
         model_path = os.path.join(self.cfg["models_dir"], f"model_{model_time}")
         model.save(model_path, save_format="tf")
         return model_path
@@ -321,7 +406,15 @@ class TrainProcess:
         logging.info("Building Self-play executable...")
         profile = "dev" if self.cfg["debug"] else "release"
         subprocess.run(
-            prepare_cmd("cargo", "build", "--profile", profile, "-q", "--bin", self.self_play_exec),
+            prepare_cmd(
+                "cargo",
+                "build",
+                "--profile",
+                profile,
+                "-q",
+                "--bin",
+                self.self_play_exec,
+            ),
             stderr=sys.stderr,
             stdout=sys.stdout,
             shell=True,
@@ -329,8 +422,17 @@ class TrainProcess:
         )
 
     def _write_metrics(self, filename):
-        per_model_columns = ["value_loss", "policy_loss", "value_accuracy", "policy_accuracy", "trained_model_win_rate"]
-        per_model_columns = [[f"{col}_{m_idx}" for col in per_model_columns] for m_idx in range(self.cfg["model_num"])]
+        per_model_columns = [
+            "value_loss",
+            "policy_loss",
+            "value_accuracy",
+            "policy_accuracy",
+            "trained_model_win_rate",
+        ]
+        per_model_columns = [
+            [f"{col}_{m_idx}" for col in per_model_columns]
+            for m_idx in range(self.cfg["model_num"])
+        ]
         columns = [
             "net_run_duration_average_us",
             "batch_size_average",
@@ -361,7 +463,7 @@ class LearningRateScheduler:
         assert len(cfg) > 0
 
         thresholds = []
-        for (idx, elm) in enumerate(cfg[:-1]):
+        for idx, elm in enumerate(cfg[:-1]):
             assert len(elm) == 2
             if idx > 0:
                 # assert the iters thresholds are ordered
@@ -375,7 +477,7 @@ class LearningRateScheduler:
         self.final_lr = final_lr[0]
 
     def get_lr(self, training_iter):
-        for (threshold, lr) in self.thresholds:
+        for threshold, lr in self.thresholds:
             if training_iter < threshold:
                 return lr
         return self.final_lr
@@ -385,7 +487,7 @@ def temperature_policy_to_str(temperature_policy):
     assert len(temperature_policy) > 0
 
     thresholds = []
-    for (idx, elm) in enumerate(temperature_policy[:-1]):
+    for idx, elm in enumerate(temperature_policy[:-1]):
         assert len(elm) == 2
         if idx > 0:
             # assert the steps thresholds are ordered

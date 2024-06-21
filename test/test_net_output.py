@@ -30,7 +30,10 @@ logging.basicConfig(level=logging.DEBUG, format="[Net Output Test]: %(message)s"
 def is_outputs_equals(o1, o2):
     val1, probs1 = o1
     val2, probs2 = o2
-    return math.isclose(val1, val2, rel_tol=1e-5, abs_tol=1e-6) and np.isclose(probs1, probs2, rtol=1e-3, atol=1e-6).all()
+    return (
+        math.isclose(val1, val2, rel_tol=1e-5, abs_tol=1e-6)
+        and np.isclose(probs1, probs2, rtol=1e-3, atol=1e-6).all()
+    )
 
 
 def _test_net_output(game_name, game, positions):
@@ -43,13 +46,27 @@ def _test_net_output(game_name, game, positions):
             model = create_model(game)
 
             # Encode position into tensor for Python model activation
-            subprocess.run([
-                "cargo", "run", "--profile", "dev", "-q", "--bin",
-                "test_encode", "--",
-                "--game", game_name,
-                "--position", position,
-                "--outfile", ENCODE_FILE],
-                stderr=sys.stderr, stdout=sys.stdout, check=True)
+            subprocess.run(
+                [
+                    "cargo",
+                    "run",
+                    "--profile",
+                    "dev",
+                    "-q",
+                    "--bin",
+                    "test_encode",
+                    "--",
+                    "--game",
+                    game_name,
+                    "--position",
+                    position,
+                    "--outfile",
+                    ENCODE_FILE,
+                ],
+                stderr=sys.stderr,
+                stdout=sys.stdout,
+                check=True,
+            )
             with open(ENCODE_FILE, "r") as encode_file:
                 tensor_data = json.load(encode_file)
             shape = tuple(tensor_data["shape"])
@@ -59,21 +76,39 @@ def _test_net_output(game_name, game, positions):
 
             # Run model from Python and assert all outputs are equal
             py_outputs = [model(tensor) for _ in range(ASSERT_PYTHON_OUTPUT_EQ_REPEAT)]
-            py_outputs = [(val.numpy().item(), probs.numpy()) for (val, probs) in py_outputs]
+            py_outputs = [
+                (val.numpy().item(), probs.numpy()) for (val, probs) in py_outputs
+            ]
             py_output = py_outputs[0]
             for out_other in py_outputs:
                 assert is_outputs_equals(py_output, out_other)
 
             # Run model from Rust and assert all outputs are equal
-            subprocess.run([
-                "cargo", "run", "--profile", "dev", "-q", "--bin",
-                "test_net_output", "--",
-                "--game", game_name,
-                "--position", position,
-                "--model-path", MODEL_PATH,
-                "--outfile", OUTPUT_FILE,
-                "--repeat", str(ASSERT_RUST_OUTPUT_EQ_REPEAT)],
-                stderr=sys.stderr, stdout=sys.stdout, check=True)
+            subprocess.run(
+                [
+                    "cargo",
+                    "run",
+                    "--profile",
+                    "dev",
+                    "-q",
+                    "--bin",
+                    "test_net_output",
+                    "--",
+                    "--game",
+                    game_name,
+                    "--position",
+                    position,
+                    "--model-path",
+                    MODEL_PATH,
+                    "--outfile",
+                    OUTPUT_FILE,
+                    "--repeat",
+                    str(ASSERT_RUST_OUTPUT_EQ_REPEAT),
+                ],
+                stderr=sys.stderr,
+                stdout=sys.stdout,
+                check=True,
+            )
             with open(OUTPUT_FILE, "r") as output_file:
                 output = json.load(output_file)
             rs_outputs = zip(output["vals"], output["probs"])

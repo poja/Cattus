@@ -1,18 +1,16 @@
-#!/usr/bin/env python3
-
-import sys
 import json
 import logging
 import os
 import shutil
 import subprocess
+import sys
+
 import numpy as np
 
-from train.hex import Hex
-from train.tictactoe import TicTacToe
 from train.chess import Chess
 from train.data_parser import DataParser
-
+from train.hex import Hex
+from train.tictactoe import TicTacToe
 
 REMOVE_TMP_DIR_ON_FINISH = True
 
@@ -105,26 +103,56 @@ def _test_serialize_encode(game_name, game, positions):
         os.makedirs(TMP_DIR)
 
         try:
-            subprocess.run([
-                "cargo", "run", "--profile", "dev", "-q", "--bin",
-                "test_encode", "--",
-                "--game", game_name,
-                "--position", position,
-                "--outfile", ENCODE_FILE],
-                stderr=sys.stderr, stdout=sys.stdout, check=True)
-            subprocess.run([
-                "cargo", "run", "--profile", "dev", "-q", "--bin",
-                "test_serialize", "--",
-                "--game", game_name,
-                "--position", position,
-                "--outfile", SERIALIZE_FILE],
-                stderr=sys.stderr, stdout=sys.stdout, check=True)
+            subprocess.run(
+                [
+                    "cargo",
+                    "run",
+                    "--profile",
+                    "dev",
+                    "-q",
+                    "--bin",
+                    "test_encode",
+                    "--",
+                    "--game",
+                    game_name,
+                    "--position",
+                    position,
+                    "--outfile",
+                    ENCODE_FILE,
+                ],
+                stderr=sys.stderr,
+                stdout=sys.stdout,
+                check=True,
+            )
+            subprocess.run(
+                [
+                    "cargo",
+                    "run",
+                    "--profile",
+                    "dev",
+                    "-q",
+                    "--bin",
+                    "test_serialize",
+                    "--",
+                    "--game",
+                    game_name,
+                    "--position",
+                    position,
+                    "--outfile",
+                    SERIALIZE_FILE,
+                ],
+                stderr=sys.stderr,
+                stdout=sys.stdout,
+                check=True,
+            )
 
             cpu = True
             packed_entry = game.load_data_entry(SERIALIZE_FILE)
             nparr_entry = DataParser.unpack_planes(packed_entry, game, cpu)
             bytes_entry = DataParser.serialize(nparr_entry, game)
-            data_parser_tensor = DataParser.bytes_entry_to_tensor(bytes_entry, game, cpu)
+            data_parser_tensor = DataParser.bytes_entry_to_tensor(
+                bytes_entry, game, cpu
+            )
             planes_dpt, _ = data_parser_tensor
 
             with open(ENCODE_FILE, "r") as encode_file:
@@ -134,7 +162,9 @@ def _test_serialize_encode(game_name, game, positions):
             if planes_rust_shape != planes_dpt.shape:
                 print("game", game_name)
                 print("position", position)
-                raise ValueError("planes tensor shape mismatch", planes_rust_shape, planes_dpt.shape)
+                raise ValueError(
+                    "planes tensor shape mismatch", planes_rust_shape, planes_dpt.shape
+                )
 
             planes_dpt = planes_dpt.numpy().flatten()
             planes_rust = np.array(rust_tensor_data["data"], dtype=np.float32)

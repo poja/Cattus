@@ -89,7 +89,9 @@ def test_hex_convnetv1():
 
 
 def test_chess_convnetv1():
-    logging.basicConfig(level=logging.DEBUG, format="[Chess ConvNetV1 Test]: %(message)s")
+    logging.basicConfig(
+        level=logging.DEBUG, format="[Chess ConvNetV1 Test]: %(message)s"
+    )
     _test_convnetv1("chess")
 
 
