@@ -55,7 +55,7 @@ impl SerializerBase {
         /* Serialized in little indian format, should deserialized the same */
         bytes.extend(planes.into_iter().flat_map(|p| p.to_le_bytes()));
         bytes.extend(probs_vec.into_iter().flat_map(|p| p.to_le_bytes()));
-        bytes.extend((winner as i8).to_le_bytes());
+        bytes.extend(winner.to_le_bytes());
         assert!(bytes.len() == size);
 
         /* Write to file */
@@ -268,7 +268,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         let output_dir = match pos.get_turn() {
             GameColor::Player1 => [&self.output_dir1, &self.output_dir2],
             GameColor::Player2 => [&self.output_dir2, &self.output_dir1],
-        }[(game_idx % 2) as usize];
+        }[game_idx % 2];
 
         let winner = GameColor::to_idx(winner) as f32;
         let (pos, is_flipped) = net::flip_pos_if_needed(pos);
@@ -317,7 +317,7 @@ impl TemperatureScheduler {
         assert!(s.len() % 2 == 1);
 
         let mut temperatures = Vec::new();
-        for i in 0..(((s.len() - 1) / 2) as usize) {
+        for i in 0..((s.len() - 1) / 2) {
             let threshold = s[i * 2].parse::<u32>().unwrap();
             let temperature = s[i * 2 + 1].parse::<f32>().unwrap();
             if !temperatures.is_empty() {

@@ -221,7 +221,7 @@ impl ChessPosition {
                             chess::Piece::King => 'K',
                         };
                         if b.color_on(sq).unwrap() == chess::Color::Black {
-                            c = c.to_lowercase().into_iter().next().unwrap();
+                            c = c.to_lowercase().next().unwrap();
                         }
                         s.push(c);
                     }
@@ -440,7 +440,7 @@ impl GamePosition for ChessPosition {
             println!("{} | {}", (rank + 1), row_chars.join(" "));
         }
 
-        let files = vec!["A", "B", "C", "D", "E", "F", "G", "H"];
+        let files = ["A", "B", "C", "D", "E", "F", "G", "H"];
         let files_indices: Vec<String> = (0..ChessGame::BOARD_SIZE)
             .map(|file| files[file].to_string())
             .collect();
