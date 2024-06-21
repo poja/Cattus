@@ -16,7 +16,7 @@ REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_net_output")
-MODEL_PATH = os.path.join(TMP_DIR, "model")
+MODEL_PATH = os.path.join(TMP_DIR, "model.keras")
 ENCODE_FILE = os.path.join(TMP_DIR, "encode_res.json")
 OUTPUT_FILE = os.path.join(TMP_DIR, "output.json")
 
@@ -135,7 +135,7 @@ def create_model(game):
         "cpu": True,
     }
     model = game.create_model("ConvNetV1", cfg)
-    model.save(MODEL_PATH, save_format="tf")
+    model.save(MODEL_PATH)
     return model
 
 

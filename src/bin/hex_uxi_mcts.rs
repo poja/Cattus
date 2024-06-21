@@ -1,10 +1,10 @@
-use std::sync::Arc;
-
 use cattus::game::mcts::MCTSPlayer;
 use cattus::hex::hex_game::HEX_STANDARD_BOARD_SIZE;
 use cattus::hex::net::two_headed_net::TwoHeadedNet;
 use cattus::hex::uxi;
+use cattus::utils;
 use clap::Parser;
+use std::sync::Arc;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -16,6 +16,8 @@ struct Args {
 }
 
 fn main() {
+    utils::init_python();
+
     const CPU: bool = true;
 
     let args = Args::parse();

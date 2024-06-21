@@ -1,12 +1,12 @@
-use clap::Parser;
-use itertools::Itertools;
-use std::fs;
-
 use cattus::chess::chess_game::{ChessGame, ChessPosition};
 use cattus::game::net::{self, TwoHeadedNetBase};
 use cattus::hex::hex_game::{HexGame, HexPosition};
 use cattus::ttt::ttt_game::{TttGame, TttPosition};
+use cattus::utils;
 use cattus::{chess, hex, ttt};
+use clap::Parser;
+use itertools::Itertools;
+use std::fs;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -24,6 +24,8 @@ struct Args {
 }
 
 fn main() -> std::io::Result<()> {
+    utils::init_python();
+
     let args = Args::parse();
 
     let outputs = match args.game.as_str() {

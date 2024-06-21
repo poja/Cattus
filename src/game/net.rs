@@ -1,13 +1,14 @@
+use super::mcts::NetStatistics;
+use crate::game::cache::ValueFuncCache;
+use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
 use itertools::Itertools;
+use ndarray::Array4;
+use pyo3::types::PyModule;
+use pyo3::{Py, PyAny, Python};
+use std::path::Path;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tensorflow::{Graph, Operation, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
-
-use crate::game::cache::ValueFuncCache;
-use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
-
-use super::mcts::NetStatistics;
 
 struct BatchData<Game: IGame> {
     samples: Vec<Vec<Game::Bitboard>>,
@@ -70,10 +71,7 @@ struct Statistics {
 }
 
 pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
-    bundle: SavedModelBundle,
-    input_op: Operation,
-    value_head: Operation,
-    policy_head: Operation,
+    py_model: Py<PyAny>,
     cache: Option<Arc<ValueFuncCache<Game>>>,
 
     next_batch_manager: Mutex<NextBatchManager<Game>>,
@@ -84,39 +82,36 @@ pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
 
 impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
     pub fn new(model_path: &str, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
-        // Load saved model bundle (session state + meta_graph data)
-        let mut graph = Graph::new();
-        let bundle =
-            SavedModelBundle::load(&SessionOptions::new(), ["serve"], &mut graph, model_path)
-                .expect("Can't load saved model");
+        let py_model = Python::with_gil(|py| {
+            // Load module
+            let file_path = Path::new("py/model.py");
+            let code =
+                std::fs::read_to_string(file_path).expect("failed to load python source file");
+            let file_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
+            assert!(file_name.ends_with(".py"));
+            let module_name = &file_name[..file_name.len() - 3];
+            let file_path_str = file_path.to_str().unwrap().to_string();
+            let module = PyModule::from_code(py, &code, &file_path_str, module_name)
+                .map_err(|err| {
+                    err.print_and_set_sys_last_vars(py); // print the familiar python stack trace
+                    panic!("Python error: {}", err)
+                })
+                .unwrap();
 
-        // Get signature metadata from the model bundle
-        let signature = bundle
-            .meta_graph_def()
-            .get_signature("serving_default")
-            .unwrap();
-
-        // Get input/output info
-        let input_info = signature.get_input("input_planes").unwrap();
-        let output_scalar_info = signature.get_output("value_head").unwrap();
-        let output_probs_info = signature.get_output("policy_head").unwrap();
-
-        // Get input/output ops from graph
-        let input_op = graph
-            .operation_by_name_required(&input_info.name().name)
-            .unwrap();
-        let value_head = graph
-            .operation_by_name_required(&output_scalar_info.name().name)
-            .unwrap();
-        let policy_head = graph
-            .operation_by_name_required(&output_probs_info.name().name)
-            .unwrap();
+            // Create python object
+            let py_class = module.getattr("Model").unwrap();
+            py_class
+                .call1((model_path,))
+                .map_err(|err| {
+                    err.print_and_set_sys_last_vars(py); // print the familiar python stack trace
+                    panic!("Python error: {}", err)
+                })
+                .unwrap()
+                .into()
+        });
 
         Self {
-            bundle,
-            input_op,
-            value_head,
-            policy_head,
+            py_model,
             cache,
             next_batch_manager: Mutex::new(NextBatchManager::new_empty()),
             max_batch_size: if CPU { 1 } else { GPU_BATCH_SIZE },
@@ -128,37 +123,34 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         }
     }
 
-    pub fn run_net(&self, input: Tensor<f32>) -> Vec<(f32, Vec<f32>)> {
-        let mut args = SessionRunArgs::new();
-        args.add_feed(&self.input_op, 0, &input);
-        let output_scalar = args.request_fetch(&self.value_head, 1);
-        let output_moves_scores = args.request_fetch(&self.policy_head, 0);
-
+    pub fn run_net(&self, input: Array4<f32>) -> Vec<(f32, Vec<f32>)> {
+        let (input_shape, input_data) = (input.shape().to_vec(), input.into_raw_vec());
         let net_run_begin = Instant::now();
-        self.bundle
-            .session
-            .run(&mut args)
-            .expect("Error occurred during calculations");
+        let outputs: (Vec<f32>, Vec<Vec<f32>>) = Python::with_gil(|py| {
+            let py_fn = self.py_model.getattr(py, "call").unwrap();
+            py_fn
+                .call1(py, (input_shape, input_data))
+                .map_err(|err| {
+                    err.print_and_set_sys_last_vars(py); // print the familiar python stack trace
+                    panic!("Python error: {}", err)
+                })
+                .unwrap()
+                .extract(py)
+                .unwrap()
+        });
         let run_duration = net_run_begin.elapsed();
+        let (vals, moves_scores) = outputs;
 
-        let vals: Tensor<f32> = args.fetch(output_scalar).unwrap();
-        let moves_scores: Tensor<f32> = args.fetch(output_moves_scores).unwrap();
-        let batch_size = vals.shape()[0].unwrap() as usize;
-
-        let ret = (0..batch_size)
-            .map(|sample_idx| {
-                let mut val: f32 = vals[sample_idx];
-                if !val.is_finite() {
-                    val = 0.0;
+        let batch_size = vals.len();
+        let ret = vals
+            .into_iter()
+            .zip(moves_scores)
+            .map(|(val, mut sample_scores)| {
+                for s in sample_scores.iter_mut() {
+                    if !s.is_finite() {
+                        *s = f32::MIN;
+                    }
                 }
-
-                let sample_len = moves_scores.len() / batch_size;
-                let sample_scores = moves_scores
-                    [sample_idx * sample_len..((sample_idx + 1) * sample_len)]
-                    .iter()
-                    .map(|s| if s.is_finite() { *s } else { f32::MIN })
-                    .collect_vec();
-
                 (val, sample_scores)
             })
             .collect_vec();
@@ -333,40 +325,29 @@ pub fn calc_moves_probs<Game: IGame>(
 
 pub fn planes_to_tensor<Game: IGame, const CPU: bool>(
     samples: &[Vec<Game::Bitboard>],
-) -> Tensor<f32> {
-    let batch_size = samples.len() as u64;
-    let planes_num = samples[0].len() as u64;
+) -> Array4<f32> {
+    let batch_size = samples.len();
+    let planes_num = samples[0].len();
     let dims = if CPU {
-        [
-            batch_size,
-            Game::BOARD_SIZE as u64,
-            Game::BOARD_SIZE as u64,
-            planes_num,
-        ]
+        (batch_size, Game::BOARD_SIZE, Game::BOARD_SIZE, planes_num)
     } else {
-        [
-            batch_size,
-            planes_num,
-            Game::BOARD_SIZE as u64,
-            Game::BOARD_SIZE as u64,
-        ]
+        (batch_size, planes_num, Game::BOARD_SIZE, Game::BOARD_SIZE)
     };
-    let mut tensor = Tensor::new(&dims);
+    let mut tensor: Array4<f32> = Array4::zeros(dims);
 
-    for (sample_idx, sample) in samples.iter().enumerate() {
-        for (plane_idx, plane) in sample.iter().enumerate() {
-            for r in 0..(Game::BOARD_SIZE as u64) {
-                for c in 0..(Game::BOARD_SIZE as u64) {
-                    let indices = if CPU {
-                        [sample_idx as u64, r, c, plane_idx as u64]
-                    } else {
-                        [sample_idx as u64, plane_idx as u64, r, c]
-                    };
-                    let val = match plane.get((r as usize) * Game::BOARD_SIZE + c as usize) {
+    for (b, sample) in samples.iter().enumerate() {
+        for (c, plane) in sample.iter().enumerate() {
+            for h in 0..(Game::BOARD_SIZE) {
+                for w in 0..(Game::BOARD_SIZE) {
+                    let val = match plane.get(h * Game::BOARD_SIZE + w) {
                         true => 1.0,
                         false => 0.0,
                     };
-                    tensor.set(&indices, val);
+                    if CPU {
+                        tensor[(b, h, w, c)] = val;
+                    } else {
+                        tensor[(b, c, h, w)] = val;
+                    };
                 }
             }
         }

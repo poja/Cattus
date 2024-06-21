@@ -1,11 +1,11 @@
-use std::sync::Arc;
-
-use clap::Parser;
 use cattus::chess::chess_game::ChessGame;
 use cattus::chess::net::net_stockfish::StockfishNet;
 use cattus::chess::uci::UCI;
 use cattus::game::mcts::MCTSPlayer;
+use cattus::utils;
 use cattus::utils::Builder;
+use clap::Parser;
+use std::sync::Arc;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -25,6 +25,8 @@ impl Builder<MCTSPlayer<ChessGame>> for PlayerBuilder {
 }
 
 fn main() {
+    utils::init_python();
+
     let args = Args::parse();
 
     let builder = Box::new(PlayerBuilder {

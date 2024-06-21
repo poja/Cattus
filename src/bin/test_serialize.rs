@@ -1,6 +1,3 @@
-use clap::Parser;
-use itertools::Itertools;
-
 use cattus::chess::chess_game::ChessPosition;
 use cattus::chess::net::serializer::ChessSerializer;
 use cattus::game::common::{GameColor, GamePosition, IGame};
@@ -9,6 +6,9 @@ use cattus::hex::hex_game::{HexGame, HexPosition};
 use cattus::hex::net::serializer::HexSerializer;
 use cattus::ttt::net::serializer::TttSerializer;
 use cattus::ttt::ttt_game::TttPosition;
+use cattus::utils;
+use clap::Parser;
+use itertools::Itertools;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -22,6 +22,8 @@ struct Args {
 }
 
 fn main() -> std::io::Result<()> {
+    utils::init_python();
+
     let args = Args::parse();
     match args.game.as_str() {
         "tictactoe" => test_tictactoe(args),

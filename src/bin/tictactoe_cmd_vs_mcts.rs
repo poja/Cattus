@@ -1,11 +1,11 @@
-use std::sync::Arc;
-
-use clap::Parser;
 use cattus::game::common::{GamePosition, IGame};
 use cattus::game::mcts::MCTSPlayer;
 use cattus::ttt::cmd_player::TttPlayerCmd;
 use cattus::ttt::net::two_headed_net::TwoHeadedNet;
 use cattus::ttt::ttt_game::{color_to_str, TttGame};
+use cattus::utils;
+use clap::Parser;
+use std::sync::Arc;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -15,6 +15,8 @@ struct Args {
 }
 
 fn main() {
+    utils::init_python();
+
     const CPU: bool = true;
 
     let args = Args::parse();

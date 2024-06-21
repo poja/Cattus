@@ -1,3 +1,4 @@
+import keras
 import tensorflow as tf
 
 # N: number of images in the batch
@@ -17,6 +18,7 @@ def mask_illegal_moves(target, output):
     return target, output
 
 
+@keras.saving.register_keras_serializable()
 def loss_cross_entropy(target, output):
     target, output = mask_illegal_moves(target, output)
     policy_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
@@ -39,6 +41,7 @@ def policy_head_accuracy(target, output):
     )
 
 
+@keras.saving.register_keras_serializable()
 def value_head_accuracy(target, output):
     # Both the target and output should be in range [-1,1]
     return 1 - tf.abs(target - output) / 2
@@ -63,10 +66,10 @@ def conv_block(inputs, filter_size, output_channels, name, l2reg, cpu, bn_scale=
         kernel_initializer="glorot_normal",
         kernel_regularizer=l2reg,
         data_format=conv_data_fmt,
-        name=name + "/conv2d",
+        name=name + "_conv2d",
     )(inputs)
     # batch normalization
-    flow = batch_norm(flow, name=name + "/bn", cpu=cpu, scale=bn_scale)
+    flow = batch_norm(flow, name=name + "_bn", cpu=cpu, scale=bn_scale)
     # a rectifier nonlinearity
     return tf.keras.layers.Activation("relu")(flow)
 
@@ -83,10 +86,10 @@ def residual_block(inputs, channels, name, l2reg, cpu):
         kernel_initializer="glorot_normal",
         kernel_regularizer=l2reg,
         data_format=conv_data_fmt,
-        name=name + "/1/conv2d",
+        name=name + "_1_conv2d",
     )(inputs)
     # batch normalization
-    flow = batch_norm(flow, name + "/1/bn", cpu=cpu, scale=False)
+    flow = batch_norm(flow, name + "_1_bn", cpu=cpu, scale=False)
     # a rectifier nonlinearity
     flow = tf.keras.layers.Activation("relu")(flow)
 
@@ -99,10 +102,10 @@ def residual_block(inputs, channels, name, l2reg, cpu):
         kernel_initializer="glorot_normal",
         kernel_regularizer=l2reg,
         data_format=conv_data_fmt,
-        name=name + "/2/conv2d",
+        name=name + "_2_conv2d",
     )(flow)
     # batch normalization
-    flow = batch_norm(flow, name + "/2/bn", cpu=cpu, scale=True)
+    flow = batch_norm(flow, name + "_2_bn", cpu=cpu, scale=True)
     # ... (squeeze_excitation)
     #  skip connection adding input to the block
     flow = tf.keras.layers.add([inputs, flow])
@@ -159,7 +162,7 @@ def create_convnetv1(
         kernel_initializer="glorot_normal",
         kernel_regularizer=l2reg,
         activation="relu",
-        name="value/dense1",
+        name="value_dense1",
     )(flow_val)
     head_val = tf.keras.layers.Dense(
         1,
