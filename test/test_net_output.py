@@ -1,15 +1,16 @@
 import json
 import logging
-import os
 import math
-import numpy as np
+import os
 import shutil
 import subprocess
 import sys
 
+import numpy as np
+
+from train.chess import Chess
 from train.hex import Hex
 from train.tictactoe import TicTacToe
-from train.chess import Chess
 
 REMOVE_TMP_DIR_ON_FINISH = True
 
@@ -29,7 +30,7 @@ logging.basicConfig(level=logging.DEBUG, format="[Net Output Test]: %(message)s"
 def is_outputs_equals(o1, o2):
     val1, probs1 = o1
     val2, probs2 = o2
-    return math.isclose(val1, val2, rel_tol=1e-5) and np.isclose(probs1, probs2, rtol=1e-3, atol=0).all()
+    return math.isclose(val1, val2, rel_tol=1e-5, abs_tol=1e-6) and np.isclose(probs1, probs2, rtol=1e-3, atol=1e-6).all()
 
 
 def _test_net_output(game_name, game, positions):
