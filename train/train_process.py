@@ -13,8 +13,6 @@ import tempfile
 import time
 from pathlib import Path
 
-import keras
-
 from train.chess import Chess
 from train.data_parser import DataParser
 from train.hex import Hex
@@ -75,8 +73,8 @@ class TrainProcess:
         base_model_path = self.cfg["model"]["base"]
         if base_model_path == "[none]":
             model = self.game.create_model(self.net_type, self.cfg)
-            assert model.get_layer("value_head").output_shape == (None, 1)
-            assert model.get_layer("policy_head").output_shape == (
+            assert model.get_layer("value_head").output.shape == (None, 1)
+            assert model.get_layer("policy_head").output.shape == (
                 None,
                 self.game.MOVE_NUM,
             )
@@ -226,8 +224,9 @@ class TrainProcess:
         lr = self.lr_scheduler.get_lr(iter_num)
         logging.debug("Training models with learning rate %f", lr)
 
-        values_loss = [None] * len(models)
-        policy_loss = [None] * len(models)
+        # values_loss = [None] * len(models)
+        # values_loss = [None] * len(models)
+        loss = [None] * len(models)
         value_accuracy = [None] * len(models)
         policy_accuracy = [None] * len(models)
         training_duration = [None] * len(models)
@@ -238,14 +237,17 @@ class TrainProcess:
                 parser = DataParser(self.game, train_data_dir, self.cfg)
                 train_dataset = parser.create_train_dataset()
 
-                keras.backend.set_value(model.optimizer.learning_rate, lr)
+                # TODO: not sure if this is the right way to set the learning rate
+                # tf.keras.backend.set_value(model.optimizer.learning_rate, lr)
+                model.optimizer.learning_rate = lr
 
                 training_start_time = time.time()
                 history = model.fit(train_dataset, epochs=1, verbose=0).history
                 train_dur = time.time() - training_start_time
 
-                values_loss[model_idx] = history["value_head_loss"][0]
-                policy_loss[model_idx] = history["policy_head_loss"][0]
+                # values_loss[model_idx] = history["value_head_loss"][0]
+                # policy_loss[model_idx] = history["policy_head_loss"][0]
+                loss[model_idx] = history["loss"][0]
                 value_accuracy[model_idx] = history["value_head_value_head_accuracy"][0]
                 policy_accuracy[model_idx] = history[
                     "policy_head_policy_head_accuracy"
@@ -269,15 +271,15 @@ class TrainProcess:
 
         for model_idx in range(len(models)):
             logging.info(f"Model{model_idx} training metrics:")
-            logging.info("\tValue loss      {:.4f}".format(values_loss[model_idx]))
-            logging.info("\tPolicy loss     {:.4f}".format(policy_loss[model_idx]))
+            # logging.info("\tValue loss      {:.4f}".format(values_loss[model_idx]))
+            # logging.info("\tPolicy loss     {:.4f}".format(policy_loss[model_idx]))
+            logging.info("\tLoss            {:.4f}".format(loss[model_idx]))
             logging.info("\tValue accuracy  {:.4f}".format(value_accuracy[model_idx]))
             logging.info("\tPolicy accuracy {:.4f}".format(policy_accuracy[model_idx]))
 
             self.metrics.update(
                 {
-                    f"value_loss_{model_idx}": values_loss[model_idx],
-                    f"policy_loss_{model_idx}": policy_loss[model_idx],
+                    f"loss_{model_idx}": loss[model_idx],
                     f"value_accuracy_{model_idx}": value_accuracy[model_idx],
                     f"policy_accuracy_{model_idx}": policy_accuracy[model_idx],
                 }
@@ -398,8 +400,8 @@ class TrainProcess:
         model_time = datetime.datetime.now().strftime(
             "%y%m%d_%H%M%S"
         ) + "_{0:04x}".format(random.randint(0, 1 << 16))
-        model_path = os.path.join(self.cfg["models_dir"], f"model_{model_time}")
-        model.save(model_path, save_format="tf")
+        model_path = os.path.join(self.cfg["models_dir"], f"model_{model_time}.keras")
+        model.save(model_path)
         return model_path
 
     def _compile_selfplay_exe(self):
@@ -423,8 +425,9 @@ class TrainProcess:
 
     def _write_metrics(self, filename):
         per_model_columns = [
-            "value_loss",
-            "policy_loss",
+            # "value_loss",
+            # "policy_loss",
+            "loss",
             "value_accuracy",
             "policy_accuracy",
             "trained_model_win_rate",

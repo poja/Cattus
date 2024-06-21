@@ -1,6 +1,7 @@
 use cattus::chess::chess_game::ChessGame;
 use cattus::chess::cmd_player::ChessPlayerCmd;
 use cattus::game::common::{GameColor, GamePosition, IGame};
+use cattus::utils;
 
 fn color_to_str(c: Option<GameColor>) -> String {
     match c {
@@ -11,6 +12,8 @@ fn color_to_str(c: Option<GameColor>) -> String {
 }
 
 fn main() {
+    utils::init_python();
+
     let mut player1 = ChessPlayerCmd {};
     let mut player2 = ChessPlayerCmd {};
     let mut game = ChessGame::new();

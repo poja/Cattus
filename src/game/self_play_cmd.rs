@@ -1,3 +1,9 @@
+use crate::game::cache::ValueFuncCache;
+use crate::game::common::IGame;
+use crate::game::mcts::{MCTSPlayer, ValueFunction};
+use crate::game::self_play::{DataSerializer, SelfPlayRunner};
+use crate::game::utils::Callback;
+use crate::utils::{self, Builder};
 use clap::Parser;
 use itertools::Itertools;
 use std::fs;
@@ -5,13 +11,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
-
-use crate::game::cache::ValueFuncCache;
-use crate::game::common::IGame;
-use crate::game::mcts::{MCTSPlayer, ValueFunction};
-use crate::game::self_play::{DataSerializer, SelfPlayRunner};
-use crate::game::utils::Callback;
-use crate::utils::Builder;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -187,6 +186,8 @@ pub fn run_main<Game: IGame + 'static>(
     network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {
+    utils::init_python();
+
     let args = SelfPlayArgs::parse();
 
     let cpu = match args.processing_unit.to_uppercase().as_str() {

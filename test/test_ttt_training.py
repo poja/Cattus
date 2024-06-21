@@ -77,8 +77,7 @@ model_compare:
 
         logging.info("Checking quality of training...")
         metrics = _get_metrics()
-        assert float(metrics["value_loss_0"]) > 0
-        assert float(metrics["policy_loss_0"]) > 0
+        assert float(metrics["loss_0"]) > 0
         assert float(metrics["value_accuracy_0"]) > 0.6
         assert float(metrics["policy_accuracy_0"]) > 0.4
         logging.info("Training quality is sufficient")

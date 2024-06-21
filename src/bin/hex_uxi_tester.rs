@@ -1,6 +1,7 @@
 use cattus::game::common::{GameColor, GamePlayer, IGame};
 use cattus::hex::hex_game::{HexGameStandard, HexPosition};
 use cattus::hex::uxi::HexPlayerUXI;
+use cattus::utils;
 use clap::Parser;
 use rand::Rng;
 use std::path::Path;
@@ -121,6 +122,8 @@ struct Args {
  */
 
 fn main() {
+    utils::init_python();
+
     let mut args = Args::parse();
     if args.workdir == "_CURRENT_DIR_" {
         args.workdir = String::from(std::env::current_dir().unwrap().to_str().unwrap());
