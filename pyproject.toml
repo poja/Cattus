@@ -3,8 +3,8 @@ name = "train"
 version = "0.1.0"
 description = ""
 authors = [
-	"Barak Ugav <barakugav@gmail.com>",
-	"Yishai Gronich <yishai.gronich@gmail.com>"
+    "Barak Ugav <barakugav@gmail.com>",
+    "Yishai Gronich <yishai.gronich@gmail.com>",
 ]
 readme = "README.md"
 
@@ -15,12 +15,13 @@ chess = "^1.9.3"
 PyYAML = "^6.0"
 construct = "^2.10.68"
 
-keras = "^2.10.0"
+keras = "^3.3.3"
 tensorflow = [
-    { version="^2.10.0", platform="windows"},
-    { version="^2.10.0", platform="linux"}
+    { version = "^2.16.0", platform = "windows" },
+    { version = "^2.16.0", platform = "linux" },
+    { version = "^2.16.0", platform = "darwin" },
 ]
-tensorflow-macos = [{ version="^2.10.0", platform="macos"}]
+tensorflow-macos = [{ version = "~2.16.0", platform = "macos" }]
 
 [build-system]
 requires = ["poetry-core"]
