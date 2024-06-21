@@ -255,7 +255,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         for edge_id in path {
             let (e_source, _e_target) = self.search_tree.edge_endpoints(edge_id).unwrap();
             let player_to_play = self.search_tree[e_source].position.get_turn();
-            let mut edge = self.search_tree.edge_weight_mut(edge_id).unwrap();
+            let edge = self.search_tree.edge_weight_mut(edge_id).unwrap();
             edge.simulations_n += 1;
             edge.score_w += match player_to_play {
                 GameColor::Player1 => score,
@@ -300,9 +300,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         let new_root = new_tree.add_node(self.search_tree[sub_tree_root]);
         let mut nodes = vec![(sub_tree_root, new_root)];
 
-        while !nodes.is_empty() {
-            let (parent_old, parent_new) = nodes.pop().unwrap();
-
+        while let Some((parent_old, parent_new)) = nodes.pop() {
             for edge in self.search_tree.edges(parent_old) {
                 let child_old = edge.target();
                 let child_data = &self.search_tree[child_old];
@@ -357,7 +355,6 @@ impl<Game: IGame> MCTSPlayer<Game> {
         let moves_and_simcounts = self
             .search_tree
             .edges(self.root.unwrap())
-            .into_iter()
             .map(|edge| {
                 let e = edge.weight();
                 (e.m, e.simulations_n)
@@ -383,7 +380,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
     pub fn choose_move_from_probabilities(
         &self,
-        moves_probs: &Vec<(Game::Move, f32)>,
+        moves_probs: &[(Game::Move, f32)],
     ) -> Option<Game::Move> {
         if moves_probs.is_empty() {
             return None;
@@ -406,7 +403,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             /* normalize, prob -> prob / (probs sum) */
             let probs_sum: f32 = probabilities.iter().sum();
             let probabilities = probabilities.iter().map(|p| p / probs_sum).collect_vec();
-            let distribution = WeightedIndex::new(&probabilities).unwrap();
+            let distribution = WeightedIndex::new(probabilities).unwrap();
             Some(moves_probs[distribution.sample(&mut rand::thread_rng())].0)
         }
     }
@@ -444,7 +441,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         }
 
         for (edge_id, noise) in moves.into_iter().zip(noise_vec.into_iter()) {
-            let mut m = self.search_tree.edge_weight_mut(edge_id).unwrap();
+            let m = self.search_tree.edge_weight_mut(edge_id).unwrap();
             m.init_score =
                 (1.0 - self.prior_noise_epsilon) * m.init_score + self.prior_noise_epsilon * noise;
             assert!(m.init_score.is_finite());

@@ -87,7 +87,7 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         // Load saved model bundle (session state + meta_graph data)
         let mut graph = Graph::new();
         let bundle =
-            SavedModelBundle::load(&SessionOptions::new(), &["serve"], &mut graph, model_path)
+            SavedModelBundle::load(&SessionOptions::new(), ["serve"], &mut graph, model_path)
                 .expect("Can't load saved model");
 
         // Get signature metadata from the model bundle
@@ -146,7 +146,6 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         let batch_size = vals.shape()[0].unwrap() as usize;
 
         let ret = (0..batch_size)
-            .into_iter()
             .map(|sample_idx| {
                 let mut val: f32 = vals[sample_idx];
                 if !val.is_finite() {
@@ -222,7 +221,7 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
 
                 debug_assert!({
                     let next_batch_data = next_batch_manager.next_batch.data.lock().unwrap();
-                    next_batch_data.samples.len() == 0
+                    next_batch_data.samples.is_empty()
                 });
                 debug_assert!({
                     let batch_data = batch.data.lock().unwrap();
@@ -329,11 +328,11 @@ pub fn calc_moves_probs<Game: IGame>(
     let p_sum: f32 = scores.iter().sum();
     let probs = scores.into_iter().map(|p| p / p_sum).collect_vec();
 
-    moves.into_iter().zip(probs.into_iter()).collect_vec()
+    moves.into_iter().zip(probs).collect_vec()
 }
 
 pub fn planes_to_tensor<Game: IGame, const CPU: bool>(
-    samples: &Vec<Vec<Game::Bitboard>>,
+    samples: &[Vec<Game::Bitboard>],
 ) -> Tensor<f32> {
     let batch_size = samples.len() as u64;
     let planes_num = samples[0].len() as u64;
@@ -354,8 +353,8 @@ pub fn planes_to_tensor<Game: IGame, const CPU: bool>(
     };
     let mut tensor = Tensor::new(&dims);
 
-    for (sample_idx, sample) in samples.into_iter().enumerate() {
-        for (plane_idx, plane) in sample.into_iter().enumerate() {
+    for (sample_idx, sample) in samples.iter().enumerate() {
+        for (plane_idx, plane) in sample.iter().enumerate() {
             for r in 0..(Game::BOARD_SIZE as u64) {
                 for c in 0..(Game::BOARD_SIZE as u64) {
                     let indices = if CPU {

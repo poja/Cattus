@@ -97,6 +97,11 @@ pub trait GameBitboard: Clone + Copy {
 pub struct PlayerRand {
     rand: StdRng,
 }
+impl Default for PlayerRand {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl PlayerRand {
     pub fn new() -> Self {
         Self::from_seed(rand::thread_rng().gen())
@@ -116,7 +121,7 @@ impl<Game: IGame> GamePlayer<Game> for PlayerRand {
             None
         } else {
             let dist = rand::distributions::Uniform::from(0..moves.len());
-            Some(moves[dist.sample(&mut self.rand) as usize])
+            Some(moves[dist.sample(&mut self.rand)])
         }
     }
 }

@@ -165,7 +165,7 @@ impl<Game: IGame> CacheBuilder<Game> {
     fn build_cache(&mut self) -> Arc<ValueFuncCache<Game>> {
         let cache = Arc::new(ValueFuncCache::new(self.max_size));
         self.caches.push(Arc::clone(&cache));
-        return cache;
+        cache
     }
 
     fn get_hits_counter(&self) -> usize {

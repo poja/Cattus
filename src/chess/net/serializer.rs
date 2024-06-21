@@ -52,7 +52,7 @@ impl DataSerializer<ChessGame> for ChessSerializer {
         bytes.extend(planes.into_iter().flat_map(|p| p.to_le_bytes()));
         bytes.extend(moves_bitmap.into_iter().flat_map(|p| p.to_le_bytes()));
         bytes.extend(moves_probs.into_iter().flat_map(|p| p.to_le_bytes()));
-        bytes.extend((winner as i8).to_le_bytes());
+        bytes.extend(winner.to_le_bytes());
         assert!(bytes.len() == size);
 
         /* Write to file */

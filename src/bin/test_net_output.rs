@@ -43,7 +43,6 @@ fn run_net_tictactoe(args: &Args) -> Vec<(f32, Vec<f32>)> {
     let pos = TttPosition::from_str(&args.position);
     let net = TwoHeadedNetBase::<TttGame, true>::new(&args.model_path, None);
     let samples = (0..args.repeat)
-        .into_iter()
         .map(|_| ttt::net::common::position_to_planes(&pos))
         .collect_vec();
     let tensor = net::planes_to_tensor::<TttGame, true>(&samples);
@@ -54,7 +53,6 @@ fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<(f32, Vec<f32>)> {
     let pos = HexPosition::from_str(&args.position);
     let net = TwoHeadedNetBase::<HexGame<BOARD_SIZE>, true>::new(&args.model_path, None);
     let samples = (0..args.repeat)
-        .into_iter()
         .map(|_| hex::net::common::position_to_planes(&pos))
         .collect_vec();
     let tensor = net::planes_to_tensor::<HexGame<BOARD_SIZE>, true>(&samples);
@@ -66,7 +64,6 @@ fn run_net_chess(args: &Args) -> Vec<(f32, Vec<f32>)> {
 
     let net = TwoHeadedNetBase::<ChessGame, true>::new(&args.model_path, None);
     let samples = (0..args.repeat)
-        .into_iter()
         .map(|_| chess::net::common::position_to_planes(&pos))
         .collect_vec();
     let tensor = net::planes_to_tensor::<ChessGame, true>(&samples);

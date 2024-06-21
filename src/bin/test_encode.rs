@@ -38,22 +38,22 @@ fn main() -> std::io::Result<()> {
 fn create_tensor_tictactoe(args: &Args) -> Tensor<f32> {
     let pos = TttPosition::from_str(&args.position);
     let planes = ttt::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<TttGame, true>(&vec![planes])
+    net::planes_to_tensor::<TttGame, true>(&[planes])
 }
 fn create_tensor_hex<const BOARD_SIZE: usize>(args: &Args) -> Tensor<f32> {
     let pos = HexPosition::from_str(&args.position);
     let planes = hex::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<HexGame<BOARD_SIZE>, true>(&vec![planes])
+    net::planes_to_tensor::<HexGame<BOARD_SIZE>, true>(&[planes])
 }
 
 fn create_tensor_chess(args: &Args) -> Tensor<f32> {
     let pos = ChessPosition::from_str(&args.position);
     let planes = chess::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<ChessGame, true>(&vec![planes])
+    net::planes_to_tensor::<ChessGame, true>(&[planes])
 }
 
 fn tensor_to_json(tensor: Tensor<f32>, filename: &String) -> std::io::Result<()> {
-    let shape: Option<Vec<Option<i64>>> = tensor.shape().try_into().unwrap();
+    let shape: Option<Vec<Option<i64>>> = tensor.shape().into();
     let shape = shape.unwrap().into_iter().map(|d| d.unwrap()).collect_vec();
     let data = tensor.iter().cloned().collect_vec();
     fs::write(

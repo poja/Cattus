@@ -25,7 +25,6 @@ impl<const BOARD_SIZE: usize> DataSerializer<HexGame<BOARD_SIZE>> for HexSeriali
                 ]
                 .into_iter()
             })
-            .into_iter()
             .collect_vec();
 
         SerializerBase::write_entry::<HexGame<BOARD_SIZE>>(planes, entry.probs, winner, filename)
