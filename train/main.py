@@ -1,13 +1,12 @@
-import os
-
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
-
 import argparse
 import logging
+import os
 
 import yaml
 
 from train.train_process import TrainProcess
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 
 if __name__ == "__main__":
     log_fmt = "%(asctime)s.%(msecs)03d %(levelname)s: %(message)s"
