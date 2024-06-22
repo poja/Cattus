@@ -7,14 +7,17 @@ import sys
 
 import numpy as np
 
-from train.chess import Chess
-from train.data_parser import DataParser
-from train.hex import Hex
-from train.tictactoe import TicTacToe
+from cattus_train.chess import Chess
+from cattus_train.data_parser import DataParser
+from cattus_train.hex import Hex
+from cattus_train.tictactoe import TicTacToe
 
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
+CATTUS_ENGINE_TOP = os.path.abspath(
+    os.path.join(TESTS_DIR, "..", "..", "..", "cattus-engine")
+)
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_serialize_encode")
 SERIALIZE_FILE = os.path.join(TMP_DIR, "serialize_res.json")
 ENCODE_FILE = os.path.join(TMP_DIR, "encode_res.json")
@@ -123,6 +126,7 @@ def _test_serialize_encode(game_name, game, positions):
                 stderr=sys.stderr,
                 stdout=sys.stdout,
                 check=True,
+                cwd=CATTUS_ENGINE_TOP,
             )
             subprocess.run(
                 [
@@ -144,6 +148,7 @@ def _test_serialize_encode(game_name, game, positions):
                 stderr=sys.stderr,
                 stdout=sys.stdout,
                 check=True,
+                cwd=CATTUS_ENGINE_TOP,
             )
 
             cpu = True

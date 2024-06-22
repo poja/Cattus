@@ -19,8 +19,8 @@ cpu: true
 debug: false
 
 # Path to working area where models, games and metrics are saved
-# {CATTUS_TOP}, {GAME_NUM} can be used
-working_area: "{CATTUS_TOP}/workarea/{GAME_NAME}"
+# {CATTUS_TRAIN_TOP}, {GAME_NUM} can be used
+working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
 # Model architecture
 model:
@@ -72,8 +72,8 @@ self_play:
     # Softmax temperature
     # suggested value: 1.0 for the first 30 moves, 0.0 for the reset of the game
     temperature_policy:
-        - [30,    1.0]
-        - [       0.0]
+        - [30, 1.0]
+        - [0.0]
 
     # Number of games played in each self play iteration
     # must be multiple of 2
@@ -101,9 +101,9 @@ training:
     # [iteration_threshold, lr]
     # suggested value: 10^-2, 10^-3, each for third of the training, 10^-4 until infinity
     learning_rate:
-        - [8,   0.01]
-        - [24,  0.001]
-        - [     0.0001]
+        - [8, 0.01]
+        - [24, 0.001]
+        - [0.0001]
 
     # L2 regularization factor
     # suggested value: 10^-4
@@ -122,7 +122,7 @@ model_compare:
     # Softmax temperature used during model comparison
     # Use 0 for best model performance and better comparison
     temperature_policy:
-        - [       0.0]
+        - [0.0]
 
     # Number of games played to compare two models
     # must be multiple of 2

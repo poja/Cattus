@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 
-from train.trainable_game import DataEntryParseError
+from cattus_train.trainable_game import DataEntryParseError
 
 
 class DataParser:

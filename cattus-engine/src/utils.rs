@@ -6,7 +6,10 @@ pub trait Builder<T>: Sync + Send {
 }
 
 pub fn init_python() {
-    let venv_path = Path::new(&env!("CARGO_MANIFEST_DIR")).join(".venv");
+    let venv_path = Path::new(&env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join(".venv");
     let py_packages_path = if cfg!(target_os = "windows") {
         venv_path.join("Lib").join("site-packages")
     } else {

@@ -1,6 +1,5 @@
 import tensorflow as tf
-
-from train.net_utils import (
+from cattus_train.net_utils import (
     loss_cross_entropy,
     policy_head_accuracy,
     value_head_accuracy,
