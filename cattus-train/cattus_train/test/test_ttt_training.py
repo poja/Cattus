@@ -1,16 +1,13 @@
 import logging
 import os
-import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 TRAIN_MAIN_BIN = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", "bin", "main.py"))
-# CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", ".."))
-TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_ttt_training")
-CONFIG_FILE = os.path.join(TMP_DIR, "config.yaml")
 
 
 def test_ttt_training():
@@ -18,12 +15,10 @@ def test_ttt_training():
         level=logging.DEBUG, format="[TicTactToe Training Test]: %(message)s"
     )
 
-    if os.path.exists(TMP_DIR):
-        shutil.rmtree(TMP_DIR)
-    os.makedirs(TMP_DIR)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config_file = os.path.join(tmp_dir, "config.yaml")
 
-    try:
-        with open(CONFIG_FILE, "w") as f:
+        with open(config_file, "w") as f:
             f.write(
                 f"""%YAML 1.2
 ---
@@ -31,7 +26,7 @@ game: "tictactoe"
 iterations: 3
 cpu: true
 debug: false
-working_area: {TMP_DIR}
+working_area: {tmp_dir}
 model:
     base: "[none]"
     type: "ConvNetV1"
@@ -71,24 +66,20 @@ model_compare:
 
         logging.info("Running self play and generating new models...")
         subprocess.check_call(
-            ["python", TRAIN_MAIN_BIN, "--config", CONFIG_FILE, "--run-id", "test"],
+            ["python", TRAIN_MAIN_BIN, "--config", config_file, "--run-id", "test"],
             stderr=subprocess.STDOUT,
         )
 
         logging.info("Checking quality of training...")
-        metrics = _get_metrics()
+        metrics = _get_metrics(tmp_dir)
         assert float(metrics["loss_0"]) > 0
         assert float(metrics["value_accuracy_0"]) > 0.6
         assert float(metrics["policy_accuracy_0"]) > 0.4
         logging.info("Training quality is sufficient")
 
-    finally:
-        if REMOVE_TMP_DIR_ON_FINISH:
-            shutil.rmtree(TMP_DIR)
 
-
-def _get_metrics():
-    path = Path(TMP_DIR) / "metrics" / "test.csv"
+def _get_metrics(working_area):
+    path = Path(working_area) / "metrics" / "test.csv"
     with path.open("r") as f:
         lines = f.readlines()
         columns = lines[0].split(",")

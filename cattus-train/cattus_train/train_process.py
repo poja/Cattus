@@ -301,14 +301,13 @@ class TrainProcess:
         logging.info("Comparing latest models to best model...")
         for model_idx, (latest_model, latest_model_path) in enumerate(latest_models):
             # Compare the best model to the latest/trained model
-            tmp_dirpath = tempfile.mkdtemp()
-            try:
+            with tempfile.TemporaryDirectory() as tmp_dir:
                 # take the opportunity to generate more games to main games directory
                 games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
                 best_games_dir = os.path.join(
                     games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S")
                 )
-                trained_games_dir = os.path.join(tmp_dirpath, "games")
+                trained_games_dir = os.path.join(tmp_dir, "games")
 
                 compare_start_time = time.time()
                 best_wr, trained_wr = self._compare_model_impl(
@@ -336,16 +335,13 @@ class TrainProcess:
                     logging.warn(
                         "New model is worse than previous one, losing ratio: %f", losing
                     )
-            finally:
-                shutil.rmtree(tmp_dirpath)
         return best_model
 
     def _compare_model_impl(
         self, model1_path, model2_path, model1_games_dir, model2_games_dir
     ):
-        tmp_dirpath = tempfile.mkdtemp()
-        try:
-            compare_res_file = os.path.join(tmp_dirpath, "compare_result.json")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            compare_res_file = os.path.join(tmp_dir, "compare_result.json")
             profile = "dev" if self.cfg["debug"] else "release"
 
             subprocess.run(
@@ -396,8 +392,6 @@ class TrainProcess:
             w1, w2, d = res["player1_wins"], res["player2_wins"], res["draws"]
             total_games = w1 + w2 + d
             return w1 / total_games, w2 / total_games
-        finally:
-            shutil.rmtree(tmp_dirpath)
 
     def _save_model(self, model):
         model_time = datetime.datetime.now().strftime(

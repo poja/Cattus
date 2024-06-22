@@ -1,25 +1,19 @@
 import logging
 import os
-import shutil
 import subprocess
 import sys
-
-REMOVE_TMP_DIR_ON_FINISH = True
+import tempfile
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 TRAIN_MAIN_BIN = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", "bin", "main.py"))
 CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", ".."))
-TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_simple_two_headed")
-CONFIG_FILE = os.path.join(TMP_DIR, "config.yaml")
 
 
 def _test_simple_two_headed(game_name):
-    if os.path.exists(TMP_DIR):
-        shutil.rmtree(TMP_DIR)
-    os.makedirs(TMP_DIR)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        config_file = os.path.join(tmp_dir, "config.yaml")
 
-    try:
-        with open(CONFIG_FILE, "w") as f:
+        with open(config_file, "w") as f:
             f.write(
                 f"""%YAML 1.2
 ---
@@ -27,7 +21,7 @@ game: "{game_name}"
 iterations: 3
 cpu: true
 debug: true
-working_area: {TMP_DIR}
+working_area: {tmp_dir}
 model:
     base: "[none]"
     type: "simple_two_headed"
@@ -63,15 +57,11 @@ model_compare:
         logging.info("Running self play and generating new models...")
         python = sys.executable
         subprocess.check_call(
-            " ".join([python, TRAIN_MAIN_BIN, "--config", CONFIG_FILE]),
+            " ".join([python, TRAIN_MAIN_BIN, "--config", config_file]),
             env=dict(os.environ, PYTHONPATH=CATTUS_TOP),
             stderr=subprocess.STDOUT,
             shell=True,
         )
-
-    finally:
-        if REMOVE_TMP_DIR_ON_FINISH:
-            shutil.rmtree(TMP_DIR)
 
 
 def test_ttt_two_headed():
