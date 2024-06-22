@@ -14,7 +14,7 @@ petgraph = "0.6.*"
 cached = "0.51.*"
 clap = { version = "4.5.7", features = ["derive"] }
 json = "0.12.*"
-pyo3 = { version = "0.20.0", features = ["auto-initialize"] }
+pyo3 = { version = "0.21.2", features = ["auto-initialize"] }
 ndarray = "0.15.6"
 chess = "3.2.*"
 once_cell = "1.19.*"
