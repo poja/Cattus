@@ -12,7 +12,7 @@ rand_distr = "0.4.*"
 lazy_static = "1.4.*"
 petgraph = "0.6.*"
 cached = "0.30.*"
-clap = { version = "3.1.3", features = ["derive"] }
+clap = { version = "4.5.7", features = ["derive"] }
 json = "0.12.*"
 pyo3 = { version = "0.20.0", features = ["auto-initialize"] }
 ndarray = "0.15.6"
