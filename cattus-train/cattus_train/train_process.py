@@ -109,7 +109,7 @@ class TrainProcess:
 
     def run_training_loop(self, run_id=None):
         if run_id is None:
-            run_id = datetime.now().strftime("%y%m%d_%H%M%S")
+            run_id = datetime.now().strftime("%y%m%d_%H%M%S_%f")
         self.run_id = run_id
         metrics_filename = os.path.join(self.cfg["metrics_dir"], f"{self.run_id}.csv")
 
@@ -155,7 +155,7 @@ class TrainProcess:
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
         summary_file = os.path.join(games_dir, "selfplay_summary.json")
         data_entries_dir = os.path.join(
-            games_dir, datetime.now().strftime("%y%m%d_%H%M%S")
+            games_dir, datetime.now().strftime("%y%m%d_%H%M%S_%f")
         )
 
         self_play_start_time = time.time()
@@ -307,7 +307,7 @@ class TrainProcess:
             with tempfile.TemporaryDirectory() as tmp_dir:
                 # take the opportunity to generate more games to main games directory
                 games_dir = Path(self.cfg["games_dir"]) / self.run_id
-                best_games_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S")
+                best_games_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
                 trained_games_dir = Path(tmp_dir) / "games"
 
                 compare_start_time = time.time()
@@ -393,7 +393,7 @@ class TrainProcess:
             return w1 / total_games, w2 / total_games
 
     def _save_model(self, model: keras.Model) -> Path:
-        model_time = datetime.now().strftime("%y%m%d_%H%M%S") + "_{0:04x}".format(
+        model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(
             random.randint(0, 1 << 16)
         )
 
