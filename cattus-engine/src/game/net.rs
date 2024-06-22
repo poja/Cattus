@@ -2,13 +2,11 @@ use super::mcts::NetStatistics;
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
 use itertools::Itertools;
-use ndarray::Array4;
-use pyo3::types::PyModule;
-use pyo3::{Py, PyAny, Python};
-use std::path::Path;
+use ndarray::{Array4, ArrayView2};
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use tract_onnx::prelude::*;
 
 struct BatchData<Game: IGame> {
     samples: Vec<Vec<Game::Bitboard>>,
@@ -70,8 +68,9 @@ struct Statistics {
     batch_size_sum: usize,
 }
 
+type OnnxModel = TypedRunnableModel<TypedModel>;
 pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
-    py_model: Py<PyAny>,
+    model: OnnxModel,
     cache: Option<Arc<ValueFuncCache<Game>>>,
 
     next_batch_manager: Mutex<NextBatchManager<Game>>,
@@ -82,36 +81,20 @@ pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
 
 impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
     pub fn new(model_path: &str, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
-        let py_model = Python::with_gil(|py| {
-            // Load module
-            let file_path = Path::new("py/model.py");
-            let code =
-                std::fs::read_to_string(file_path).expect("failed to load python source file");
-            let file_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
-            assert!(file_name.ends_with(".py"));
-            let module_name = &file_name[..file_name.len() - 3];
-            let file_path_str = file_path.to_str().unwrap().to_string();
-            let module = PyModule::from_code(py, &code, &file_path_str, module_name)
-                .map_err(|err| {
-                    err.print_and_set_sys_last_vars(py); // print the familiar python stack trace
-                    panic!("Python error: {}", err)
-                })
-                .unwrap();
-
-            // Create python object
-            let py_class = module.getattr("Model").unwrap();
-            py_class
-                .call1((model_path,))
-                .map_err(|err| {
-                    err.print_and_set_sys_last_vars(py); // print the familiar python stack trace
-                    panic!("Python error: {}", err)
-                })
-                .unwrap()
-                .into()
-        });
+        // Load the model
+        fn load_model(model_path: &str) -> TractResult<OnnxModel> {
+            tract_onnx::onnx()
+                // load the model
+                .model_for_path(model_path)?
+                // optimize the model
+                .into_optimized()?
+                // make the model runnable and fix its inputs and outputs
+                .into_runnable()
+        }
+        let model = load_model(model_path).unwrap();
 
         Self {
-            py_model,
+            model,
             cache,
             next_batch_manager: Mutex::new(NextBatchManager::new_empty()),
             max_batch_size: if CPU { 1 } else { GPU_BATCH_SIZE },
@@ -124,28 +107,29 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
     }
 
     pub fn run_net(&self, input: Array4<f32>) -> Vec<(f32, Vec<f32>)> {
-        let (input_shape, input_data) = (input.shape().to_vec(), input.into_raw_vec());
+        let input: Tensor = input.into();
         let net_run_begin = Instant::now();
-        let outputs: (Vec<f32>, Vec<Vec<f32>>) = Python::with_gil(|py| {
-            let py_fn = self.py_model.getattr(py, "call").unwrap();
-            py_fn
-                .call1(py, (input_shape, input_data))
-                .map_err(|err| {
-                    err.print_and_set_sys_last_vars(py); // print the familiar python stack trace
-                    panic!("Python error: {}", err)
-                })
-                .unwrap()
-                .extract(py)
-                .unwrap()
-        });
+        let outputs = self.model.run(tvec!(input.into())).unwrap();
         let run_duration = net_run_begin.elapsed();
-        let (vals, moves_scores) = outputs;
+
+        assert_eq!(outputs.len(), 2);
+        let vals: ArrayView2<f32> = outputs[0]
+            .to_array_view::<f32>()
+            .unwrap()
+            .into_dimensionality()
+            .unwrap();
+        let moves_scores: ArrayView2<f32> = outputs[1]
+            .to_array_view::<f32>()
+            .unwrap()
+            .into_dimensionality()
+            .unwrap();
 
         let batch_size = vals.len();
         let ret = vals
             .into_iter()
-            .zip(moves_scores)
-            .map(|(val, mut sample_scores)| {
+            .zip(moves_scores.rows())
+            .map(|(&val, sample_scores)| {
+                let mut sample_scores = sample_scores.to_vec();
                 for s in sample_scores.iter_mut() {
                     if !s.is_finite() {
                         *s = f32::MIN;
