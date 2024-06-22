@@ -17,5 +17,5 @@ json = "0.12.*"
 pyo3 = { version = "0.20.0", features = ["auto-initialize"] }
 ndarray = "0.15.6"
 chess = "3.2.*"
-once_cell = "1.9.*"
+once_cell = "1.19.*"
 pleco = "0.5.*"
