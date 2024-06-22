@@ -15,6 +15,10 @@ chess = "^1.9.3"
 PyYAML = "^6.0"
 construct = "^2.10.68"
 
+onnx = "^1.16.0"
+tf2onnx = "^1.16.0"
+onnxruntime = "^1.16.0"
+
 keras = "^3.3.3"
 tensorflow = [
     { version = "^2.16.0", platform = "windows" },

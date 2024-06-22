@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import keras
 import numpy as np
 import tensorflow as tf
@@ -44,9 +46,12 @@ class TicTacToe(TrainableGame):
         assert len(probs) == self.MOVE_NUM
         return (planes, probs, winner)
 
-    def _get_input_shape(self, cfg):
+    def _get_input_shape(self, cfg, include_batch_dim=False):
         shape_cpu = (self.BOARD_SIZE, self.BOARD_SIZE, self.PLANES_NUM)
         shape_gpu = (self.PLANES_NUM, self.BOARD_SIZE, self.BOARD_SIZE)
+        if include_batch_dim:
+            shape_cpu = (None,) + shape_cpu
+            shape_gpu = (None,) + shape_gpu
         return shape_cpu if cfg["cpu"] else shape_gpu
 
     def _create_model_simple_two_headed(self, cfg):
@@ -138,7 +143,19 @@ class TicTacToe(TrainableGame):
         else:
             raise ValueError("Unknown model type: " + net_type)
 
-    def load_model(self, path: str, net_type: str) -> keras.Model:
+    def model_input_signature(self, net_type: str, cfg: dict) -> list[tf.TensorSpec]:
+        if net_type == TtoNetType.SimpleTwoHeaded or net_type == TtoNetType.ConvNetV1:
+            return [
+                tf.TensorSpec(
+                    self._get_input_shape(cfg, include_batch_dim=True),
+                    tf.float32,
+                    name="input_planes",
+                )
+            ]
+        else:
+            raise ValueError("Unknown model type: " + net_type)
+
+    def load_model(self, path: Path, net_type: str) -> keras.Model:
         if net_type == TtoNetType.SimpleTwoHeaded or net_type == TtoNetType.ConvNetV1:
             custom_objects = {
                 "loss_cross_entropy": net_utils.loss_cross_entropy,
@@ -148,4 +165,6 @@ class TicTacToe(TrainableGame):
         else:
             raise ValueError("Unknown model type: " + net_type)
 
-        return tf.keras.models.load_model(path, custom_objects=custom_objects)
+        return tf.keras.models.load_model(
+            path.with_suffix(".keras"), custom_objects=custom_objects
+        )

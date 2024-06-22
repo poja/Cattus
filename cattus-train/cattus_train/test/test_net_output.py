@@ -6,11 +6,15 @@ import subprocess
 import sys
 import tempfile
 
+import keras
 import numpy as np
+import onnx
+import tf2onnx
 
 from cattus_train.chess import Chess
 from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
+from cattus_train.trainable_game import TrainableGame
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 CATTUS_ENGINE_TOP = os.path.abspath(
@@ -33,10 +37,10 @@ def is_outputs_equals(o1, o2):
     )
 
 
-def _test_net_output(game_name, game, positions):
+def _test_net_output(game_name: str, game: TrainableGame, positions):
     for position in positions:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            model_path = os.path.join(tmp_dir, "model.keras")
+            model_path = os.path.join(tmp_dir, "model.onnx")
             encode_path = os.path.join(tmp_dir, "encode_res.json")
             output_file = os.path.join(tmp_dir, "output.json")
 
@@ -120,7 +124,7 @@ def _test_net_output(game_name, game, positions):
             assert is_outputs_equals(py_output, rs_output)
 
 
-def create_model(game, path):
+def create_model(game: TrainableGame, path: str) -> keras.Model:
     cfg = {
         "model": {
             "residual_filter_num": 1,
@@ -131,7 +135,11 @@ def create_model(game, path):
         "cpu": True,
     }
     model = game.create_model("ConvNetV1", cfg)
-    model.save(path)
+
+    input_signature = game.model_input_signature("ConvNetV1", cfg)
+    onnx_model, _ = tf2onnx.convert.from_keras(model, input_signature)
+    onnx.save(onnx_model, path)
+
     return model
 
 

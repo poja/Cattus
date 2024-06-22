@@ -1,17 +1,25 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
 import keras
+import tensorflow as tf
 
 
 class TrainableGame(ABC):
+    @abstractmethod
     def create_model(self, net_type: str, cfg: dict) -> keras.Model:
-        pass
+        ...
 
+    @abstractmethod
+    def model_input_signature(self, net_type: str, cfg: dict) -> list[tf.TensorSpec]:
+        ...
+
+    @abstractmethod
     def load_model(self, path: str, net_type: str) -> keras.Model:
-        pass
+        ...
 
+    @abstractmethod
     def load_data_entry(self, path: str, cfg: dict) -> ():
-        pass
+        ...
 
 
 class DataEntryParseError(ValueError):

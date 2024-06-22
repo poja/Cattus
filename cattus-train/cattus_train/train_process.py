@@ -1,5 +1,4 @@
 import copy
-import datetime
 import json
 import logging
 import multiprocessing
@@ -11,7 +10,12 @@ import subprocess
 import sys
 import tempfile
 import time
+from datetime import datetime
 from pathlib import Path
+
+import keras
+import onnx
+import tf2onnx
 
 from cattus_train.chess import Chess
 from cattus_train.data_parser import DataParser
@@ -88,7 +92,7 @@ class TrainProcess:
                     "Model [latest] was requested, but no existing models were found."
                 )
             base_model_path = sorted(all_models)[-1]
-        self.base_model_path = str(base_model_path)
+        self.base_model_path: Path = base_model_path
 
         self.cfg["self_play"]["temperature_policy_str"] = temperature_policy_to_str(
             self.cfg["self_play"]["temperature_policy"]
@@ -105,7 +109,7 @@ class TrainProcess:
 
     def run_training_loop(self, run_id=None):
         if run_id is None:
-            run_id = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+            run_id = datetime.now().strftime("%y%m%d_%H%M%S")
         self.run_id = run_id
         metrics_filename = os.path.join(self.cfg["metrics_dir"], f"{self.run_id}.csv")
 
@@ -123,7 +127,7 @@ class TrainProcess:
         for line in dictionary_to_str(self.cfg).splitlines():
             logging.info(line)
         logging.info("run ID:\t" + self.run_id)
-        logging.info("base model:\t" + self.base_model_path)
+        logging.info("base model:\t" + str(self.base_model_path))
         logging.info("metrics file:\t" + metrics_filename)
 
         self._compile_selfplay_exe()
@@ -133,7 +137,7 @@ class TrainProcess:
             self.metrics = {}
 
             # Generate training data using the best model
-            self._self_play(best_model)
+            self._self_play(best_model[1])
 
             # Train latest models from training data
             latest_models = self._train(latest_models, iter_num)
@@ -144,15 +148,14 @@ class TrainProcess:
             # Write iteration metrics
             self._write_metrics(metrics_filename)
 
-    def _self_play(self, best_model):
-        _model, model_path = best_model
+    def _self_play(self, model_path: Path):
         logging.info("Self playing using model: %s", model_path)
 
         profile = "dev" if self.cfg["debug"] else "release"
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
         summary_file = os.path.join(games_dir, "selfplay_summary.json")
         data_entries_dir = os.path.join(
-            games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+            games_dir, datetime.now().strftime("%y%m%d_%H%M%S")
         )
 
         self_play_start_time = time.time()
@@ -167,9 +170,9 @@ class TrainProcess:
                 self.self_play_exec,
                 "--",
                 "--model1-path",
-                model_path,
+                model_path.with_suffix(".onnx"),
                 "--model2-path",
-                model_path,
+                model_path.with_suffix(".onnx"),
                 "--games-num",
                 self.cfg["self_play"]["games_num"],
                 "--out-dir1",
@@ -216,7 +219,7 @@ class TrainProcess:
             }
         )
 
-    def _train(self, models, iter_num):
+    def _train(self, models, iter_num) -> list[tuple[keras.Model, Path]]:
         train_data_dir = (
             self.cfg["games_dir"]
             if self.cfg["training"]["use_train_data_across_runs"]
@@ -290,7 +293,7 @@ class TrainProcess:
 
         return trained_models
 
-    def _compare_models(self, best_model, latest_models):
+    def _compare_models(self, best_model, latest_models) -> tuple[keras.Model, Path]:
         if self.cfg["model_compare"]["games_num"] == 0:
             assert (
                 len(latest_models) == 1
@@ -303,11 +306,9 @@ class TrainProcess:
             # Compare the best model to the latest/trained model
             with tempfile.TemporaryDirectory() as tmp_dir:
                 # take the opportunity to generate more games to main games directory
-                games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
-                best_games_dir = os.path.join(
-                    games_dir, datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-                )
-                trained_games_dir = os.path.join(tmp_dir, "games")
+                games_dir = Path(self.cfg["games_dir"]) / self.run_id
+                best_games_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S")
+                trained_games_dir = Path(tmp_dir) / "games"
 
                 compare_start_time = time.time()
                 best_wr, trained_wr = self._compare_model_impl(
@@ -325,9 +326,7 @@ class TrainProcess:
                     # In case the new model is the new best model, take the opportunity and use the new games generated
                     # by the comparison stage as training data in future training steps
                     for filename in os.listdir(trained_games_dir):
-                        shutil.move(
-                            os.path.join(trained_games_dir, filename), best_games_dir
-                        )
+                        shutil.move(trained_games_dir / filename, best_games_dir)
                 elif (
                     len(latest_models) == 1
                     and losing > self.cfg["model_compare"]["warning_losing_threshold"]
@@ -338,7 +337,7 @@ class TrainProcess:
         return best_model
 
     def _compare_model_impl(
-        self, model1_path, model2_path, model1_games_dir, model2_games_dir
+        self, model1_path: Path, model2_path: Path, model1_games_dir, model2_games_dir
     ):
         with tempfile.TemporaryDirectory() as tmp_dir:
             compare_res_file = os.path.join(tmp_dir, "compare_result.json")
@@ -355,9 +354,9 @@ class TrainProcess:
                     self.self_play_exec,
                     "--",
                     "--model1-path",
-                    model1_path,
+                    model1_path.with_suffix(".onnx"),
                     "--model2-path",
-                    model2_path,
+                    model2_path.with_suffix(".onnx"),
                     "--games-num",
                     self.cfg["model_compare"]["games_num"],
                     "--out-dir1",
@@ -393,12 +392,21 @@ class TrainProcess:
             total_games = w1 + w2 + d
             return w1 / total_games, w2 / total_games
 
-    def _save_model(self, model):
-        model_time = datetime.datetime.now().strftime(
-            "%y%m%d_%H%M%S"
-        ) + "_{0:04x}".format(random.randint(0, 1 << 16))
-        model_path = os.path.join(self.cfg["models_dir"], f"model_{model_time}.keras")
-        model.save(model_path)
+    def _save_model(self, model: keras.Model) -> Path:
+        model_time = datetime.now().strftime("%y%m%d_%H%M%S") + "_{0:04x}".format(
+            random.randint(0, 1 << 16)
+        )
+
+        model_path = Path(self.cfg["models_dir"]) / f"model_{model_time}"
+
+        # Save model in Keras format
+        model.save(model_path.with_suffix(".keras"))
+
+        # Save model in ONNX format
+        input_signature = self.game.model_input_signature(self.net_type, self.cfg)
+        onnx_model, _ = tf2onnx.convert.from_keras(model, input_signature)
+        onnx.save(onnx_model, model_path.with_suffix(".onnx"))
+
         return model_path
 
     def _compile_selfplay_exe(self):
