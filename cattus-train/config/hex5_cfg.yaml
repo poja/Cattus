@@ -1,11 +1,10 @@
 %YAML 1.2
 ---
-game: "hex7"
+game: "hex5"
 iterations: 75
-model_num: 8
 cpu: true
 debug: false
-working_area: "{CATTUS_TOP}/workarea/{GAME_NAME}"
+working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
 model:
     base: "[none]"
@@ -16,7 +15,7 @@ model:
     policy_head_conv_output_channels_num: 16
 
 mcts:
-    sim_num: 600
+    sim_num: 1400
     explore_factor: 1.41421
     prior_noise_alpha: 0.03
     prior_noise_epsilon: 0.25
@@ -24,9 +23,9 @@ mcts:
 
 self_play:
     temperature_policy:
-        - [12,    1.0]
-        - [       0.0]
-    games_num: 200
+        - [10, 1.0]
+        - [0.0]
+    games_num: 100
     threads: 8
 
 training:
@@ -34,17 +33,16 @@ training:
     iteration_data_entries: 12288
     batch_size: 64
     learning_rate:
-        - [25,  0.01]
-        - [50,  0.001]
-        - [     0.0001]
+        - [25, 0.01]
+        - [50, 0.001]
+        - [0.0001]
     l2reg: 0.0001
     use_train_data_across_runs: true
-    threads: 8
 
 model_compare:
     temperature_policy:
-        - [       0.0]
-    games_num: 32
+        - [0.0]
+    games_num: 0
     switching_winning_threshold: 0.55
     warning_losing_threshold: 0.55
     threads: 8

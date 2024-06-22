@@ -7,12 +7,13 @@ import sys
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
-TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_convnetv1")
+TRAIN_MAIN_BIN = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", "bin", "main.py"))
+CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", ".."))
+TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_simple_two_headed")
 CONFIG_FILE = os.path.join(TMP_DIR, "config.yaml")
 
 
-def _test_convnetv1(game_name):
+def _test_simple_two_headed(game_name):
     if os.path.exists(TMP_DIR):
         shutil.rmtree(TMP_DIR)
     os.makedirs(TMP_DIR)
@@ -23,17 +24,13 @@ def _test_convnetv1(game_name):
                 f"""%YAML 1.2
 ---
 game: "{game_name}"
-iterations: 2
+iterations: 3
 cpu: true
 debug: true
 working_area: {TMP_DIR}
 model:
     base: "[none]"
-    type: "ConvNetV1"
-    residual_block_num: 2
-    residual_filter_num: 2
-    value_head_conv_output_channels_num: 4
-    policy_head_conv_output_channels_num: 4
+    type: "simple_two_headed"
 mcts:
     sim_num: 10
     explore_factor: 1.41421
@@ -66,7 +63,7 @@ model_compare:
         logging.info("Running self play and generating new models...")
         python = sys.executable
         subprocess.check_call(
-            " ".join([python, "-m", "train.main", "--config", CONFIG_FILE]),
+            " ".join([python, TRAIN_MAIN_BIN, "--config", CONFIG_FILE]),
             env=dict(os.environ, PYTHONPATH=CATTUS_TOP),
             stderr=subprocess.STDOUT,
             shell=True,
@@ -77,26 +74,30 @@ model_compare:
             shutil.rmtree(TMP_DIR)
 
 
-def test_ttt_convnetv1():
-    logging.basicConfig(level=logging.DEBUG, format="[TTT ConvNetV1 Test]: %(message)s")
-    _test_convnetv1("tictactoe")
-
-
-def test_hex_convnetv1():
-    logging.basicConfig(level=logging.DEBUG, format="[Hex ConvNetV1 Test]: %(message)s")
-    for size in [4, 5, 7, 9, 11]:
-        _test_convnetv1(f"hex{size}")
-
-
-def test_chess_convnetv1():
+def test_ttt_two_headed():
     logging.basicConfig(
-        level=logging.DEBUG, format="[Chess ConvNetV1 Test]: %(message)s"
+        level=logging.DEBUG, format="[TTT Simple Two Headed Test]: %(message)s"
     )
-    _test_convnetv1("chess")
+    _test_simple_two_headed("tictactoe")
+
+
+def test_hex_two_headed():
+    logging.basicConfig(
+        level=logging.DEBUG, format="[Hex Simple Two Headed Test]: %(message)s"
+    )
+    for size in [4, 5, 7, 9, 11]:
+        _test_simple_two_headed(f"hex{size}")
+
+
+def test_chess_two_headed():
+    logging.basicConfig(
+        level=logging.DEBUG, format="[Chess Simple Two Headed Test]: %(message)s"
+    )
+    _test_simple_two_headed("chess")
 
 
 if __name__ == "__main__":
-    test_ttt_convnetv1()
-    test_hex_convnetv1()
-    test_chess_convnetv1()
+    test_ttt_two_headed()
+    test_hex_two_headed()
+    test_chess_two_headed()
     print("test passed")

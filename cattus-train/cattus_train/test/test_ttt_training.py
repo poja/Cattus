@@ -7,10 +7,10 @@ from pathlib import Path
 REMOVE_TMP_DIR_ON_FINISH = True
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, ".."))
+TRAIN_MAIN_BIN = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", "bin", "main.py"))
+# CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", ".."))
 TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_ttt_training")
 CONFIG_FILE = os.path.join(TMP_DIR, "config.yaml")
-PYTHON_MAIN = os.path.join(CATTUS_TOP, "train", "main.py")
 
 
 def test_ttt_training():
@@ -71,7 +71,7 @@ model_compare:
 
         logging.info("Running self play and generating new models...")
         subprocess.check_call(
-            ["python", PYTHON_MAIN, "--config", CONFIG_FILE, "--run-id", "test"],
+            ["python", TRAIN_MAIN_BIN, "--config", CONFIG_FILE, "--run-id", "test"],
             stderr=subprocess.STDOUT,
         )
 

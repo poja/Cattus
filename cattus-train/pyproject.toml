@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "train"
+name = "cattus_train"
 version = "0.1.0"
 description = ""
 authors = [
     "Barak Ugav <barakugav@gmail.com>",
     "Yishai Gronich <yishai.gronich@gmail.com>",
 ]
-readme = "README.md"
+# readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"

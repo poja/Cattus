@@ -3,12 +3,19 @@ import logging
 import os
 
 import yaml
-
-from train.train_process import TrainProcess
+from cattus_train.train_process import TrainProcess
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 
-if __name__ == "__main__":
+
+CATTUS_ENGINE_TOP = os.path.abspath(
+    os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "..", "..", "cattus-engine"
+    )
+)
+
+
+def main():
     log_fmt = "%(asctime)s.%(msecs)03d %(levelname)s: %(message)s"
     logging.basicConfig(
         level=logging.DEBUG, format=log_fmt, datefmt="%Y-%m-%d %H:%M:%S"
@@ -33,6 +40,8 @@ if __name__ == "__main__":
 
     with open(args.config, "r") as config_file:
         config = yaml.safe_load(config_file)
+    if "engine_path" not in config:
+        config["engine_path"] = CATTUS_ENGINE_TOP
 
     if not config["cpu"]:
         # To prevent "Could not create cudnn handle: CUDNN_STATUS_NOT_INITIALIZED"
@@ -44,3 +53,7 @@ if __name__ == "__main__":
 
     tp = TrainProcess(config)
     tp.run_training_loop(run_id=args.run_id)
+
+
+if __name__ == "__main__":
+    main()

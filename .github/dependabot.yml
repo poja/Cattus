@@ -1,11 +1,11 @@
 version: 2
 updates:
   - package-ecosystem: "cargo"
-    directory: "/"
+    directory: "cattus-engine/"
     schedule:
       interval: "weekly"
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "cattus-train/"
     schedule:
       interval: "weekly"
   - package-ecosystem: "github-actions"

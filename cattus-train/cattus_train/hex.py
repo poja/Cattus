@@ -1,31 +1,31 @@
 import keras
 import numpy as np
 import tensorflow as tf
-from construct import Array, Float32l, Int8sl, Int8ul, Int64ul, Struct
+from construct import Array, Float32l, Int8sl, Int64ul, Struct
 from keras import Input, optimizers
 from keras.layers import Dense
 from keras.models import Model
 
-from train import net_utils
-from train.trainable_game import DataEntryParseError, TrainableGame
+from cattus_train import net_utils
+from cattus_train.trainable_game import DataEntryParseError, TrainableGame
 
 
-class NetType:
+class HexNetType:
     SimpleTwoHeaded = "simple_two_headed"
     ConvNetV1 = "ConvNetV1"
 
 
-class Chess(TrainableGame):
-    BOARD_SIZE = 8
-    PLANES_NUM = 18
-    MOVE_NUM = 1880
+class Hex(TrainableGame):
+    def __init__(self, size):
+        self.BOARD_SIZE = size
+        self.PLANES_NUM = 3
+        self.MOVE_NUM = self.BOARD_SIZE * self.BOARD_SIZE
 
-    ENTRY_FORMAT = Struct(
-        "planes" / Array(PLANES_NUM, Int64ul),
-        "moves_bitmap" / Array(235, Int8ul),
-        "probs" / Array(225, Float32l),
-        "winner" / Int8sl,
-    )
+        self.ENTRY_FORMAT = Struct(
+            "planes" / Array(self.PLANES_NUM * 2, Int64ul),
+            "probs" / Array(self.MOVE_NUM, Float32l),
+            "winner" / Int8sl,
+        )
 
     def load_data_entry(self, path):
         with open(path, "rb") as f:
@@ -37,19 +37,10 @@ class Chess(TrainableGame):
                 )
             )
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
-        planes = np.array(entry.planes, dtype=np.uint64)
-        moves_bitmap = np.array(entry.moves_bitmap, dtype=np.uint8)
+        # planes of 128bit are saved as two 64bit values
+        planes = np.array(entry.planes, dtype=np.uint64).reshape((self.PLANES_NUM, 2))
         probs = np.array(entry.probs, dtype=np.float32)
         winner = entry.winner
-
-        probs_all = np.full((self.MOVE_NUM), -1.0, dtype=np.float32)
-        probs_idx = 0
-        for move_idx in range(self.MOVE_NUM):
-            i, j = move_idx // 8, move_idx % 8
-            if moves_bitmap[i] & (1 << j) != 0:
-                probs_all[move_idx] = probs[probs_idx]
-                probs_idx += 1
-        probs = probs_all
 
         assert len(planes) == self.PLANES_NUM
         assert len(probs) == self.MOVE_NUM
@@ -61,11 +52,41 @@ class Chess(TrainableGame):
         return shape_cpu if cfg["cpu"] else shape_gpu
 
     def _create_model_simple_two_headed(self, cfg):
+        l2reg = cfg["model"].get("l2reg", 0)
+        l2reg = tf.keras.regularizers.l2(l=l2reg) if l2reg else None
         inputs = Input(shape=self._get_input_shape(cfg), name="input_planes")
         flow = tf.keras.layers.Flatten()(inputs)
-        x = Dense(units=128, activation="relu")(flow)
-        head_val = Dense(units=1, activation="tanh", name="value_head")(x)
-        head_probs = Dense(units=self.MOVE_NUM, name="policy_head")(x)
+
+        layer_size = self.BOARD_SIZE * self.BOARD_SIZE
+        flow = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
+            flow
+        )
+        flow = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
+            flow
+        )
+        flow = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
+            flow
+        )
+        flow = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
+            flow
+        )
+
+        flow_val = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
+            flow
+        )
+        flow_val = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
+            flow_val
+        )
+        head_val = Dense(units=1, activation="tanh", name="value_head")(flow_val)
+
+        flow_probs = Dense(
+            units=layer_size, activation="relu", kernel_regularizer=l2reg
+        )(flow)
+        flow_probs = Dense(
+            units=layer_size, activation="relu", kernel_regularizer=l2reg
+        )(flow_probs)
+        head_probs = Dense(units=self.MOVE_NUM, name="policy_head")(flow_probs)
+
         model = Model(inputs=inputs, outputs=[head_val, head_probs])
 
         # lr doesn't matter, will be set by train process
@@ -117,15 +138,15 @@ class Chess(TrainableGame):
         return model
 
     def create_model(self, net_type: str, cfg) -> keras.Model:
-        if net_type == NetType.SimpleTwoHeaded:
+        if net_type == HexNetType.SimpleTwoHeaded:
             return self._create_model_simple_two_headed(cfg)
-        elif net_type == NetType.ConvNetV1:
+        elif net_type == HexNetType.ConvNetV1:
             return self._create_model_convnetv1(cfg)
         else:
             raise ValueError("Unknown model type: " + net_type)
 
     def load_model(self, path: str, net_type: str) -> keras.Model:
-        if net_type == NetType.SimpleTwoHeaded or net_type == NetType.ConvNetV1:
+        if net_type == HexNetType.SimpleTwoHeaded or net_type == HexNetType.ConvNetV1:
             custom_objects = {
                 "loss_cross_entropy": net_utils.loss_cross_entropy,
                 "policy_head_accuracy": net_utils.policy_head_accuracy,

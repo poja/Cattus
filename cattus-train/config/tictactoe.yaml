@@ -5,7 +5,7 @@ iterations: 30
 model_num: 4
 cpu: true
 debug: false
-working_area: "{CATTUS_TOP}/workarea/{GAME_NAME}"
+working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
 model:
     base: "[none]"
@@ -24,8 +24,8 @@ mcts:
 
 self_play:
     temperature_policy:
-        - [3,     1.0]
-        - [       0.0]
+        - [3, 1.0]
+        - [0.0]
     games_num: 40
     threads: 8
 
@@ -34,16 +34,16 @@ training:
     iteration_data_entries: 360
     batch_size: 32
     learning_rate:
-        - [10,  0.01]
-        - [20,  0.001]
-        - [     0.0001]
+        - [10, 0.01]
+        - [20, 0.001]
+        - [0.0001]
     l2reg: 0.0001
     use_train_data_across_runs: true
     threads: 4
 
 model_compare:
     temperature_policy:
-        - [       0.0]
+        - [0.0]
     games_num: 30
     switching_winning_threshold: 0.55
     warning_losing_threshold: 0.55

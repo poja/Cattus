@@ -13,13 +13,14 @@ import tempfile
 import time
 from pathlib import Path
 
-from train.chess import Chess
-from train.data_parser import DataParser
-from train.hex import Hex
-from train.tictactoe import TicTacToe
+from cattus_train.chess import Chess
+from cattus_train.data_parser import DataParser
+from cattus_train.hex import Hex
+from cattus_train.tictactoe import TicTacToe
 
-TRAIN_DIR = os.path.dirname(os.path.realpath(__file__))
-CATTUS_TOP = os.path.abspath(os.path.join(TRAIN_DIR, ".."))
+CATTUS_TRAIN_TOP = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..")
+)
 
 
 def dictionary_to_str(d, indent=0):
@@ -45,7 +46,7 @@ class TrainProcess:
 
         working_area = self.cfg["working_area"]
         working_area = working_area.format(
-            CATTUS_TOP=CATTUS_TOP, GAME_NAME=self.cfg["game"]
+            CATTUS_TRAIN_TOP=CATTUS_TRAIN_TOP, GAME_NAME=self.cfg["game"]
         )
         working_area = Path(working_area)
         self.cfg["working_area"] = working_area
@@ -198,6 +199,7 @@ class TrainProcess:
             stdout=sys.stdout,
             shell=True,
             check=True,
+            cwd=self.cfg["engine_path"],
         )
         self.metrics["self_play_duration"] = time.time() - self_play_start_time
 
@@ -387,6 +389,7 @@ class TrainProcess:
                 stdout=sys.stdout,
                 shell=True,
                 check=True,
+                cwd=self.cfg["engine_path"],
             )
             with open(compare_res_file, "r") as res_file:
                 res = json.load(res_file)
@@ -421,6 +424,7 @@ class TrainProcess:
             stdout=sys.stdout,
             shell=True,
             check=True,
+            cwd=self.cfg["engine_path"],
         )
 
     def _write_metrics(self, filename):

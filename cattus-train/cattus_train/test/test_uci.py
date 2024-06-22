@@ -1,10 +1,18 @@
+import os
+
 import chess
 import chess.engine
+
+TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
+CATTUS_ENGINE_TOP = os.path.abspath(
+    os.path.join(TESTS_DIR, "..", "..", "..", "cattus-engine")
+)
 
 
 def test_works_with_python_library_chess():
     engine = chess.engine.SimpleEngine.popen_uci(
-        "cargo run --bin cattus -- --sim-num 100".split(" ")
+        "cargo run --bin cattus -- --sim-num 100".split(" "),
+        cwd=CATTUS_ENGINE_TOP,
     )
 
     board = chess.Board()

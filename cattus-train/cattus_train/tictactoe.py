@@ -6,26 +6,25 @@ from keras import Input, optimizers
 from keras.layers import Dense
 from keras.models import Model
 
-from train import net_utils
-from train.trainable_game import DataEntryParseError, TrainableGame
+from cattus_train import net_utils
+from cattus_train.trainable_game import DataEntryParseError, TrainableGame
 
 
-class HexNetType:
+class TtoNetType:
     SimpleTwoHeaded = "simple_two_headed"
     ConvNetV1 = "ConvNetV1"
 
 
-class Hex(TrainableGame):
-    def __init__(self, size):
-        self.BOARD_SIZE = size
-        self.PLANES_NUM = 3
-        self.MOVE_NUM = self.BOARD_SIZE * self.BOARD_SIZE
+class TicTacToe(TrainableGame):
+    BOARD_SIZE = 3
+    PLANES_NUM = 3
+    MOVE_NUM = BOARD_SIZE * BOARD_SIZE
 
-        self.ENTRY_FORMAT = Struct(
-            "planes" / Array(self.PLANES_NUM * 2, Int64ul),
-            "probs" / Array(self.MOVE_NUM, Float32l),
-            "winner" / Int8sl,
-        )
+    ENTRY_FORMAT = Struct(
+        "planes" / Array(PLANES_NUM, Int64ul),
+        "probs" / Array(MOVE_NUM, Float32l),
+        "winner" / Int8sl,
+    )
 
     def load_data_entry(self, path):
         with open(path, "rb") as f:
@@ -37,8 +36,7 @@ class Hex(TrainableGame):
                 )
             )
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
-        # planes of 128bit are saved as two 64bit values
-        planes = np.array(entry.planes, dtype=np.uint64).reshape((self.PLANES_NUM, 2))
+        planes = np.array(entry.planes, dtype=np.uint64)
         probs = np.array(entry.probs, dtype=np.float32)
         winner = entry.winner
 
@@ -54,38 +52,33 @@ class Hex(TrainableGame):
     def _create_model_simple_two_headed(self, cfg):
         l2reg = cfg["model"].get("l2reg", 0)
         l2reg = tf.keras.regularizers.l2(l=l2reg) if l2reg else None
+
         inputs = Input(shape=self._get_input_shape(cfg), name="input_planes")
+
+        # Shared part
         flow = tf.keras.layers.Flatten()(inputs)
+        flow = Dense(units=9, activation="relu", kernel_regularizer=l2reg)(flow)
+        flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        flow = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
 
-        layer_size = self.BOARD_SIZE * self.BOARD_SIZE
-        flow = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
-            flow
-        )
-        flow = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
-            flow
-        )
-        flow = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
-            flow
-        )
-        flow = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
-            flow
-        )
-
-        flow_val = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
-            flow
-        )
-        flow_val = Dense(units=layer_size, activation="relu", kernel_regularizer=l2reg)(
+        # Flow diverges to "value" side
+        flow_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        flow_val = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(
             flow_val
         )
-        head_val = Dense(units=1, activation="tanh", name="value_head")(flow_val)
+        head_val = Dense(
+            units=1, activation="tanh", name="value_head", kernel_regularizer=l2reg
+        )(flow_val)
 
-        flow_probs = Dense(
-            units=layer_size, activation="relu", kernel_regularizer=l2reg
-        )(flow)
-        flow_probs = Dense(
-            units=layer_size, activation="relu", kernel_regularizer=l2reg
+        # Flow diverges to "probs" side
+        flow_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(flow)
+        flow_probs = Dense(units=27, activation="relu", kernel_regularizer=l2reg)(
+            flow_probs
+        )
+        head_probs = Dense(
+            units=self.MOVE_NUM, name="policy_head", kernel_regularizer=l2reg
         )(flow_probs)
-        head_probs = Dense(units=self.MOVE_NUM, name="policy_head")(flow_probs)
 
         model = Model(inputs=inputs, outputs=[head_val, head_probs])
 
@@ -138,15 +131,15 @@ class Hex(TrainableGame):
         return model
 
     def create_model(self, net_type: str, cfg) -> keras.Model:
-        if net_type == HexNetType.SimpleTwoHeaded:
+        if net_type == TtoNetType.SimpleTwoHeaded:
             return self._create_model_simple_two_headed(cfg)
-        elif net_type == HexNetType.ConvNetV1:
+        elif net_type == TtoNetType.ConvNetV1:
             return self._create_model_convnetv1(cfg)
         else:
             raise ValueError("Unknown model type: " + net_type)
 
     def load_model(self, path: str, net_type: str) -> keras.Model:
-        if net_type == HexNetType.SimpleTwoHeaded or net_type == HexNetType.ConvNetV1:
+        if net_type == TtoNetType.SimpleTwoHeaded or net_type == TtoNetType.ConvNetV1:
             custom_objects = {
                 "loss_cross_entropy": net_utils.loss_cross_entropy,
                 "policy_head_accuracy": net_utils.policy_head_accuracy,
