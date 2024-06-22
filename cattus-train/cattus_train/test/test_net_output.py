@@ -2,9 +2,9 @@ import json
 import logging
 import math
 import os
-import shutil
 import subprocess
 import sys
+import tempfile
 
 import numpy as np
 
@@ -12,16 +12,10 @@ from cattus_train.chess import Chess
 from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
 
-REMOVE_TMP_DIR_ON_FINISH = True
-
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 CATTUS_ENGINE_TOP = os.path.abspath(
     os.path.join(TESTS_DIR, "..", "..", "..", "cattus-engine")
 )
-TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_net_output")
-MODEL_PATH = os.path.join(TMP_DIR, "model.keras")
-ENCODE_FILE = os.path.join(TMP_DIR, "encode_res.json")
-OUTPUT_FILE = os.path.join(TMP_DIR, "output.json")
 
 ASSERT_PYTHON_OUTPUT_EQ_REPEAT = 8
 ASSERT_RUST_OUTPUT_EQ_REPEAT = 8
@@ -41,12 +35,12 @@ def is_outputs_equals(o1, o2):
 
 def _test_net_output(game_name, game, positions):
     for position in positions:
-        if os.path.exists(TMP_DIR):
-            shutil.rmtree(TMP_DIR)
-        os.makedirs(TMP_DIR)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            model_path = os.path.join(tmp_dir, "model.keras")
+            encode_path = os.path.join(tmp_dir, "encode_res.json")
+            output_file = os.path.join(tmp_dir, "output.json")
 
-        try:
-            model = create_model(game)
+            model = create_model(game, model_path)
 
             # Encode position into tensor for Python model activation
             subprocess.run(
@@ -64,14 +58,14 @@ def _test_net_output(game_name, game, positions):
                     "--position",
                     position,
                     "--outfile",
-                    ENCODE_FILE,
+                    encode_path,
                 ],
                 stderr=sys.stderr,
                 stdout=sys.stdout,
                 check=True,
                 cwd=CATTUS_ENGINE_TOP,
             )
-            with open(ENCODE_FILE, "r") as encode_file:
+            with open(encode_path, "r") as encode_file:
                 tensor_data = json.load(encode_file)
             shape = tuple(tensor_data["shape"])
             tensor = np.array(tensor_data["data"], dtype=np.float32)
@@ -103,9 +97,9 @@ def _test_net_output(game_name, game, positions):
                     "--position",
                     position,
                     "--model-path",
-                    MODEL_PATH,
+                    model_path,
                     "--outfile",
-                    OUTPUT_FILE,
+                    output_file,
                     "--repeat",
                     str(ASSERT_RUST_OUTPUT_EQ_REPEAT),
                 ],
@@ -114,7 +108,7 @@ def _test_net_output(game_name, game, positions):
                 check=True,
                 cwd=CATTUS_ENGINE_TOP,
             )
-            with open(OUTPUT_FILE, "r") as output_file:
+            with open(output_file, "r") as output_file:
                 output = json.load(output_file)
             rs_outputs = zip(output["vals"], output["probs"])
             rs_outputs = [(val, np.array(probs)) for (val, probs) in rs_outputs]
@@ -124,12 +118,9 @@ def _test_net_output(game_name, game, positions):
 
             # Assert Python output and Rust output are equal
             assert is_outputs_equals(py_output, rs_output)
-        finally:
-            if REMOVE_TMP_DIR_ON_FINISH:
-                shutil.rmtree(TMP_DIR)
 
 
-def create_model(game):
+def create_model(game, path):
     cfg = {
         "model": {
             "residual_filter_num": 1,
@@ -140,7 +131,7 @@ def create_model(game):
         "cpu": True,
     }
     model = game.create_model("ConvNetV1", cfg)
-    model.save(MODEL_PATH)
+    model.save(path)
     return model
 
 

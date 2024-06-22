@@ -1,9 +1,9 @@
 import json
 import logging
 import os
-import shutil
 import subprocess
 import sys
+import tempfile
 
 import numpy as np
 
@@ -12,15 +12,10 @@ from cattus_train.data_parser import DataParser
 from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
 
-REMOVE_TMP_DIR_ON_FINISH = True
-
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 CATTUS_ENGINE_TOP = os.path.abspath(
     os.path.join(TESTS_DIR, "..", "..", "..", "cattus-engine")
 )
-TMP_DIR = os.path.join(TESTS_DIR, "tmp", "test_serialize_encode")
-SERIALIZE_FILE = os.path.join(TMP_DIR, "serialize_res.json")
-ENCODE_FILE = os.path.join(TMP_DIR, "encode_res.json")
 
 logging.basicConfig(level=logging.DEBUG, format="[Serialize Encode Test]: %(message)s")
 
@@ -101,11 +96,10 @@ def test_chess_serialize_encode():
 
 def _test_serialize_encode(game_name, game, positions):
     for position in positions:
-        if os.path.exists(TMP_DIR):
-            shutil.rmtree(TMP_DIR)
-        os.makedirs(TMP_DIR)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            serialize_file = os.path.join(tmp_dir, "serialize_res.json")
+            encode_file = os.path.join(tmp_dir, "encode_res.json")
 
-        try:
             subprocess.run(
                 [
                     "cargo",
@@ -121,7 +115,7 @@ def _test_serialize_encode(game_name, game, positions):
                     "--position",
                     position,
                     "--outfile",
-                    ENCODE_FILE,
+                    encode_file,
                 ],
                 stderr=sys.stderr,
                 stdout=sys.stdout,
@@ -143,7 +137,7 @@ def _test_serialize_encode(game_name, game, positions):
                     "--position",
                     position,
                     "--outfile",
-                    SERIALIZE_FILE,
+                    serialize_file,
                 ],
                 stderr=sys.stderr,
                 stdout=sys.stdout,
@@ -152,7 +146,7 @@ def _test_serialize_encode(game_name, game, positions):
             )
 
             cpu = True
-            packed_entry = game.load_data_entry(SERIALIZE_FILE)
+            packed_entry = game.load_data_entry(serialize_file)
             nparr_entry = DataParser.unpack_planes(packed_entry, game, cpu)
             bytes_entry = DataParser.serialize(nparr_entry, game)
             data_parser_tensor = DataParser.bytes_entry_to_tensor(
@@ -160,7 +154,7 @@ def _test_serialize_encode(game_name, game, positions):
             )
             planes_dpt, _ = data_parser_tensor
 
-            with open(ENCODE_FILE, "r") as encode_file:
+            with open(encode_file, "r") as encode_file:
                 rust_tensor_data = json.load(encode_file)
 
             planes_rust_shape = tuple(rust_tensor_data["shape"])
@@ -179,9 +173,6 @@ def _test_serialize_encode(game_name, game, positions):
                     f"(Game: {game_name}, Position: {position}, "
                     f"Rust planes: {planes_rust}, Data parser planes: {planes_dpt})"
                 )
-        finally:
-            if REMOVE_TMP_DIR_ON_FINISH:
-                shutil.rmtree(TMP_DIR)
 
 
 if __name__ == "__main__":
