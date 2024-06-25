@@ -229,7 +229,7 @@ dependencies = [
  "cached",
  "chess",
  "clap",
- "itertools 0.10.5",
+ "itertools 0.12.1",
  "json",
  "lazy_static",
  "ndarray",
