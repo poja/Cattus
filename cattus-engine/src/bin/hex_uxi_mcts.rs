@@ -22,8 +22,9 @@ fn main() {
 
     let args = Args::parse();
 
-    let value_func = Arc::new(TwoHeadedNet::<HEX_STANDARD_BOARD_SIZE, CPU>::new(
+    let value_func = Arc::new(TwoHeadedNet::<HEX_STANDARD_BOARD_SIZE>::new(
         &args.model_path,
+        CPU,
     ));
     let player = Box::new(MCTSPlayer::new(args.sim_num, value_func));
     let mut engine = uxi::UXIEngine::new(player);

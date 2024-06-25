@@ -272,7 +272,7 @@ impl<Game: IGame> SelfPlayWorker<Game> {
 
         let winner = GameColor::to_idx(winner) as f32;
         let (pos, is_flipped) = net::flip_pos_if_needed(pos);
-        let (winner, probs) = net::flip_score_if_needed((winner, probs), is_flipped);
+        let (probs, winner) = net::flip_score_if_needed((probs, winner), is_flipped);
         let winner = GameColor::from_idx(winner as i32);
 
         let entries = Game::produce_transformed_data_entries(DataEntry { pos, probs, winner });

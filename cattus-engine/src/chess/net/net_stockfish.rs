@@ -19,7 +19,7 @@ use crate::game::net;
 
 pub struct StockfishNet;
 impl ValueFunction<ChessGame> for StockfishNet {
-    fn evaluate(&self, position: &ChessPosition) -> (f32, Vec<(<ChessGame as IGame>::Move, f32)>) {
+    fn evaluate(&self, position: &ChessPosition) -> (Vec<(<ChessGame as IGame>::Move, f32)>, f32) {
         let (position, is_flipped) = net::flip_pos_if_needed(*position);
         let board = Board::from_fen(&position.fen()).unwrap();
 
@@ -32,7 +32,7 @@ impl ValueFunction<ChessGame> for StockfishNet {
             .map(|m| (m, 1.0 / move_count))
             .collect_vec();
 
-        net::flip_score_if_needed((val, moves_probs), is_flipped)
+        net::flip_score_if_needed((moves_probs, val), is_flipped)
     }
 
     fn get_statistics(&self) -> NetStatistics {

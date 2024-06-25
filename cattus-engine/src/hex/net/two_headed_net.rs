@@ -6,31 +6,33 @@ use crate::game::net::TwoHeadedNetBase;
 use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 use crate::hex::net::common;
 
-pub struct TwoHeadedNet<const BOARD_SIZE: usize, const CPU: bool> {
-    base: TwoHeadedNetBase<HexGame<BOARD_SIZE>, CPU>,
+pub struct TwoHeadedNet<const BOARD_SIZE: usize> {
+    base: TwoHeadedNetBase<HexGame<BOARD_SIZE>>,
 }
 
-impl<const BOARD_SIZE: usize, const CPU: bool> TwoHeadedNet<BOARD_SIZE, CPU> {
-    pub fn new(model_path: &str) -> Self {
+impl<const BOARD_SIZE: usize> TwoHeadedNet<BOARD_SIZE> {
+    pub fn new(model_path: &str, cpu: bool) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, None),
+            base: TwoHeadedNetBase::new(model_path, cpu, None),
         }
     }
 
-    pub fn with_cache(model_path: &str, cache: Arc<ValueFuncCache<HexGame<BOARD_SIZE>>>) -> Self {
+    pub fn with_cache(
+        model_path: &str,
+        cpu: bool,
+        cache: Arc<ValueFuncCache<HexGame<BOARD_SIZE>>>,
+    ) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, Some(cache)),
+            base: TwoHeadedNetBase::new(model_path, cpu, Some(cache)),
         }
     }
 }
 
-impl<const BOARD_SIZE: usize, const CPU: bool> ValueFunction<HexGame<BOARD_SIZE>>
-    for TwoHeadedNet<BOARD_SIZE, CPU>
-{
+impl<const BOARD_SIZE: usize> ValueFunction<HexGame<BOARD_SIZE>> for TwoHeadedNet<BOARD_SIZE> {
     fn evaluate(
         &self,
         position: &HexPosition<BOARD_SIZE>,
-    ) -> (f32, Vec<(HexMove<BOARD_SIZE>, f32)>) {
+    ) -> (Vec<(HexMove<BOARD_SIZE>, f32)>, f32) {
         self.base.evaluate(position, common::position_to_planes)
     }
 

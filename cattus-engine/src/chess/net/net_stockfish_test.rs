@@ -21,9 +21,9 @@ mod tests {
             "r1bqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1",
         );
 
-        assert!(net.evaluate(&pos1).0 == -net.evaluate(&pos3).0);
-        assert!(net.evaluate(&pos2).0 == -net.evaluate(&pos4).0);
-        assert!(net.evaluate(&pos1).0 > net.evaluate(&pos2).0);
-        assert!(-net.evaluate(&pos3).0 > -net.evaluate(&pos4).0);
+        assert!(net.evaluate(&pos1).1 == -net.evaluate(&pos3).1);
+        assert!(net.evaluate(&pos2).1 == -net.evaluate(&pos4).1);
+        assert!(net.evaluate(&pos1).1 > net.evaluate(&pos2).1);
+        assert!(-net.evaluate(&pos3).1 > -net.evaluate(&pos4).1);
     }
 }
