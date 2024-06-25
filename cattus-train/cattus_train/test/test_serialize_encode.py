@@ -8,9 +8,10 @@ import tempfile
 import numpy as np
 
 from cattus_train.chess import Chess
-from cattus_train.data_parser import DataParser
+from cattus_train.data_set import DataSet
 from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
+from cattus_train.trainable_game import Game
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 CATTUS_ENGINE_TOP = os.path.abspath(
@@ -94,7 +95,7 @@ def test_chess_serialize_encode():
     )
 
 
-def _test_serialize_encode(game_name, game, positions):
+def _test_serialize_encode(game_name: str, game: Game, positions):
     for position in positions:
         with tempfile.TemporaryDirectory() as tmp_dir:
             serialize_file = os.path.join(tmp_dir, "serialize_res.json")
@@ -145,33 +146,26 @@ def _test_serialize_encode(game_name, game, positions):
                 cwd=CATTUS_ENGINE_TOP,
             )
 
-            cpu = True
             packed_entry = game.load_data_entry(serialize_file)
-            nparr_entry = DataParser.unpack_planes(packed_entry, game, cpu)
-            bytes_entry = DataParser.serialize(nparr_entry, game)
-            data_parser_tensor = DataParser.bytes_entry_to_tensor(
-                bytes_entry, game, cpu
-            )
-            planes_dpt, _ = data_parser_tensor
+            tensors_entry = DataSet.unpack_planes(packed_entry, game)
+            planes_py, _ = tensors_entry
 
             with open(encode_file, "r") as encode_file:
                 rust_tensor_data = json.load(encode_file)
 
             planes_rust_shape = tuple(rust_tensor_data["shape"])
-            if planes_rust_shape != planes_dpt.shape:
-                print("game", game_name)
-                print("position", position)
+            if planes_rust_shape != planes_py.shape:
                 raise ValueError(
-                    "planes tensor shape mismatch", planes_rust_shape, planes_dpt.shape
+                    "planes tensor shape mismatch", planes_rust_shape, planes_py.shape
                 )
 
-            planes_dpt = planes_dpt.numpy().flatten()
+            planes_py = planes_py.numpy().flatten()
             planes_rust = np.array(rust_tensor_data["data"], dtype=np.float32)
-            if (planes_rust != planes_dpt).any():
+            if (planes_rust != planes_py).any():
                 raise ValueError(
                     f"Planes tensor mismatch."
                     f"(Game: {game_name}, Position: {position}, "
-                    f"Rust planes: {planes_rust}, Data parser planes: {planes_dpt})"
+                    f"Rust planes: {planes_rust}, Data parser planes: {planes_py})"
                 )
 
 

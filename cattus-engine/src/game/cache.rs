@@ -5,7 +5,7 @@ use std::sync::RwLock;
 
 struct PositionCache<Game: IGame> {
     #[allow(clippy::type_complexity)]
-    map: HashMap<Game::Position, (f32, Vec<(Game::Move, f32)>)>,
+    map: HashMap<Game::Position, (Vec<(Game::Move, f32)>, f32)>,
     deque: VecDeque<Game::Position>,
 }
 
@@ -33,8 +33,8 @@ impl<Game: IGame> ValueFuncCache<Game> {
     pub fn get_or_compute(
         &self,
         position: &Game::Position,
-        mut compute: impl FnMut(&Game::Position) -> (f32, Vec<(Game::Move, f32)>),
-    ) -> (f32, Vec<(Game::Move, f32)>) {
+        mut compute: impl FnMut(&Game::Position) -> (Vec<(Game::Move, f32)>, f32),
+    ) -> (Vec<(Game::Move, f32)>, f32) {
         // Acquire the read lock and check if the position is in the cache
         {
             let cache = self.lock.read().unwrap();

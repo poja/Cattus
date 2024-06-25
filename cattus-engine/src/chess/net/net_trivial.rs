@@ -12,7 +12,7 @@ impl ValueFunction<ChessGame> for TrivialNet {
     fn evaluate(
         &self,
         position: &ChessPosition,
-    ) -> (f32, Vec<(<ChessGame as IGame>::Move, f32)>) {
+    ) -> ( Vec<(<ChessGame as IGame>::Move, f32)>, f32) {
         let (position, is_flipped) = net::flip_pos_if_needed(*position);
         let positionf = position.get_flip();
 
@@ -61,7 +61,7 @@ impl ValueFunction<ChessGame> for TrivialNet {
 
         let moves_probs = net::calc_moves_probs::<ChessGame>(position.get_legal_moves(), &POLICY);
 
-        net::flip_score_if_needed((val, moves_probs), is_flipped)
+        net::flip_score_if_needed((moves_probs, val), is_flipped)
     }
 
     fn get_statistics(&self) -> NetStatistics {

@@ -1,24 +1,21 @@
 from abc import ABC, abstractmethod
+from pathlib import Path
 
-import keras
-import tensorflow as tf
+import torch.nn as nn
+from torch import Tensor
 
 
-class TrainableGame(ABC):
+class Game(ABC):
     @abstractmethod
-    def create_model(self, net_type: str, cfg: dict) -> keras.Model:
+    def create_model(self, net_type: str, cfg: dict) -> nn.Module:
         ...
 
     @abstractmethod
-    def model_input_signature(self, net_type: str, cfg: dict) -> list[tf.TensorSpec]:
+    def model_input_shape(self, net_type: str) -> tuple:
         ...
 
     @abstractmethod
-    def load_model(self, path: str, net_type: str) -> keras.Model:
-        ...
-
-    @abstractmethod
-    def load_data_entry(self, path: str, cfg: dict) -> ():
+    def load_data_entry(self, path: Path) -> tuple[Tensor, tuple[Tensor, Tensor]]:
         ...
 
 

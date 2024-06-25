@@ -21,7 +21,7 @@ fn main() {
 
     let args = Args::parse();
 
-    let value_func = Arc::new(TwoHeadedNet::<CPU>::new(&args.model_path));
+    let value_func = Arc::new(TwoHeadedNet::new(&args.model_path, CPU));
     let mut player1 = MCTSPlayer::new(1000, value_func);
 
     let mut player2 = TttPlayerCmd {};

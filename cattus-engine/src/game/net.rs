@@ -10,7 +10,7 @@ use tract_onnx::prelude::*;
 
 struct BatchData<Game: IGame> {
     samples: Vec<Vec<Game::Bitboard>>,
-    res: Option<Vec<(f32, Vec<f32>)>>,
+    res: Option<Vec<(Vec<f32>, f32)>>,
 }
 
 /* The batch is currently collecting samples, until it has batch_size of them */
@@ -69,7 +69,7 @@ struct Statistics {
 }
 
 type OnnxModel = TypedRunnableModel<TypedModel>;
-pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
+pub struct TwoHeadedNetBase<Game: IGame> {
     model: OnnxModel,
     cache: Option<Arc<ValueFuncCache<Game>>>,
 
@@ -79,8 +79,8 @@ pub struct TwoHeadedNetBase<Game: IGame, const CPU: bool> {
     stats: Mutex<Statistics>,
 }
 
-impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
-    pub fn new(model_path: &str, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
+impl<Game: IGame> TwoHeadedNetBase<Game> {
+    pub fn new(model_path: &str, cpu: bool, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
         // Load the model
         fn load_model(model_path: &str) -> TractResult<OnnxModel> {
             tract_onnx::onnx()
@@ -97,7 +97,7 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
             model,
             cache,
             next_batch_manager: Mutex::new(NextBatchManager::new_empty()),
-            max_batch_size: if CPU { 1 } else { GPU_BATCH_SIZE },
+            max_batch_size: if cpu { 1 } else { GPU_BATCH_SIZE },
             stats: Mutex::new(Statistics {
                 activation_count: 0,
                 run_duration_sum: Duration::ZERO,
@@ -106,36 +106,37 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         }
     }
 
-    pub fn run_net(&self, input: Array4<f32>) -> Vec<(f32, Vec<f32>)> {
+    pub fn run_net(&self, input: Array4<f32>) -> Vec<(Vec<f32>, f32)> {
         let input: Tensor = input.into();
         let net_run_begin = Instant::now();
         let outputs = self.model.run(tvec!(input.into())).unwrap();
         let run_duration = net_run_begin.elapsed();
 
         assert_eq!(outputs.len(), 2);
-        let vals: ArrayView2<f32> = outputs[0]
+        let moves_scores: ArrayView2<f32> = outputs[0]
             .to_array_view::<f32>()
             .unwrap()
             .into_dimensionality()
             .unwrap();
-        let moves_scores: ArrayView2<f32> = outputs[1]
+        let vals: ArrayView2<f32> = outputs[1]
             .to_array_view::<f32>()
             .unwrap()
             .into_dimensionality()
             .unwrap();
 
         let batch_size = vals.len();
-        let ret = vals
+        let ret = moves_scores
+            .rows()
             .into_iter()
-            .zip(moves_scores.rows())
-            .map(|(&val, sample_scores)| {
+            .zip(vals)
+            .map(|(sample_scores, &val)| {
                 let mut sample_scores = sample_scores.to_vec();
                 for s in sample_scores.iter_mut() {
                     if !s.is_finite() {
                         *s = f32::MIN;
                     }
                 }
-                (val, sample_scores)
+                (sample_scores, val)
             })
             .collect_vec();
 
@@ -152,7 +153,7 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         &self,
         position: &Game::Position,
         to_planes: impl Fn(&Game::Position) -> Vec<Game::Bitboard>,
-    ) -> (f32, Vec<(Game::Move, f32)>) {
+    ) -> (Vec<(Game::Move, f32)>, f32) {
         let (position, is_flipped) = flip_pos_if_needed(*position);
 
         let res = if let Some(cache) = &self.cache {
@@ -168,7 +169,7 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
         &self,
         pos: &Game::Position,
         to_planes: &impl Fn(&Game::Position) -> Vec<Game::Bitboard>,
-    ) -> (f32, Vec<(Game::Move, f32)>) {
+    ) -> (Vec<(Game::Move, f32)>, f32) {
         /* Add a new sample to the current batch */
         let batch;
         let batch_idx;
@@ -219,7 +220,7 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
                 /* The batch is either full or we waited too much. Run the network on batch */
                 let mut batch_data = batch.data.lock().unwrap();
                 assert!(batch_data.res.is_none());
-                let res = self.run_net(planes_to_tensor::<Game, CPU>(&batch_data.samples));
+                let res = self.run_net(planes_to_tensor::<Game>(&batch_data.samples));
                 sample_res = res[sample_idx].clone();
                 batch_data.res = Some(res);
 
@@ -270,10 +271,10 @@ impl<Game: IGame, const CPU: bool> TwoHeadedNetBase<Game, CPU> {
             }
         }
 
-        let (val, move_scores) = sample_res;
+        let (move_scores, val) = sample_res;
         let moves = pos.get_legal_moves();
         let moves_probs = calc_moves_probs::<Game>(moves, &move_scores);
-        (val, moves_probs)
+        (moves_probs, val)
     }
 
     pub fn get_statistics(&self) -> NetStatistics {
@@ -307,30 +308,19 @@ pub fn calc_moves_probs<Game: IGame>(
     moves.into_iter().zip(probs).collect_vec()
 }
 
-pub fn planes_to_tensor<Game: IGame, const CPU: bool>(
-    samples: &[Vec<Game::Bitboard>],
-) -> Array4<f32> {
+pub fn planes_to_tensor<Game: IGame>(samples: &[Vec<Game::Bitboard>]) -> Array4<f32> {
     let batch_size = samples.len();
     let planes_num = samples[0].len();
-    let dims = if CPU {
-        (batch_size, Game::BOARD_SIZE, Game::BOARD_SIZE, planes_num)
-    } else {
-        (batch_size, planes_num, Game::BOARD_SIZE, Game::BOARD_SIZE)
-    };
+    let dims = (batch_size, planes_num, Game::BOARD_SIZE, Game::BOARD_SIZE);
     let mut tensor: Array4<f32> = Array4::zeros(dims);
 
     for (b, sample) in samples.iter().enumerate() {
         for (c, plane) in sample.iter().enumerate() {
             for h in 0..(Game::BOARD_SIZE) {
                 for w in 0..(Game::BOARD_SIZE) {
-                    let val = match plane.get(h * Game::BOARD_SIZE + w) {
+                    tensor[(b, c, h, w)] = match plane.get(h * Game::BOARD_SIZE + w) {
                         true => 1.0,
                         false => 0.0,
-                    };
-                    if CPU {
-                        tensor[(b, h, w, c)] = val;
-                    } else {
-                        tensor[(b, c, h, w)] = val;
                     };
                 }
             }
@@ -349,23 +339,22 @@ pub fn flip_pos_if_needed<Position: GamePosition>(pos: Position) -> (Position, b
 }
 
 pub fn flip_score_if_needed<Move: GameMove>(
-    net_res: (f32, Vec<(Move, f32)>),
+    net_res: (Vec<(Move, f32)>, f32),
     pos_flipped: bool,
-) -> (f32, Vec<(Move, f32)>) {
+) -> (Vec<(Move, f32)>, f32) {
     if !pos_flipped {
-        net_res
-    } else {
-        let (val, moves_probs) = net_res;
-
-        /* Flip scalar value */
-        let val = -val;
-
-        /* Flip moves */
-        let moves_probs = moves_probs
-            .into_iter()
-            .map(|(m, p)| (m.get_flip(), p))
-            .collect_vec();
-
-        (val, moves_probs)
+        return net_res;
     }
+    let (moves_probs, val) = net_res;
+
+    /* Flip scalar value */
+    let val = -val;
+
+    /* Flip moves */
+    let moves_probs = moves_probs
+        .into_iter()
+        .map(|(m, p)| (m.get_flip(), p))
+        .collect_vec();
+
+    (moves_probs, val)
 }

@@ -115,6 +115,7 @@ training:
 
     # Number of threads used during training
     # Capped by the number of models maintained, as model can't be trained in parallel
+    # Relevant only if trained on CPU and not on GPU
     threads: 8
 
 # Model comparison used to determine which model will be used to generate training data using self play

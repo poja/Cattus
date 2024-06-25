@@ -5,7 +5,7 @@ use cattus::ttt::ttt_game::{TttGame, TttPosition};
 use cattus::utils;
 use cattus::{chess, hex, ttt};
 use clap::Parser;
-use ndarray::Array4;
+use ndarray::{Array3, Array4, Axis};
 use std::fs;
 
 #[derive(Parser, Debug)]
@@ -33,27 +33,32 @@ fn main() -> std::io::Result<()> {
         "chess" => create_tensor_chess(&args),
         unknown_game => panic!("unknown game: {:?}", unknown_game),
     };
+
+    // Remove the batch axis
+    assert_eq!(tensor.shape()[0], 1);
+    let tensor = tensor.remove_axis(Axis(0));
+
     tensor_to_json(tensor, &args.outfile)
 }
 
 fn create_tensor_tictactoe(args: &Args) -> Array4<f32> {
     let pos = TttPosition::from_str(&args.position);
     let planes = ttt::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<TttGame, true>(&[planes])
+    net::planes_to_tensor::<TttGame>(&[planes])
 }
 fn create_tensor_hex<const BOARD_SIZE: usize>(args: &Args) -> Array4<f32> {
     let pos = HexPosition::from_str(&args.position);
     let planes = hex::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<HexGame<BOARD_SIZE>, true>(&[planes])
+    net::planes_to_tensor::<HexGame<BOARD_SIZE>>(&[planes])
 }
 
 fn create_tensor_chess(args: &Args) -> Array4<f32> {
     let pos = ChessPosition::from_str(&args.position);
     let planes = chess::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<ChessGame, true>(&[planes])
+    net::planes_to_tensor::<ChessGame>(&[planes])
 }
 
-fn tensor_to_json(tensor: Array4<f32>, filename: &String) -> std::io::Result<()> {
+fn tensor_to_json(tensor: Array3<f32>, filename: &String) -> std::io::Result<()> {
     fs::write(
         filename,
         json::object! {

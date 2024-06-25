@@ -41,45 +41,45 @@ fn main() -> std::io::Result<()> {
     outputs_to_json(outputs, &args.outfile)
 }
 
-fn run_net_tictactoe(args: &Args) -> Vec<(f32, Vec<f32>)> {
+fn run_net_tictactoe(args: &Args) -> Vec<(Vec<f32>, f32)> {
     let pos = TttPosition::from_str(&args.position);
-    let net = TwoHeadedNetBase::<TttGame, true>::new(&args.model_path, None);
+    let net = TwoHeadedNetBase::<TttGame>::new(&args.model_path, true, None);
     let samples = (0..args.repeat)
         .map(|_| ttt::net::common::position_to_planes(&pos))
         .collect_vec();
-    let tensor = net::planes_to_tensor::<TttGame, true>(&samples);
+    let tensor = net::planes_to_tensor::<TttGame>(&samples);
     net.run_net(tensor)
 }
 
-fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<(f32, Vec<f32>)> {
+fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<(Vec<f32>, f32)> {
     let pos = HexPosition::from_str(&args.position);
-    let net = TwoHeadedNetBase::<HexGame<BOARD_SIZE>, true>::new(&args.model_path, None);
+    let net = TwoHeadedNetBase::<HexGame<BOARD_SIZE>>::new(&args.model_path, true, None);
     let samples = (0..args.repeat)
         .map(|_| hex::net::common::position_to_planes(&pos))
         .collect_vec();
-    let tensor = net::planes_to_tensor::<HexGame<BOARD_SIZE>, true>(&samples);
+    let tensor = net::planes_to_tensor::<HexGame<BOARD_SIZE>>(&samples);
     net.run_net(tensor)
 }
 
-fn run_net_chess(args: &Args) -> Vec<(f32, Vec<f32>)> {
+fn run_net_chess(args: &Args) -> Vec<(Vec<f32>, f32)> {
     let pos = ChessPosition::from_str(&args.position);
 
-    let net = TwoHeadedNetBase::<ChessGame, true>::new(&args.model_path, None);
+    let net = TwoHeadedNetBase::<ChessGame>::new(&args.model_path, true, None);
     let samples = (0..args.repeat)
         .map(|_| chess::net::common::position_to_planes(&pos))
         .collect_vec();
-    let tensor = net::planes_to_tensor::<ChessGame, true>(&samples);
+    let tensor = net::planes_to_tensor::<ChessGame>(&samples);
     net.run_net(tensor)
 }
 
-fn outputs_to_json(outputs: Vec<(f32, Vec<f32>)>, filename: &String) -> std::io::Result<()> {
-    let vals = outputs.iter().map(|(val, _probs)| *val).collect_vec();
-    let probs = outputs.into_iter().map(|(_val, probs)| probs).collect_vec();
+fn outputs_to_json(outputs: Vec<(Vec<f32>, f32)>, filename: &String) -> std::io::Result<()> {
+    let vals = outputs.iter().map(|(_probs, val)| *val).collect_vec();
+    let probs = outputs.into_iter().map(|(probs, _val)| probs).collect_vec();
     fs::write(
         filename,
         json::object! {
-            vals: vals,
             probs: probs,
+            vals: vals,
         }
         .dump(),
     )

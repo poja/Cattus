@@ -1,13 +1,13 @@
+use crate::chess::chess_game::{ChessGame, ChessPosition};
+use crate::chess::net::common;
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::IGame;
 use crate::game::mcts::{NetStatistics, ValueFunction};
 use crate::game::net::TwoHeadedNetBase;
-use crate::ttt::net::common;
-use crate::ttt::ttt_game::{TttGame, TttPosition};
 use std::sync::Arc;
 
 pub struct TwoHeadedNet {
-    base: TwoHeadedNetBase<TttGame>,
+    base: TwoHeadedNetBase<ChessGame>,
 }
 
 impl TwoHeadedNet {
@@ -17,15 +17,15 @@ impl TwoHeadedNet {
         }
     }
 
-    pub fn with_cache(model_path: &str, cpu: bool, cache: Arc<ValueFuncCache<TttGame>>) -> Self {
+    pub fn with_cache(model_path: &str, cpu: bool, cache: Arc<ValueFuncCache<ChessGame>>) -> Self {
         Self {
             base: TwoHeadedNetBase::new(model_path, cpu, Some(cache)),
         }
     }
 }
 
-impl ValueFunction<TttGame> for TwoHeadedNet {
-    fn evaluate(&self, position: &TttPosition) -> (Vec<(<TttGame as IGame>::Move, f32)>, f32) {
+impl ValueFunction<ChessGame> for TwoHeadedNet {
+    fn evaluate(&self, position: &ChessPosition) -> (Vec<(<ChessGame as IGame>::Move, f32)>, f32) {
         self.base.evaluate(position, common::position_to_planes)
     }
 

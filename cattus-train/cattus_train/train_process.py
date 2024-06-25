@@ -13,14 +13,17 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-import keras
-import onnx
-import tf2onnx
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
 from cattus_train.chess import Chess
-from cattus_train.data_parser import DataParser
+from cattus_train.data_set import DataSet
 from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
+from cattus_train.trainable_game import Game
 
 CATTUS_TRAIN_TOP = os.path.abspath(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..")
@@ -63,6 +66,7 @@ class TrainProcess:
         ):
             os.makedirs(path, exist_ok=True)
 
+        self.game: Game = None
         if self.cfg["game"] == "tictactoe":
             self.game = TicTacToe()
         elif re.match("hex[0-9]+", self.cfg["game"]):
@@ -78,11 +82,6 @@ class TrainProcess:
         base_model_path = self.cfg["model"]["base"]
         if base_model_path == "[none]":
             model = self.game.create_model(self.net_type, self.cfg)
-            assert model.get_layer("value_head").output.shape == (None, 1)
-            assert model.get_layer("policy_head").output.shape == (
-                None,
-                self.game.MOVE_NUM,
-            )
             base_model_path = self._save_model(model)
         elif base_model_path == "[latest]":
             logging.warning("Choosing latest model based on directory name format")
@@ -114,7 +113,7 @@ class TrainProcess:
         metrics_filename = os.path.join(self.cfg["metrics_dir"], f"{self.run_id}.csv")
 
         best_model = (
-            self.game.load_model(self.base_model_path, self.net_type),
+            torch.load(self.base_model_path.with_suffix(".pt")),
             self.base_model_path,
         )
         latest_models = [best_model]
@@ -219,7 +218,7 @@ class TrainProcess:
             }
         )
 
-    def _train(self, models, iter_num) -> list[tuple[keras.Model, Path]]:
+    def _train(self, models, iter_num) -> list[tuple[nn.Module, Path]]:
         train_data_dir = (
             self.cfg["games_dir"]
             if self.cfg["training"]["use_train_data_across_runs"]
@@ -231,69 +230,115 @@ class TrainProcess:
 
         # values_loss = [None] * len(models)
         # values_loss = [None] * len(models)
-        loss = [None] * len(models)
-        value_accuracy = [None] * len(models)
-        policy_accuracy = [None] * len(models)
-        training_duration = [None] * len(models)
+        losses = [None] * len(models)
+        value_accuracies = [None] * len(models)
+        policy_accuracies = [None] * len(models)
+        training_durations = [None] * len(models)
         trained_models = [None] * len(models)
 
-        def train_models(model_list):
-            for model_idx, (model, _model_path) in model_list:
-                parser = DataParser(self.game, train_data_dir, self.cfg)
-                train_dataset = parser.create_train_dataset()
+        def train_models(model_list: list[tuple[int, nn.Module]]):
+            for m_idx, model in model_list:
+                data_set = DataSet(self.game, train_data_dir, self.cfg)
+                data_loader = DataLoader(
+                    data_set, batch_size=self.cfg["training"]["batch_size"]
+                )
 
-                # TODO: not sure if this is the right way to set the learning rate
-                # tf.keras.backend.set_value(model.optimizer.learning_rate, lr)
-                model.optimizer.learning_rate = lr
+                def mask_illegal_moves(output, target):
+                    output = torch.where(target >= 0, output, -1e10)
+                    target = nn.ReLU()(target)
+                    return output, target
 
+                def loss_cross_entropy(output, target):
+                    output, target = mask_illegal_moves(output, target)
+                    return F.cross_entropy(output, target)
+
+                def loss_fn(outputs, targets):
+                    policy_output, value_output = outputs
+                    policy_target, value_target = targets
+                    policy_loss = loss_cross_entropy(policy_output, policy_target)
+                    value_loss = F.mse_loss(value_output.squeeze(), value_target)
+                    return policy_loss + value_loss
+
+                model.train()
+                optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+                final_batch = None
                 training_start_time = time.time()
-                history = model.fit(train_dataset, epochs=1, verbose=0).history
-                train_dur = time.time() - training_start_time
+                for x, y in data_loader:
+                    optimizer.zero_grad()
+                    outputs = model(x)
+                    loss = loss_fn(outputs, y)
+                    loss.backward()
+                    optimizer.step()
+                    final_batch = (x, y)
+                train_duration = time.time() - training_start_time
 
-                # values_loss[model_idx] = history["value_head_loss"][0]
-                # policy_loss[model_idx] = history["policy_head_loss"][0]
-                loss[model_idx] = history["loss"][0]
-                value_accuracy[model_idx] = history["value_head_value_head_accuracy"][0]
-                policy_accuracy[model_idx] = history[
-                    "policy_head_policy_head_accuracy"
-                ][0]
-                training_duration[model_idx] = train_dur
+                def policy_head_accuracy(output, target):
+                    output, target = mask_illegal_moves(output, target)
+                    predicted = torch.argmax(output, dim=1)
+                    target = torch.argmax(target, dim=1)
+                    return (predicted == target).float().mean()
 
-                trained_models[model_idx] = (model, self._save_model(model))
+                def value_head_accuracy(output, target):
+                    # Both the target and output should be in range [-1,1]
+                    return 1 - torch.abs(target - output).mean() / 2
 
-        # Divide the training into jobs
-        models = list(enumerate(models))
+                with torch.no_grad():
+                    model.eval()
+                    final_x, final_y = final_batch
+                    final_outputs = model(final_x)
+                    losses[m_idx] = loss_fn(final_outputs, final_y).detach().item()
+                    policy_accuracies[m_idx] = (
+                        policy_head_accuracy(final_outputs[0], final_y[0])
+                        .detach()
+                        .item()
+                    )
+                    value_accuracies[m_idx] = (
+                        value_head_accuracy(final_outputs[1], final_y[1])
+                        .detach()
+                        .item()
+                    )
+                    training_durations[m_idx] = train_duration
+
+                trained_models[m_idx] = (model, self._save_model(model))
+
+        models = [(idx, model) for idx, (model, _model_path) in enumerate(models)]
         workers_num = min(self.cfg["training"].get("threads", 1), len(models))
-        jobs = []
-        for idx in range(workers_num):
-            i = idx / workers_num * len(models)
-            j = (idx + 1) / workers_num * len(models)
-            jobs.append(models[int(i) : int(j)])
+        workers_num = 1 if self.cfg["cpu"] else workers_num
+        if workers_num > 1:
+            # Divide the training into jobs
+            cpu_jobs = len(models) // workers_num
+            indices = np.arange(0, len(models) + cpu_jobs, cpu_jobs)
+            jobs = [models[i:j] for i, j in zip(indices[:-1], indices[1:])]
 
-        # Execute all jobs
-        with multiprocessing.pool.ThreadPool(len(jobs)) as pool:
-            pool.map(train_models, jobs)
+            # Execute all jobs
+            with multiprocessing.pool.ThreadPool(len(jobs)) as pool:
+                pool.map(train_models, jobs)
+        else:
+            # Train on a single CPU thread
+            train_models(models)
 
         for model_idx in range(len(models)):
             logging.info(f"Model{model_idx} training metrics:")
             # logging.info("\tValue loss      {:.4f}".format(values_loss[model_idx]))
             # logging.info("\tPolicy loss     {:.4f}".format(policy_loss[model_idx]))
-            logging.info("\tLoss            {:.4f}".format(loss[model_idx]))
-            logging.info("\tValue accuracy  {:.4f}".format(value_accuracy[model_idx]))
-            logging.info("\tPolicy accuracy {:.4f}".format(policy_accuracy[model_idx]))
+            logging.info("\tLoss            {:.4f}".format(losses[model_idx]))
+            logging.info("\tValue accuracy  {:.4f}".format(value_accuracies[model_idx]))
+            logging.info(
+                "\tPolicy accuracy {:.4f}".format(policy_accuracies[model_idx])
+            )
 
             self.metrics.update(
                 {
-                    f"loss_{model_idx}": loss[model_idx],
-                    f"value_accuracy_{model_idx}": value_accuracy[model_idx],
-                    f"policy_accuracy_{model_idx}": policy_accuracy[model_idx],
+                    f"loss_{model_idx}": losses[model_idx],
+                    f"value_accuracy_{model_idx}": value_accuracies[model_idx],
+                    f"policy_accuracy_{model_idx}": policy_accuracies[model_idx],
                 }
             )
-        self.metrics["training_duration"] = sum(training_duration)
+        self.metrics["training_duration"] = sum(training_durations)
 
         return trained_models
 
-    def _compare_models(self, best_model, latest_models) -> tuple[keras.Model, Path]:
+    def _compare_models(self, best_model, latest_models) -> tuple[nn.Module, Path]:
         if self.cfg["model_compare"]["games_num"] == 0:
             assert (
                 len(latest_models) == 1
@@ -392,7 +437,7 @@ class TrainProcess:
             total_games = w1 + w2 + d
             return w1 / total_games, w2 / total_games
 
-    def _save_model(self, model: keras.Model) -> Path:
+    def _save_model(self, model: nn.Module) -> Path:
         model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(
             random.randint(0, 1 << 16)
         )
@@ -400,12 +445,22 @@ class TrainProcess:
         model_path = Path(self.cfg["models_dir"]) / f"model_{model_time}"
 
         # Save model in Keras format
-        model.save(model_path.with_suffix(".keras"))
+        torch.save(model, model_path.with_suffix(".pt"))
 
         # Save model in ONNX format
-        input_signature = self.game.model_input_signature(self.net_type, self.cfg)
-        onnx_model, _ = tf2onnx.convert.from_keras(model, input_signature)
-        onnx.save(onnx_model, model_path.with_suffix(".onnx"))
+        model.eval()
+        with torch.no_grad():
+            torch.onnx.export(
+                model,
+                torch.randn(self.game.model_input_shape(self.net_type)),
+                model_path.with_suffix(".onnx"),
+                verbose=False,
+                input_names=["planes"],
+                output_names=["policy", "value"],
+                dynamic_axes={
+                    "planes": {0: "batch"}
+                },  # TODO: consider removing this, may affect performance
+            )
 
         return model_path
 

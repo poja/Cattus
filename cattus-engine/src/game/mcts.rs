@@ -149,7 +149,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
                 GameColor::to_idx(leaf_pos.get_winner()) as f32
             } else {
                 /* Run value function once to obtain "simulation" value and initial children scores (probabilities) */
-                let (eval, per_move_val) = self.simulate(leaf_id);
+                let (per_move_val, eval) = self.simulate(leaf_id);
 
                 /* Expand leaf and assign initial scores */
                 self.create_children(leaf_id, per_move_val);
@@ -245,7 +245,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         }
     }
 
-    fn simulate(&mut self, leaf_id: NodeIndex) -> (f32, Vec<(Game::Move, f32)>) {
+    fn simulate(&mut self, leaf_id: NodeIndex) -> (Vec<(Game::Move, f32)>, f32) {
         let position = &self.search_tree[leaf_id].position;
         assert!(!position.is_over());
         self.value_func.evaluate(position)
@@ -483,14 +483,14 @@ pub trait ValueFunction<Game: IGame>: Sync + Send {
     /// Returns a tuple of a scalar value score of the position and per-move scores/probabilities.
     /// The scalar is the current position value in range [-1,1]. 1 if player1 is winning and -1 if player2 is winning
     /// The per-move probabilities should have a sum of 1, greater value is a better move
-    fn evaluate(&self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>);
+    fn evaluate(&self, position: &Game::Position) -> (Vec<(Game::Move, f32)>, f32);
 
     fn get_statistics(&self) -> NetStatistics;
 }
 
 pub struct ValueFunctionRand;
 impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
-    fn evaluate(&self, position: &Game::Position) -> (f32, Vec<(Game::Move, f32)>) {
+    fn evaluate(&self, position: &Game::Position) -> (Vec<(Game::Move, f32)>, f32) {
         let winner = if position.is_over() {
             position.get_winner()
         } else {
@@ -519,7 +519,7 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
         let move_prob = 1.0 / moves.len() as f32;
         let moves_probs = moves.iter().map(|m| (*m, move_prob)).collect_vec();
 
-        (val, moves_probs)
+        (moves_probs, val)
     }
 
     fn get_statistics(&self) -> NetStatistics {
