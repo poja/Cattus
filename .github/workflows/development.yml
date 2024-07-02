@@ -39,7 +39,7 @@ jobs:
 
     # Linters
     - name: Rust Clippy linter
-      uses: auguwu/clippy-action@1.3.0
+      uses: auguwu/clippy-action@1.4.0
       with:
         working-directory: cattus-engine
         token: ${{ secrets.GITHUB_TOKEN }}
