@@ -46,7 +46,7 @@ jobs:
     - name: Python Ruff linter
       uses: chartboost/ruff-action@v1
       with:
-        args: cattus-train
+        args: check cattus-train
 
     # Tests
     - name: Rust tests
