@@ -4,6 +4,7 @@ use crate::game::cache::ValueFuncCache;
 use crate::game::common::IGame;
 use crate::game::mcts::{NetStatistics, ValueFunction};
 use crate::game::net::TwoHeadedNetBase;
+use crate::utils::Device;
 use std::sync::Arc;
 
 pub struct TwoHeadedNet {
@@ -11,15 +12,19 @@ pub struct TwoHeadedNet {
 }
 
 impl TwoHeadedNet {
-    pub fn new(model_path: &str, cpu: bool) -> Self {
+    pub fn new(model_path: &str, device: Device) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, cpu, None),
+            base: TwoHeadedNetBase::new(model_path, device, None),
         }
     }
 
-    pub fn with_cache(model_path: &str, cpu: bool, cache: Arc<ValueFuncCache<ChessGame>>) -> Self {
+    pub fn with_cache(
+        model_path: &str,
+        device: Device,
+        cache: Arc<ValueFuncCache<ChessGame>>,
+    ) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, cpu, Some(cache)),
+            base: TwoHeadedNetBase::new(model_path, device, Some(cache)),
         }
     }
 }

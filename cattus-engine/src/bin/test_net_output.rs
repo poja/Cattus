@@ -2,7 +2,7 @@ use cattus::chess::chess_game::{ChessGame, ChessPosition};
 use cattus::game::net::{self, TwoHeadedNetBase};
 use cattus::hex::hex_game::{HexGame, HexPosition};
 use cattus::ttt::ttt_game::{TttGame, TttPosition};
-use cattus::utils;
+use cattus::utils::{self, Device};
 use cattus::{chess, hex, ttt};
 use clap::Parser;
 use itertools::Itertools;
@@ -43,7 +43,7 @@ fn main() -> std::io::Result<()> {
 
 fn run_net_tictactoe(args: &Args) -> Vec<(Vec<f32>, f32)> {
     let pos = TttPosition::from_str(&args.position);
-    let net = TwoHeadedNetBase::<TttGame>::new(&args.model_path, true, None);
+    let net = TwoHeadedNetBase::<TttGame>::new(&args.model_path, Device::Cpu, None);
     let samples = (0..args.repeat)
         .map(|_| ttt::net::common::position_to_planes(&pos))
         .collect_vec();
@@ -53,7 +53,7 @@ fn run_net_tictactoe(args: &Args) -> Vec<(Vec<f32>, f32)> {
 
 fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<(Vec<f32>, f32)> {
     let pos = HexPosition::from_str(&args.position);
-    let net = TwoHeadedNetBase::<HexGame<BOARD_SIZE>>::new(&args.model_path, true, None);
+    let net = TwoHeadedNetBase::<HexGame<BOARD_SIZE>>::new(&args.model_path, Device::Cpu, None);
     let samples = (0..args.repeat)
         .map(|_| hex::net::common::position_to_planes(&pos))
         .collect_vec();
@@ -64,7 +64,7 @@ fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<(Vec<f32>, f32)> {
 fn run_net_chess(args: &Args) -> Vec<(Vec<f32>, f32)> {
     let pos = ChessPosition::from_str(&args.position);
 
-    let net = TwoHeadedNetBase::<ChessGame>::new(&args.model_path, true, None);
+    let net = TwoHeadedNetBase::<ChessGame>::new(&args.model_path, Device::Cpu, None);
     let samples = (0..args.repeat)
         .map(|_| chess::net::common::position_to_planes(&pos))
         .collect_vec();

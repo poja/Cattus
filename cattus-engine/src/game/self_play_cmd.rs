@@ -3,7 +3,7 @@ use crate::game::common::IGame;
 use crate::game::mcts::{MCTSPlayer, ValueFunction};
 use crate::game::self_play::{DataSerializer, SelfPlayRunner};
 use crate::game::utils::Callback;
-use crate::utils::{self, Builder};
+use crate::utils::{self, Builder, Device};
 use clap::Parser;
 use itertools::Itertools;
 use std::fs;
@@ -40,7 +40,7 @@ struct SelfPlayArgs {
     #[clap(long, default_value = "1")]
     threads: u32,
     #[clap(long, default_value = "CPU")]
-    processing_unit: String,
+    device: String,
     #[clap(long, default_value = "100000")]
     cache_size: usize,
 }
@@ -98,7 +98,7 @@ pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
         &self,
         model_path: &str,
         cache: Arc<ValueFuncCache<Game>>,
-        cpu: bool,
+        device: Device,
     ) -> Box<dyn ValueFunction<Game>>;
 }
 
@@ -190,17 +190,20 @@ pub fn run_main<Game: IGame + 'static>(
 
     let args = SelfPlayArgs::parse();
 
-    let cpu = match args.processing_unit.to_uppercase().as_str() {
-        "CPU" => true,
-        "GPU" => false,
+    let device = match args.device.to_uppercase().as_str() {
+        "CPU" => Device::Cpu,
+        "GPU" => Device::Gpu,
         unknown_pu => panic!("unknown processing unit '{unknown_pu}'"),
     };
     let metrics = Arc::new(Metrics::new());
     let mut cache_builder = CacheBuilder::new(args.cache_size);
     let mut nets = vec![];
 
-    let player1_net =
-        Arc::from(network_builder.build_net(&args.model1_path, cache_builder.build_cache(), cpu));
+    let player1_net = Arc::from(network_builder.build_net(
+        &args.model1_path,
+        cache_builder.build_cache(),
+        device,
+    ));
     nets.push(Arc::clone(&player1_net));
     let player1_builder = Arc::new(PlayerBuilder::new(
         player1_net,
@@ -217,7 +220,7 @@ pub fn run_main<Game: IGame + 'static>(
         let player2_net = Arc::from(network_builder.build_net(
             &args.model2_path,
             cache_builder.build_cache(),
-            cpu,
+            device,
         ));
         nets.push(Arc::clone(&player2_net));
         Arc::new(PlayerBuilder::new(

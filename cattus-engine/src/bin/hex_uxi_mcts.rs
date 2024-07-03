@@ -2,7 +2,7 @@ use cattus::game::mcts::MCTSPlayer;
 use cattus::hex::hex_game::HEX_STANDARD_BOARD_SIZE;
 use cattus::hex::net::two_headed_net::TwoHeadedNet;
 use cattus::hex::uxi;
-use cattus::utils;
+use cattus::utils::{self, Device};
 use clap::Parser;
 use std::sync::Arc;
 
@@ -18,13 +18,11 @@ struct Args {
 fn main() {
     utils::init_python();
 
-    const CPU: bool = true;
-
     let args = Args::parse();
 
     let value_func = Arc::new(TwoHeadedNet::<HEX_STANDARD_BOARD_SIZE>::new(
         &args.model_path,
-        CPU,
+        Device::Cpu,
     ));
     let player = Box::new(MCTSPlayer::new(args.sim_num, value_func));
     let mut engine = uxi::UXIEngine::new(player);

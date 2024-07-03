@@ -196,8 +196,8 @@ class TrainProcess:
                 self.cfg["mcts"]["prior_noise_epsilon"],
                 "--threads",
                 self.cfg["self_play"]["threads"],
-                "--processing-unit",
-                "CPU" if self.cfg["cpu"] else "GPU",
+                "--device",
+                self.cfg["device"],
                 "--cache-size",
                 self.cfg["mcts"]["cache_size"],
             ),
@@ -307,11 +307,11 @@ class TrainProcess:
 
         models = [(idx, model) for idx, (model, _model_path) in enumerate(models)]
         workers_num = min(self.cfg["training"].get("threads", 1), len(models))
-        workers_num = workers_num if self.cfg["cpu"] else 1
+        workers_num = workers_num if self.cfg["device"] == "cpu" else 1
         if workers_num > 1:
             # Divide the training into jobs
-            cpu_jobs = len(models) // workers_num
-            indices = np.arange(0, len(models) + cpu_jobs, cpu_jobs)
+            jobs_per_cpu = len(models) // workers_num
+            indices = np.arange(0, len(models) + jobs_per_cpu, jobs_per_cpu)
             jobs = [models[i:j] for i, j in zip(indices[:-1], indices[1:])]
 
             # Execute all jobs
@@ -426,8 +426,8 @@ class TrainProcess:
                     self.cfg["mcts"]["prior_noise_epsilon"],
                     "--threads",
                     self.cfg["model_compare"]["threads"],
-                    "--processing-unit",
-                    "CPU" if self.cfg["cpu"] else "GPU",
+                    "--device",
+                    self.cfg["device"],
                 ),
                 stderr=sys.stderr,
                 stdout=sys.stdout,

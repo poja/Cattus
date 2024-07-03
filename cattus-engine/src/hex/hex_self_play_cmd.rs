@@ -4,6 +4,7 @@ use crate::game::self_play_cmd::{self, INNetworkBuilder};
 use crate::hex::hex_game::HexGame;
 use crate::hex::net::serializer::HexSerializer;
 use crate::hex::net::two_headed_net::TwoHeadedNet;
+use crate::utils::Device;
 use std::sync::Arc;
 
 struct NNetworkBuilder<const BOARD_SIZE: usize>;
@@ -14,10 +15,10 @@ impl<const BOARD_SIZE: usize> INNetworkBuilder<HexGame<BOARD_SIZE>>
         &self,
         model_path: &str,
         cache: Arc<ValueFuncCache<HexGame<BOARD_SIZE>>>,
-        cpu: bool,
+        device: Device,
     ) -> Box<dyn ValueFunction<HexGame<BOARD_SIZE>>> {
         Box::new(TwoHeadedNet::<BOARD_SIZE>::with_cache(
-            model_path, cpu, cache,
+            model_path, device, cache,
         ))
     }
 }
