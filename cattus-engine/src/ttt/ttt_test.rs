@@ -9,7 +9,7 @@ mod tests {
 
     #[test]
     fn simple_game_and_mate() {
-        let to_pos = |s: &str| TttPosition::from_str(&s.to_string());
+        let to_pos = |s: &str| TttPosition::from_str(s);
         assert!(to_pos("xxxoo____o").get_winner() == Some(GameColor::Player1));
         assert!(to_pos("oo_xxx___o").get_winner() == Some(GameColor::Player1));
         assert!(to_pos("oo____xxxo").get_winner() == Some(GameColor::Player1));
@@ -32,7 +32,7 @@ mod tests {
             "__xx_x__ox",
         ]
         .into_iter()
-        .map(|s| TttPosition::from_str(&s.to_string()))
+        .map(TttPosition::from_str)
         {
             assert!(pos.get_turn().opposite() == pos.get_flip().get_turn());
             assert!(pos.get_flip().get_flip() == pos);
@@ -70,7 +70,7 @@ mod tests {
                     assert!(pos.get_winner() == pos_t.get_winner().map(|w| w.opposite()));
                 }
 
-                game.play_single_turn(player.next_move(&game.get_position()).unwrap());
+                game.play_single_turn(player.next_move(game.get_position()).unwrap());
             }
         }
     }

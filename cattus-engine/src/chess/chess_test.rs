@@ -20,14 +20,7 @@ mod tests {
         ];
         for move_str in moves {
             assert!(!pos.is_over());
-            let m = match ChessMove::from_san(&pos, move_str) {
-                Ok(m) => m,
-                Err(msg) => {
-                    println!("failed: {}", msg);
-                    assert!(false);
-                    return;
-                }
-            };
+            let m = ChessMove::from_san(&pos, move_str).unwrap();
             pos = pos.get_moved_position(m);
         }
         assert!(pos.is_over());
@@ -68,14 +61,7 @@ mod tests {
         ];
         for move_str in moves {
             assert!(!pos.is_over());
-            let m = match ChessMove::from_san(&pos, move_str) {
-                Ok(m) => m,
-                Err(msg) => {
-                    println!("failed: {}", msg);
-                    assert!(false);
-                    return;
-                }
-            };
+            let m = ChessMove::from_san(&pos, move_str).unwrap();
             pos = pos.get_moved_position(m);
         }
         assert!(pos.is_over());
@@ -97,7 +83,7 @@ mod tests {
             "3r4/1b2p3/7k/1P3R2/K4nrN/1N5P/n1Pp3P/8 b - - 0 1",
         ]
         .into_iter()
-        .map(|fen| ChessPosition::from_str(&fen.to_string()))
+        .map(ChessPosition::from_str)
         {
             assert!(pos.get_turn().opposite() == pos.get_flip().get_turn());
             assert!(pos.get_flip().get_flip() == pos);
@@ -135,7 +121,7 @@ mod tests {
                     assert!(pos.get_winner() == pos_t.get_winner().map(|w| w.opposite()));
                 }
 
-                game.play_single_turn(player.next_move(&game.get_position()).unwrap());
+                game.play_single_turn(player.next_move(game.get_position()).unwrap());
             }
         }
     }
