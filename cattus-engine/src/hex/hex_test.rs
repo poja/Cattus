@@ -13,7 +13,7 @@ mod tests {
     #[test]
     fn short_diagonal_wins() {
         let pos = HexStandardPosition::from_str(
-            &"reeeeeeeeee\
+            "reeeeeeeeee\
             ereeeeeeeee\
             eereeeeeeee\
             eeereeeeeee\
@@ -24,14 +24,13 @@ mod tests {
             eeeeeeeeree\
             eeeeeeeeere\
             eeeeeeeeeer\
-            b"
-            .to_string(),
+            b",
         );
         assert!(pos.is_over());
         assert!(pos.get_winner() == Some(GameColor::Player1));
 
         let pos = HexStandardPosition::from_str(
-            &"beeeeeeeeee\
+            "beeeeeeeeee\
             ebeeeeeeeee\
             eebeeeeeeee\
             eeebeeeeeee\
@@ -42,8 +41,7 @@ mod tests {
             eeeeeeeebee\
             eeeeeeeeebe\
             eeeeeeeeeeb\
-            r"
-            .to_string(),
+            r",
         );
 
         assert!(pos.is_over());
@@ -53,7 +51,7 @@ mod tests {
     #[test]
     fn almost_short_diagonal_doesnt_win() {
         let pos = HexStandardPosition::from_str(
-            &"eeeeeeeeeee\
+            "eeeeeeeeeee\
             ereeeeeeeee\
             eereeeeeeee\
             eeereeeeeee\
@@ -64,13 +62,12 @@ mod tests {
             eeeeeeeeree\
             eeeeeeeeere\
             eeeeeeeeeer\
-            b"
-            .to_string(),
+            b",
         );
         assert!(!pos.is_over());
 
         let pos = HexStandardPosition::from_str(
-            &"beeeeeeeeee\
+            "beeeeeeeeee\
             ebeeeeeeeee\
             eebeeeeeeee\
             eeebeeeeeee\
@@ -81,8 +78,7 @@ mod tests {
             eeeeeeeebee\
             eeeeeeeeebe\
             eeeeeeeeeee\
-            r"
-            .to_string(),
+            r",
         );
         assert!(!pos.is_over());
     }
@@ -90,7 +86,7 @@ mod tests {
     #[test]
     fn long_diagonal_doesnt_win() {
         let pos = HexStandardPosition::from_str(
-            &"eeeeeeeeeer\
+            "eeeeeeeeeer\
             eeeeeeeeere\
             eeeeeeeeree\
             eeeeeeereee\
@@ -101,13 +97,12 @@ mod tests {
             eereeeeeeee\
             ereeeeeeeee\
             reeeeeeeeee\
-            b"
-            .to_string(),
+            b",
         );
         assert!(!pos.is_over());
 
         let pos = HexStandardPosition::from_str(
-            &"eeeeeeeeeeb\
+            "eeeeeeeeeeb\
             eeeeeeeeebe\
             eeeeeeeebee\
             eeeeeeebeee\
@@ -118,8 +113,7 @@ mod tests {
             eebeeeeeeee\
             ebeeeeeeeee\
             beeeeeeeeee\
-            r"
-            .to_string(),
+            r",
         );
         assert!(!pos.is_over());
     }
@@ -127,7 +121,7 @@ mod tests {
     #[test]
     fn flip() {
         let pos = HexStandardPosition::from_str(
-            &"eebeeeeeeer\
+            "eebeeeeeeer\
         eeeeeeeeeee\
         eeeebeeeree\
         eeeeeeereee\
@@ -138,8 +132,7 @@ mod tests {
         eereeereeee\
         ereeeeeeeee\
         reeeeebeeee\
-        b"
-            .to_string(),
+        b",
         );
         assert!(pos.get_turn() == GameColor::Player2);
         assert!(pos.get_flip().get_turn() == GameColor::Player1);
@@ -178,7 +171,7 @@ mod tests {
                     assert!(pos.get_winner() == pos_t.get_winner().map(|w| w.opposite()));
                 }
 
-                game.play_single_turn(player.next_move(&game.get_position()).unwrap());
+                game.play_single_turn(player.next_move(game.get_position()).unwrap());
             }
         }
     }
