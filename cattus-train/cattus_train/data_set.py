@@ -11,34 +11,34 @@ from cattus_train.trainable_game import DataEntryParseError, Game
 
 class DataSet(IterableDataset):
     def __init__(self, game: Game, train_data_dir: Path, cfg: dict):
-        self.game: Game = game
-        self.train_data_dir: Path = train_data_dir
-        self.cfg: dict = cfg
+        self._game: Game = game
+        self._train_data_dir: Path = train_data_dir
+        self._cfg: dict = cfg
 
-        assert self.cfg["training"]["latest_data_entries"] >= self.cfg["training"]["iteration_data_entries"]
+        assert self._cfg["training"]["latest_data_entries"] >= self._cfg["training"]["iteration_data_entries"]
 
     def _data_entries_filenames_gen(self):
-        filenames = [str(p) for p in Path(self.train_data_dir).rglob("*.traindata")]
+        filenames = [str(p) for p in Path(self._train_data_dir).rglob("*.traindata")]
 
         # take the latests files
-        latest_de = self.cfg["training"]["latest_data_entries"]
+        latest_de = self._cfg["training"]["latest_data_entries"]
         filenames.sort(key=os.path.getmtime, reverse=True)
         if len(filenames) > latest_de:
             filenames = filenames[:latest_de]
 
         # take a sub set
-        iter_de = self.cfg["training"]["iteration_data_entries"]
+        iter_de = self._cfg["training"]["iteration_data_entries"]
         random.shuffle(filenames)
         if len(filenames) > iter_de:
             filenames = filenames[:iter_de]
 
         for filename in filenames:
-            yield os.path.join(self.train_data_dir, filename)
+            yield os.path.join(self._train_data_dir, filename)
 
     def _read_data_entry_gen(self, filenames_gen):
         for filename in filenames_gen:
             try:
-                yield self.game.load_data_entry(filename)
+                yield self._game.load_data_entry(filename)
             except DataEntryParseError:
                 pass
 
@@ -55,7 +55,7 @@ class DataSet(IterableDataset):
 
     def _unpack_planes_gen(self, nparr_packed_gen):
         for packed_entry in nparr_packed_gen:
-            yield DataSet.unpack_planes(packed_entry, self.game)
+            yield DataSet.unpack_planes(packed_entry, self._game)
 
     def __iter__(self):
         # choose entries
