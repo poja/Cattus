@@ -12,8 +12,8 @@ iterations: 100
 # Multiple models will be trained, and the best one will generate the training data
 model_num: 1
 
-# cpu/gpu/mps
-device: cpu
+# cpu/gpu/mps/auto
+device: auto
 
 # Use debug executable if true, else uses release executables
 debug: false

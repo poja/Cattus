@@ -10,10 +10,11 @@ from cattus_train.trainable_game import DataEntryParseError, Game
 
 
 class DataSet(IterableDataset):
-    def __init__(self, game: Game, train_data_dir: Path, cfg: dict):
+    def __init__(self, game: Game, train_data_dir: Path, cfg: dict, device: torch.device):
         self._game: Game = game
         self._train_data_dir: Path = train_data_dir
         self._cfg: dict = cfg
+        self._device: torch.device = device
 
         assert self._cfg["training"]["latest_data_entries"] >= self._cfg["training"]["iteration_data_entries"]
 
@@ -57,6 +58,10 @@ class DataSet(IterableDataset):
         for packed_entry in nparr_packed_gen:
             yield DataSet.unpack_planes(packed_entry, self._game)
 
+    def _move_to_device(self, tensors_gen):
+        for planes, (probs, winner) in tensors_gen:
+            yield planes.to(self._device), (probs.to(self._device), winner.to(self._device))
+
     def __iter__(self):
         # choose entries
         filenames_gen = self._data_entries_filenames_gen()
@@ -64,5 +69,7 @@ class DataSet(IterableDataset):
         packed_tensors_gen = self._read_data_entry_gen(filenames_gen)
         # planes bitmap -> full planes arrays
         tensors_gen = self._unpack_planes_gen(packed_tensors_gen)
+        # move to device
+        tensors_on_device_gen = self._move_to_device(tensors_gen)
 
-        yield from tensors_gen
+        yield from tensors_on_device_gen

@@ -99,6 +99,15 @@ class TrainProcess:
         assert self._cfg["model_compare"]["switching_winning_threshold"] >= 0.5
         assert self._cfg["model_compare"]["warning_losing_threshold"] >= 0.5
 
+        if self._cfg["device"] == "auto":
+            if torch.cuda.is_available():
+                self._cfg["device"] = "cuda"
+            elif torch.backends.mps.is_available():
+                self._cfg["device"] = "mps"
+            else:
+                self._cfg["device"] = "cpu"
+        assert self._cfg["device"] in ["cpu", "cuda", "mps"]
+
         self._lr_scheduler = LearningRateScheduler(self._cfg)
 
     def run_training_loop(self, run_id=None):
@@ -249,6 +258,7 @@ class TrainProcess:
                     return policy_loss + value_loss
 
                 model.train()
+                model.to(self._cfg["device"])
                 optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
                 final_batch = None
                 training_start_time = time.time()
@@ -260,6 +270,7 @@ class TrainProcess:
                     optimizer.step()
                     final_batch = (x, y)
                 train_duration = time.time() - training_start_time
+                model = model.to("cpu")
 
                 def policy_head_accuracy(output, target):
                     output, target = mask_illegal_moves(output, target)
@@ -274,6 +285,8 @@ class TrainProcess:
                 with torch.no_grad():
                     model.eval()
                     final_x, final_y = final_batch
+                    final_x = final_x.to("cpu")
+                    final_y = (final_y[0].to("cpu"), final_y[1].to("cpu"))
                     final_outputs = model(final_x)
                     losses[m_idx] = loss_fn(final_outputs, final_y).detach().item()
                     policy_accuracies[m_idx] = policy_head_accuracy(final_outputs[0], final_y[0]).detach().item()

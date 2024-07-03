@@ -192,7 +192,7 @@ pub fn run_main<Game: IGame + 'static>(
 
     let device = match args.device.to_uppercase().as_str() {
         "CPU" => Device::Cpu,
-        "GPU" => Device::Gpu,
+        "GPU" | "MPS" => Device::Gpu,
         unknown_pu => panic!("unknown processing unit '{unknown_pu}'"),
     };
     let metrics = Arc::new(Metrics::new());
