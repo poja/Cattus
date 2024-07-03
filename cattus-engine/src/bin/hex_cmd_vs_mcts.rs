@@ -1,3 +1,4 @@
+use cattus::utils::Device;
 use clap::Parser;
 use std::sync::Arc;
 
@@ -35,7 +36,7 @@ fn run_main<const BOARD_SIZE: usize>(args: Args) {
     let cache = Arc::new(ValueFuncCache::new(args.cache_size));
     let value_func = Arc::new(TwoHeadedNet::<BOARD_SIZE>::with_cache(
         &args.model_path,
-        true,
+        Device::Cpu,
         cache,
     ));
     let mut player2 = MCTSPlayer::new_custom(

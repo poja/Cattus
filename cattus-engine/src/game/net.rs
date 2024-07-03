@@ -1,6 +1,7 @@
 use super::mcts::NetStatistics;
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
+use crate::utils::Device;
 use itertools::Itertools;
 use ndarray::{Array4, ArrayView2};
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -80,7 +81,7 @@ pub struct TwoHeadedNetBase<Game: IGame> {
 }
 
 impl<Game: IGame> TwoHeadedNetBase<Game> {
-    pub fn new(model_path: &str, cpu: bool, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
+    pub fn new(model_path: &str, device: Device, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
         // Load the model
         fn load_model(model_path: &str) -> TractResult<OnnxModel> {
             tract_onnx::onnx()
@@ -97,7 +98,11 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
             model,
             cache,
             next_batch_manager: Mutex::new(NextBatchManager::new_empty()),
-            max_batch_size: if cpu { 1 } else { GPU_BATCH_SIZE },
+            max_batch_size: if matches!(device, Device::Cpu) {
+                1
+            } else {
+                GPU_BATCH_SIZE
+            },
             stats: Mutex::new(Statistics {
                 activation_count: 0,
                 run_duration_sum: Duration::ZERO,

@@ -18,7 +18,7 @@ def _test_convnetv1(game_name):
 ---
 game: "{game_name}"
 iterations: 2
-cpu: true
+device: cpu
 debug: true
 working_area: {tmp_dir}
 model:

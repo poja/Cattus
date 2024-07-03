@@ -1,29 +1,29 @@
-use std::sync::Arc;
-
 use crate::game::cache::ValueFuncCache;
 use crate::game::mcts::{NetStatistics, ValueFunction};
 use crate::game::net::TwoHeadedNetBase;
 use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 use crate::hex::net::common;
+use crate::utils::Device;
+use std::sync::Arc;
 
 pub struct TwoHeadedNet<const BOARD_SIZE: usize> {
     base: TwoHeadedNetBase<HexGame<BOARD_SIZE>>,
 }
 
 impl<const BOARD_SIZE: usize> TwoHeadedNet<BOARD_SIZE> {
-    pub fn new(model_path: &str, cpu: bool) -> Self {
+    pub fn new(model_path: &str, device: Device) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, cpu, None),
+            base: TwoHeadedNetBase::new(model_path, device, None),
         }
     }
 
     pub fn with_cache(
         model_path: &str,
-        cpu: bool,
+        device: Device,
         cache: Arc<ValueFuncCache<HexGame<BOARD_SIZE>>>,
     ) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, cpu, Some(cache)),
+            base: TwoHeadedNetBase::new(model_path, device, Some(cache)),
         }
     }
 }

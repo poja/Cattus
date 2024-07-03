@@ -4,6 +4,7 @@ use cattus::chess::net::serializer::ChessSerializer;
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::mcts::ValueFunction;
 use cattus::game::self_play_cmd::{run_main, INNetworkBuilder};
+use cattus::utils::Device;
 use std::sync::Arc;
 
 struct NNetworkBuilder;
@@ -12,9 +13,9 @@ impl INNetworkBuilder<ChessGame> for NNetworkBuilder {
         &self,
         model_path: &str,
         cache: Arc<ValueFuncCache<ChessGame>>,
-        cpu: bool,
+        device: Device,
     ) -> Box<dyn ValueFunction<ChessGame>> {
-        Box::new(TwoHeadedNet::with_cache(model_path, cpu, cache))
+        Box::new(TwoHeadedNet::with_cache(model_path, device, cache))
     }
 }
 

@@ -3,7 +3,7 @@
 game: "tictactoe"
 iterations: 30
 model_num: 4
-cpu: true
+device: cpu
 debug: false
 working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 

@@ -5,6 +5,12 @@ pub trait Builder<T>: Sync + Send {
     fn build(&self) -> T;
 }
 
+#[derive(Copy, Clone)]
+pub enum Device {
+    Cpu,
+    Gpu,
+}
+
 pub fn init_python() {
     let venv_path = Path::new(&env!("CARGO_MANIFEST_DIR"))
         .parent()

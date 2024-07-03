@@ -3,7 +3,7 @@
 game: "hex7"
 iterations: 75
 model_num: 8
-cpu: true
+device: cpu
 debug: false
 working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
