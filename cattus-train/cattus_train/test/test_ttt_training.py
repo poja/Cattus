@@ -11,9 +11,7 @@ TRAIN_MAIN_BIN = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", "bin", "mai
 
 
 def test_ttt_training():
-    logging.basicConfig(
-        level=logging.DEBUG, format="[TicTactToe Training Test]: %(message)s"
-    )
+    logging.basicConfig(level=logging.DEBUG, format="[TicTactToe Training Test]: %(message)s")
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         config_file = os.path.join(tmp_dir, "config.yaml")

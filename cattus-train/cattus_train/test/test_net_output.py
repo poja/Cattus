@@ -16,9 +16,7 @@ from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-CATTUS_ENGINE_TOP = os.path.abspath(
-    os.path.join(TESTS_DIR, "..", "..", "..", "cattus-engine")
-)
+CATTUS_ENGINE_TOP = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", "..", "cattus-engine"))
 
 ASSERT_PYTHON_OUTPUT_EQ_REPEAT = 8
 ASSERT_RUST_OUTPUT_EQ_REPEAT = 8
@@ -31,8 +29,7 @@ def is_outputs_equals(o1, o2):
     probs1, val1 = o1
     probs2, val2 = o2
     return (
-        math.isclose(val1, val2, rel_tol=1e-5, abs_tol=1e-6)
-        and np.isclose(probs1, probs2, rtol=1e-3, atol=1e-6).all()
+        math.isclose(val1, val2, rel_tol=1e-5, abs_tol=1e-6) and np.isclose(probs1, probs2, rtol=1e-3, atol=1e-6).all()
     )
 
 
@@ -70,9 +67,8 @@ def _test_net_output(game_name: str, game: Game, positions):
             )
             with open(encode_path, "r") as encode_file:
                 tensor_data = json.load(encode_file)
-            tensor = torch.tensor(tensor_data["data"], dtype=torch.float32).reshape(
-                tuple(tensor_data["shape"])
-            )[None, ...]
+            tensor = torch.tensor(tensor_data["data"], dtype=torch.float32).reshape(tuple(tensor_data["shape"]))
+            tensor = tensor[None, ...]  # Add batch dimension
             assert tensor.shape == (
                 1,
                 game.PLANES_NUM,
@@ -82,10 +78,7 @@ def _test_net_output(game_name: str, game: Game, positions):
 
             # Run model from Python and assert all outputs are equal
             py_outputs = [model(tensor) for _ in range(ASSERT_PYTHON_OUTPUT_EQ_REPEAT)]
-            py_outputs = [
-                (probs.detach().numpy(), val.detach().numpy().item())
-                for (probs, val) in py_outputs
-            ]
+            py_outputs = [(probs.detach().numpy(), val.detach().numpy().item()) for (probs, val) in py_outputs]
             py_output = py_outputs[0]
             for out_other in py_outputs:
                 assert is_outputs_equals(py_output, out_other)
@@ -119,10 +112,7 @@ def _test_net_output(game_name: str, game: Game, positions):
             )
             with open(output_file, "r") as output_file:
                 output = json.load(output_file)
-            rs_outputs = [
-                (np.array(probs), val)
-                for (probs, val) in zip(output["probs"], output["vals"])
-            ]
+            rs_outputs = [(np.array(probs), val) for (probs, val) in zip(output["probs"], output["vals"])]
             rs_output = rs_outputs[0]
             for out_other in rs_outputs:
                 assert is_outputs_equals(rs_output, out_other)
@@ -151,9 +141,7 @@ def create_model(game: Game, path: str) -> nn.Module:
             verbose=False,
             input_names=["planes"],
             output_names=["policy", "value"],
-            dynamic_axes={
-                "planes": {0: "batch"}
-            },  # TODO: consider removing this, may affect performance
+            dynamic_axes={"planes": {0: "batch"}},  # TODO: consider removing this, may affect performance
         )
 
     return model

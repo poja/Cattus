@@ -26,9 +26,7 @@ from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
-CATTUS_TRAIN_TOP = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..")
-)
+CATTUS_TRAIN_TOP = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", ".."))
 
 # For some reason, onnx.export is not thread-safe, so we need to lock it
 ONNX_EXPORT_LOCK = threading.RLock()
@@ -56,18 +54,13 @@ class TrainProcess:
         self.cfg = copy.deepcopy(cfg)
 
         working_area = self.cfg["working_area"]
-        working_area = working_area.format(
-            CATTUS_TRAIN_TOP=CATTUS_TRAIN_TOP, GAME_NAME=self.cfg["game"]
-        )
+        working_area = working_area.format(CATTUS_TRAIN_TOP=CATTUS_TRAIN_TOP, GAME_NAME=self.cfg["game"])
         working_area = Path(working_area)
         self.cfg["working_area"] = working_area
         self.cfg["games_dir"] = working_area / "games"
         self.cfg["models_dir"] = working_area / "models"
         self.cfg["metrics_dir"] = working_area / "metrics"
-        for path in (
-            self.cfg[key]
-            for key in ["working_area", "games_dir", "models_dir", "metrics_dir"]
-        ):
+        for path in (self.cfg[key] for key in ["working_area", "games_dir", "models_dir", "metrics_dir"]):
             os.makedirs(path, exist_ok=True)
 
         self.game: Game = None
@@ -91,9 +84,7 @@ class TrainProcess:
             logging.warning("Choosing latest model based on directory name format")
             all_models = list(self.cfg["models_dir"].iterdir())
             if len(all_models) == 0:
-                raise ValueError(
-                    "Model [latest] was requested, but no existing models were found."
-                )
+                raise ValueError("Model [latest] was requested, but no existing models were found.")
             base_model_path = sorted(all_models)[-1]
         self.base_model_path: Path = base_model_path
 
@@ -157,9 +148,7 @@ class TrainProcess:
         profile = "dev" if self.cfg["debug"] else "release"
         games_dir = os.path.join(self.cfg["games_dir"], self.run_id)
         summary_file = os.path.join(games_dir, "selfplay_summary.json")
-        data_entries_dir = os.path.join(
-            games_dir, datetime.now().strftime("%y%m%d_%H%M%S_%f")
-        )
+        data_entries_dir = os.path.join(games_dir, datetime.now().strftime("%y%m%d_%H%M%S_%f"))
 
         self_play_start_time = time.time()
         subprocess.run(
@@ -232,8 +221,6 @@ class TrainProcess:
         lr = self.lr_scheduler.get_lr(iter_num)
         logging.debug("Training models with learning rate %f", lr)
 
-        # values_loss = [None] * len(models)
-        # values_loss = [None] * len(models)
         losses = [None] * len(models)
         value_accuracies = [None] * len(models)
         policy_accuracies = [None] * len(models)
@@ -243,9 +230,7 @@ class TrainProcess:
         def train_models(model_list: list[tuple[int, nn.Module]]):
             for m_idx, model in model_list:
                 data_set = DataSet(self.game, train_data_dir, self.cfg)
-                data_loader = DataLoader(
-                    data_set, batch_size=self.cfg["training"]["batch_size"]
-                )
+                data_loader = DataLoader(data_set, batch_size=self.cfg["training"]["batch_size"])
 
                 def mask_illegal_moves(output, target):
                     output = torch.where(target >= 0, output, -1e10)
@@ -291,16 +276,8 @@ class TrainProcess:
                     final_x, final_y = final_batch
                     final_outputs = model(final_x)
                     losses[m_idx] = loss_fn(final_outputs, final_y).detach().item()
-                    policy_accuracies[m_idx] = (
-                        policy_head_accuracy(final_outputs[0], final_y[0])
-                        .detach()
-                        .item()
-                    )
-                    value_accuracies[m_idx] = (
-                        value_head_accuracy(final_outputs[1], final_y[1])
-                        .detach()
-                        .item()
-                    )
+                    policy_accuracies[m_idx] = policy_head_accuracy(final_outputs[0], final_y[0]).detach().item()
+                    value_accuracies[m_idx] = value_head_accuracy(final_outputs[1], final_y[1]).detach().item()
                     training_durations[m_idx] = train_duration
 
                 trained_models[m_idx] = (model, self._save_model(model))
@@ -323,13 +300,9 @@ class TrainProcess:
 
         for model_idx in range(len(models)):
             logging.info(f"Model{model_idx} training metrics:")
-            # logging.info("\tValue loss      {:.4f}".format(values_loss[model_idx]))
-            # logging.info("\tPolicy loss     {:.4f}".format(policy_loss[model_idx]))
             logging.info("\tLoss            {:.4f}".format(losses[model_idx]))
             logging.info("\tValue accuracy  {:.4f}".format(value_accuracies[model_idx]))
-            logging.info(
-                "\tPolicy accuracy {:.4f}".format(policy_accuracies[model_idx])
-            )
+            logging.info("\tPolicy accuracy {:.4f}".format(policy_accuracies[model_idx]))
 
             self.metrics.update(
                 {
@@ -344,9 +317,7 @@ class TrainProcess:
 
     def _compare_models(self, best_model, latest_models) -> tuple[nn.Module, Path]:
         if self.cfg["model_compare"]["games_num"] == 0:
-            assert (
-                len(latest_models) == 1
-            ), "Model comparison can be skipped only when one model is trained"
+            assert len(latest_models) == 1, "Model comparison can be skipped only when one model is trained"
             logging.debug("Skipping model comparison, considering latest model as best")
             return latest_models[0]
 
@@ -364,9 +335,7 @@ class TrainProcess:
                     best_model[1], latest_model_path, best_games_dir, trained_games_dir
                 )
                 winning, losing = trained_wr, 1 - best_wr
-                self.metrics["model_compare_duration"] = (
-                    time.time() - compare_start_time
-                )
+                self.metrics["model_compare_duration"] = time.time() - compare_start_time
                 self.metrics[f"trained_model_win_rate_{model_idx}"] = winning
                 logging.debug(f"Trained model winning rate: {winning}")
 
@@ -376,18 +345,11 @@ class TrainProcess:
                     # by the comparison stage as training data in future training steps
                     for filename in os.listdir(trained_games_dir):
                         shutil.move(trained_games_dir / filename, best_games_dir)
-                elif (
-                    len(latest_models) == 1
-                    and losing > self.cfg["model_compare"]["warning_losing_threshold"]
-                ):
-                    logging.warn(
-                        "New model is worse than previous one, losing ratio: %f", losing
-                    )
+                elif len(latest_models) == 1 and losing > self.cfg["model_compare"]["warning_losing_threshold"]:
+                    logging.warn("New model is worse than previous one, losing ratio: %f", losing)
         return best_model
 
-    def _compare_model_impl(
-        self, model1_path: Path, model2_path: Path, model1_games_dir, model2_games_dir
-    ):
+    def _compare_model_impl(self, model1_path: Path, model2_path: Path, model1_games_dir, model2_games_dir):
         with tempfile.TemporaryDirectory() as tmp_dir:
             compare_res_file = os.path.join(tmp_dir, "compare_result.json")
             profile = "dev" if self.cfg["debug"] else "release"
@@ -442,9 +404,7 @@ class TrainProcess:
             return w1 / total_games, w2 / total_games
 
     def _save_model(self, model: nn.Module) -> Path:
-        model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(
-            random.randint(0, 1 << 16)
-        )
+        model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(random.randint(0, 1 << 16))
 
         model_path = Path(self.cfg["models_dir"]) / f"model_{model_time}"
 
@@ -463,9 +423,7 @@ class TrainProcess:
                     verbose=False,
                     input_names=["planes"],
                     output_names=["policy", "value"],
-                    dynamic_axes={
-                        "planes": {0: "batch"}
-                    },  # TODO: consider removing this, may affect performance
+                    dynamic_axes={"planes": {0: "batch"}},  # TODO: consider removing this, may affect performance
                 )
 
         return model_path
@@ -499,10 +457,7 @@ class TrainProcess:
             "policy_accuracy",
             "trained_model_win_rate",
         ]
-        per_model_columns = [
-            [f"{col}_{m_idx}" for col in per_model_columns]
-            for m_idx in range(self.cfg["model_num"])
-        ]
+        per_model_columns = [[f"{col}_{m_idx}" for col in per_model_columns] for m_idx in range(self.cfg["model_num"])]
         columns = [
             "net_run_duration_average_us",
             "batch_size_average",

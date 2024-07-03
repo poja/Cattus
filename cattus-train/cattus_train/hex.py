@@ -31,15 +31,11 @@ class Hex(Game):
             entry_bytes = f.read()
         if len(entry_bytes) != self.ENTRY_FORMAT.sizeof():
             raise DataEntryParseError(
-                "invalid training data file: {} ({} != {})".format(
-                    path, len(entry_bytes), self.ENTRY_FORMAT.sizeof()
-                )
+                "invalid training data file: {} ({} != {})".format(path, len(entry_bytes), self.ENTRY_FORMAT.sizeof())
             )
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
         # planes of 128bit are saved as two 64bit values
-        planes = torch.tensor(entry.planes, dtype=torch.uint64).reshape(
-            (self.PLANES_NUM, 2)
-        )
+        planes = torch.tensor(entry.planes, dtype=torch.uint64).reshape((self.PLANES_NUM, 2))
         probs = torch.tensor(entry.probs, dtype=torch.float32)
         winner = torch.tensor(float(entry.winner), dtype=torch.float32)
 
@@ -55,34 +51,14 @@ class Hex(Game):
             input_shape=self._get_input_shape(),
             residual_block_num=cfg["model"]["residual_block_num"],
             residual_filter_num=cfg["model"]["residual_filter_num"],
-            value_head_conv_output_channels_num=cfg["model"][
-                "value_head_conv_output_channels_num"
-            ],
-            policy_head_conv_output_channels_num=cfg["model"][
-                "policy_head_conv_output_channels_num"
-            ],
+            value_head_conv_output_channels_num=cfg["model"]["value_head_conv_output_channels_num"],
+            policy_head_conv_output_channels_num=cfg["model"]["policy_head_conv_output_channels_num"],
             moves_num=self.MOVE_NUM,
         )
 
-        # # lr doesn't matter, will be set by train process
-        # opt = optimizers.Adam(learning_rate=0.001)
-        # model.compile(
-        #     optimizer=opt,
-        #     loss={
-        #         "value_head": tf.keras.losses.MeanSquaredError(),
-        #         "policy_head": net_utils.loss_cross_entropy,
-        #     },
-        #     metrics={
-        #         "value_head": net_utils.value_head_accuracy,
-        #         "policy_head": net_utils.policy_head_accuracy,
-        #     },
-        # )
-
     def create_model(self, net_type: str, cfg) -> nn.Module:
         if net_type == HexNetType.SimpleTwoHeaded:
-            return net_utils.SimpleTwoHeadedModel(
-                self._get_input_shape(), self.MOVE_NUM
-            )
+            return net_utils.SimpleTwoHeadedModel(self._get_input_shape(), self.MOVE_NUM)
         elif net_type == HexNetType.ConvNetV1:
             return self._create_model_convnetv1(cfg)
         else:
