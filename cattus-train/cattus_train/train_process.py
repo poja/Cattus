@@ -1,7 +1,6 @@
 import copy
 import json
 import logging
-import multiprocessing
 import os
 import random
 import re
@@ -9,8 +8,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from datetime import datetime
+from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
 import numpy as np
@@ -28,6 +29,9 @@ from cattus_train.trainable_game import Game
 CATTUS_TRAIN_TOP = os.path.abspath(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..")
 )
+
+# For some reason, onnx.export is not thread-safe, so we need to lock it
+ONNX_EXPORT_LOCK = threading.RLock()
 
 
 def dictionary_to_str(d, indent=0):
@@ -303,7 +307,7 @@ class TrainProcess:
 
         models = [(idx, model) for idx, (model, _model_path) in enumerate(models)]
         workers_num = min(self.cfg["training"].get("threads", 1), len(models))
-        workers_num = 1 if self.cfg["cpu"] else workers_num
+        workers_num = workers_num if self.cfg["cpu"] else 1
         if workers_num > 1:
             # Divide the training into jobs
             cpu_jobs = len(models) // workers_num
@@ -311,7 +315,7 @@ class TrainProcess:
             jobs = [models[i:j] for i, j in zip(indices[:-1], indices[1:])]
 
             # Execute all jobs
-            with multiprocessing.pool.ThreadPool(len(jobs)) as pool:
+            with ThreadPool(len(jobs)) as pool:
                 pool.map(train_models, jobs)
         else:
             # Train on a single CPU thread
@@ -450,17 +454,19 @@ class TrainProcess:
         # Save model in ONNX format
         model.eval()
         with torch.no_grad():
-            torch.onnx.export(
-                model,
-                torch.randn(self.game.model_input_shape(self.net_type)),
-                model_path.with_suffix(".onnx"),
-                verbose=False,
-                input_names=["planes"],
-                output_names=["policy", "value"],
-                dynamic_axes={
-                    "planes": {0: "batch"}
-                },  # TODO: consider removing this, may affect performance
-            )
+            sample_input = torch.randn(self.game.model_input_shape(self.net_type))
+            with ONNX_EXPORT_LOCK:
+                torch.onnx.export(
+                    model,
+                    sample_input,
+                    model_path.with_suffix(".onnx"),
+                    verbose=False,
+                    input_names=["planes"],
+                    output_names=["policy", "value"],
+                    dynamic_axes={
+                        "planes": {0: "batch"}
+                    },  # TODO: consider removing this, may affect performance
+                )
 
         return model_path
 
