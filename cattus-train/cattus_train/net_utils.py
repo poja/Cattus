@@ -10,9 +10,7 @@ class ConvBlock(nn.Module):
         bn_scale=False,
     ):
         super().__init__()
-        self._conv = nn.Conv2d(
-            in_channels, output_channels, filter_size, bias=False, padding="same"
-        )
+        self._conv = nn.Conv2d(in_channels, output_channels, filter_size, bias=False, padding="same")
         self._bn = nn.BatchNorm2d(output_channels, affine=bn_scale)
         self._relu = nn.ReLU()
 
@@ -68,9 +66,7 @@ class ConvNetV1(nn.Module):
 
         # Value head
         self._value_head = nn.Sequential(
-            ConvBlock(
-                residual_filter_num, 1, value_head_conv_output_channels_num
-            ),  # B, VHC, H, W
+            ConvBlock(residual_filter_num, 1, value_head_conv_output_channels_num),  # B, VHC, H, W
             nn.Flatten(),  # B, VHC * H * W
             nn.Linear(value_head_conv_output_channels_num * H * W, 128),  # B, 128
             nn.ReLU(),
@@ -80,9 +76,7 @@ class ConvNetV1(nn.Module):
 
         # Policy head
         self._policy_head = nn.Sequential(
-            ConvBlock(
-                residual_filter_num, 1, policy_head_conv_output_channels_num
-            ),  # B, PHC, H, W
+            ConvBlock(residual_filter_num, 1, policy_head_conv_output_channels_num),  # B, PHC, H, W
             nn.Flatten(),  # B, PHC * H * W
             nn.Linear(policy_head_conv_output_channels_num * H * W, moves_num),
         )

@@ -15,10 +15,7 @@ class DataSet(IterableDataset):
         self.train_data_dir: Path = train_data_dir
         self.cfg: dict = cfg
 
-        assert (
-            self.cfg["training"]["latest_data_entries"]
-            >= self.cfg["training"]["iteration_data_entries"]
-        )
+        assert self.cfg["training"]["latest_data_entries"] >= self.cfg["training"]["iteration_data_entries"]
 
     def _data_entries_filenames_gen(self):
         filenames = [str(p) for p in Path(self.train_data_dir).rglob("*.traindata")]
@@ -51,12 +48,7 @@ class DataSet(IterableDataset):
         assert len(planes) == game.PLANES_NUM
         plane_size = game.BOARD_SIZE * game.BOARD_SIZE
         planes = [np.frombuffer(plane.numpy(), dtype=np.uint8) for plane in planes]
-        planes = np.array(
-            [
-                np.unpackbits(plane, count=plane_size, bitorder="little")
-                for plane in planes
-            ]
-        )
+        planes = np.array([np.unpackbits(plane, count=plane_size, bitorder="little") for plane in planes])
         planes = torch.tensor(planes, dtype=torch.float32)
         planes = planes.reshape((game.PLANES_NUM, game.BOARD_SIZE, game.BOARD_SIZE))
         return planes, (probs, winner)

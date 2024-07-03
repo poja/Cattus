@@ -14,9 +14,7 @@ from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-CATTUS_ENGINE_TOP = os.path.abspath(
-    os.path.join(TESTS_DIR, "..", "..", "..", "cattus-engine")
-)
+CATTUS_ENGINE_TOP = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", "..", "cattus-engine"))
 
 logging.basicConfig(level=logging.DEBUG, format="[Serialize Encode Test]: %(message)s")
 
@@ -155,9 +153,7 @@ def _test_serialize_encode(game_name: str, game: Game, positions):
 
             planes_rust_shape = tuple(rust_tensor_data["shape"])
             if planes_rust_shape != planes_py.shape:
-                raise ValueError(
-                    "planes tensor shape mismatch", planes_rust_shape, planes_py.shape
-                )
+                raise ValueError("planes tensor shape mismatch", planes_rust_shape, planes_py.shape)
 
             planes_py = planes_py.numpy().flatten()
             planes_rust = np.array(rust_tensor_data["data"], dtype=np.float32)

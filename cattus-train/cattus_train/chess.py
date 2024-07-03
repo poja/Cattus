@@ -32,9 +32,7 @@ class Chess(Game):
             entry_bytes = f.read()
         if len(entry_bytes) != self.ENTRY_FORMAT.sizeof():
             raise DataEntryParseError(
-                "invalid training data file: {} ({} != {})".format(
-                    path, len(entry_bytes), self.ENTRY_FORMAT.sizeof()
-                )
+                "invalid training data file: {} ({} != {})".format(path, len(entry_bytes), self.ENTRY_FORMAT.sizeof())
             )
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
         planes = torch.tensor(entry.planes, dtype=torch.uint64)
@@ -64,20 +62,14 @@ class Chess(Game):
             input_shape=self._get_input_shape(),
             residual_block_num=cfg["model"]["residual_block_num"],
             residual_filter_num=cfg["model"]["residual_filter_num"],
-            value_head_conv_output_channels_num=cfg["model"][
-                "value_head_conv_output_channels_num"
-            ],
-            policy_head_conv_output_channels_num=cfg["model"][
-                "policy_head_conv_output_channels_num"
-            ],
+            value_head_conv_output_channels_num=cfg["model"]["value_head_conv_output_channels_num"],
+            policy_head_conv_output_channels_num=cfg["model"]["policy_head_conv_output_channels_num"],
             moves_num=self.MOVE_NUM,
         )
 
     def create_model(self, net_type: str, cfg) -> nn.Module:
         if net_type == NetType.SimpleTwoHeaded:
-            return net_utils.SimpleTwoHeadedModel(
-                self._get_input_shape(), self.MOVE_NUM
-            )
+            return net_utils.SimpleTwoHeadedModel(self._get_input_shape(), self.MOVE_NUM)
         elif net_type == NetType.ConvNetV1:
             return self._create_model_convnetv1(cfg)
         else:
