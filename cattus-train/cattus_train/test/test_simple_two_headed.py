@@ -19,7 +19,7 @@ def _test_simple_two_headed(game_name):
 ---
 game: "{game_name}"
 iterations: 3
-device: cpu
+device: auto
 debug: true
 working_area: {tmp_dir}
 model:

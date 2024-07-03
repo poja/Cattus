@@ -22,7 +22,7 @@ def test_ttt_training():
 ---
 game: "tictactoe"
 iterations: 3
-device: cpu
+device: auto
 debug: false
 working_area: {tmp_dir}
 model:

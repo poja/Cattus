@@ -2,7 +2,7 @@
 ---
 game: "hex5"
 iterations: 75
-device: cpu
+device: auto
 debug: false
 working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
