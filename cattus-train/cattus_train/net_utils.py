@@ -10,24 +10,6 @@ class ConvBlock(nn.Module):
         bn_scale=False,
     ):
         super().__init__()
-        # def conv_block(inputs, filter_size, output_channels, name, l2reg, cpu, bn_scale=False):
-        #     conv_data_fmt = "channels_last" if cpu else "channels_first"
-
-        #     # convolution
-        #     flow = tf.keras.layers.Conv2D(
-        #         output_channels,
-        #         filter_size,
-        #         use_bias=False,
-        #         padding="same",
-        #         kernel_initializer="glorot_normal",
-        #         kernel_regularizer=l2reg,
-        #         data_format=conv_data_fmt,
-        #         name=name + "_conv2d",
-        #     )(inputs)
-        #     # batch normalization
-        #     flow = batch_norm(flow, name=name + "_bn", cpu=cpu, scale=bn_scale)
-        #     # a rectifier nonlinearity
-        #     return tf.keras.layers.Activation("relu")(flow)
         self._conv = nn.Conv2d(
             in_channels, output_channels, filter_size, bias=False, padding="same"
         )
@@ -46,44 +28,6 @@ class ResidualBlock(nn.Module):
         channels: int,
     ):
         super().__init__()
-        # def residual_block(inputs, channels, name, l2reg, cpu):
-        #     conv_data_fmt = "channels_last" if cpu else "channels_first"
-
-        #     # convolution
-        #     flow = tf.keras.layers.Conv2D(
-        #         channels,
-        #         3,
-        #         use_bias=False,
-        #         padding="same",
-        #         kernel_initializer="glorot_normal",
-        #         kernel_regularizer=l2reg,
-        #         data_format=conv_data_fmt,
-        #         name=name + "_1_conv2d",
-        #     )(inputs)
-        #     # batch normalization
-        #     flow = batch_norm(flow, name + "_1_bn", cpu=cpu, scale=False)
-        #     # a rectifier nonlinearity
-        #     flow = tf.keras.layers.Activation("relu")(flow)
-
-        #     # convolution
-        #     flow = tf.keras.layers.Conv2D(
-        #         channels,
-        #         3,
-        #         use_bias=False,
-        #         padding="same",
-        #         kernel_initializer="glorot_normal",
-        #         kernel_regularizer=l2reg,
-        #         data_format=conv_data_fmt,
-        #         name=name + "_2_conv2d",
-        #     )(flow)
-        #     # batch normalization
-        #     flow = batch_norm(flow, name + "_2_bn", cpu=cpu, scale=True)
-        #     # ... (squeeze_excitation)
-        #     #  skip connection adding input to the block
-        #     flow = tf.keras.layers.add([inputs, flow])
-
-        #     # a rectifier nonlinearity
-        #     return tf.keras.layers.Activation("relu")(flow)
         self._conv1 = nn.Conv2d(channels, channels, 3, bias=False, padding="same")
         self._bn1 = nn.BatchNorm2d(channels, affine=False)
         self._relu1 = nn.ReLU()
@@ -111,83 +55,6 @@ class ConvNetV1(nn.Module):
         moves_num: int,
     ):
         super().__init__()
-
-        # def create_convnetv1(
-        #     inputs,
-        #     residual_block_num,
-        #     residual_filter_num,
-        #     value_head_conv_output_channels_num,
-        #     policy_head_conv_output_channels_num,
-        #     moves_num,
-        #     l2reg,
-        #     cpu,
-        # ):
-        #     l2reg = tf.keras.regularizers.l2(l=l2reg) if l2reg else None
-
-        #     # single conv block
-        #     flow = conv_block(
-        #         inputs,
-        #         filter_size=3,
-        #         output_channels=residual_filter_num,
-        #         name="input_planes",
-        #         l2reg=l2reg,
-        #         cpu=cpu,
-        #         bn_scale=True,
-        #     )
-
-        #     # multiple residual blocks
-        #     for block_idx in range(residual_block_num):
-        #         flow = residual_block(
-        #             flow,
-        #             residual_filter_num,
-        #             name="residual_{}".format(block_idx + 1),
-        #             l2reg=l2reg,
-        #             cpu=cpu,
-        #         )
-
-        #     # Value head
-        #     flow_val = conv_block(
-        #         flow,
-        #         filter_size=1,
-        #         output_channels=value_head_conv_output_channels_num,
-        #         name="value",
-        #         l2reg=l2reg,
-        #         cpu=cpu,
-        #     )
-        #     flow_val = tf.keras.layers.Flatten()(flow_val)
-        #     flow_val = tf.keras.layers.Dense(
-        #         128,
-        #         kernel_initializer="glorot_normal",
-        #         kernel_regularizer=l2reg,
-        #         activation="relu",
-        #         name="value_dense1",
-        #     )(flow_val)
-        #     head_val = tf.keras.layers.Dense(
-        #         1,
-        #         kernel_initializer="glorot_normal",
-        #         kernel_regularizer=l2reg,
-        #         activation="tanh",
-        #         name="value_head",
-        #     )(flow_val)
-
-        #     # Policy head
-        #     flow_pol = conv_block(
-        #         flow,
-        #         filter_size=1,
-        #         output_channels=policy_head_conv_output_channels_num,
-        #         name="policy",
-        #         l2reg=l2reg,
-        #         cpu=cpu,
-        #     )
-        #     flow_pol = tf.keras.layers.Flatten()(flow_pol)
-        #     head_pol = tf.keras.layers.Dense(
-        #         moves_num,
-        #         kernel_initializer="glorot_normal",
-        #         kernel_regularizer=l2reg,
-        #         bias_regularizer=l2reg,
-        #         name="policy_head",
-        #     )(flow_pol)
-
         B, C, H, W = input_shape
         assert B == 1
 
