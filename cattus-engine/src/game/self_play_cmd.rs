@@ -186,15 +186,16 @@ pub fn run_main<Game: IGame + 'static>(
     network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {
-    utils::init_python();
-
     let args = SelfPlayArgs::parse();
-
     let device = match args.device.to_uppercase().as_str() {
         "CPU" => Device::Cpu,
-        "GPU" | "MPS" => Device::Gpu,
+        "GPU" => Device::Cuda,
+        "MPS" => Device::Mps,
         unknown_pu => panic!("unknown processing unit '{unknown_pu}'"),
     };
+
+    utils::init_globals(Some(device));
+
     let metrics = Arc::new(Metrics::new());
     let mut cache_builder = CacheBuilder::new(args.cache_size);
     let mut nets = vec![];

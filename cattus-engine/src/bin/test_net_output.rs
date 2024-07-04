@@ -24,7 +24,7 @@ struct Args {
 }
 
 fn main() -> std::io::Result<()> {
-    utils::init_python();
+    utils::init_globals(Some(Device::Cpu));
 
     let args = Args::parse();
 

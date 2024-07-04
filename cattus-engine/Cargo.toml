@@ -19,3 +19,4 @@ chess = "3.2.*"
 once_cell = "1.19.*"
 pleco = "0.5.*"
 tract-onnx = "0.21.6"
+ort = { version = "2.0.0-rc.2", features = ["coreml"] }
