@@ -193,12 +193,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
                 .max_by(|e1, e2| {
                     let val1 = self.calc_selection_heuristic(e1.weight(), node_simcount);
                     let val2 = self.calc_selection_heuristic(e2.weight(), node_simcount);
-                    val1.partial_cmp(&val2).unwrap_or_else(|| {
-                        panic!(
-                            "Failed to compare edges during selection '{}','{}'",
-                            val1, val2
-                        )
-                    })
+                    val1.partial_cmp(&val2).unwrap_or(std::cmp::Ordering::Equal)
                 })
                 .unwrap();
 

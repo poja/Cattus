@@ -110,10 +110,11 @@ pub struct TttPosition {
 impl TttPosition {
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
-        if s.chars().count() != TttGame::BOARD_SIZE * TttGame::BOARD_SIZE + 1 {
-            panic!("unexpected string length")
-        }
-
+        assert_eq!(
+            s.chars().count(),
+            TttGame::BOARD_SIZE * TttGame::BOARD_SIZE + 1,
+            "unexpected string length"
+        );
         let mut pos = Self::new();
         for (idx, c) in s.chars().enumerate() {
             match idx.cmp(&(TttGame::BOARD_SIZE * TttGame::BOARD_SIZE)) {

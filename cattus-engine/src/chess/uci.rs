@@ -81,9 +81,11 @@ impl Engine {
     }
 
     pub fn cmd_position(&mut self, args: HashMap<String, String>) {
-        if args.contains_key("fen") == args.contains_key("startpos") {
-            panic!("position cmd requires either fen or startpos");
-        }
+        assert_ne!(
+            args.contains_key("fen"),
+            args.contains_key("startpos"),
+            "position cmd requires either fen or startpos"
+        );
         let fen = (args
             .get("fen")
             .unwrap_or(&"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string()))
@@ -94,8 +96,7 @@ impl Engine {
             if move_str.is_empty() {
                 continue;
             }
-            let m = ChessMove::from_lan(move_str)
-                .unwrap_or_else(|_| panic!("Invalid move: {}", move_str));
+            let m = ChessMove::from_lan(move_str).unwrap();
             pos = pos.get_moved_position(m);
         }
         self.position = Some(pos);
@@ -234,11 +235,11 @@ impl UCI {
             }
         };
 
-        let command_format = commands_format.into_iter().find(|(c, _fmt)| command == *c);
-        if command_format.is_none() {
-            panic!("unknown command {command}");
-        }
-        let command_format = command_format.unwrap().1;
+        let command_format = commands_format
+            .into_iter()
+            .find(|(c, _fmt)| command == *c)
+            .unwrap_or_else(|| panic!("unknown command {command}"))
+            .1;
 
         let mut args = HashMap::new();
         let mut last_arg = None;
@@ -247,10 +248,8 @@ impl UCI {
                 continue;
             }
             if command_format.contains(&word) {
-                if args.contains_key(word) {
-                    panic!("double arg {word}");
-                }
-                args.insert(word.to_string(), "".to_string());
+                let duplication = args.insert(word.to_string(), "".to_string()).is_some();
+                assert!(!duplication, "duplicate argument '{}'", word);
                 last_arg = Some(word);
             } else {
                 let val = args
