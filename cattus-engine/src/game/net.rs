@@ -7,7 +7,6 @@ use ndarray::{Array4, ArrayView2};
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tract_onnx::prelude::*;
 
 struct BatchData<Game: IGame> {
     samples: Vec<Vec<Game::Bitboard>>,
@@ -69,7 +68,7 @@ struct Statistics {
     batch_size_sum: usize,
 }
 
-type OnnxModel = TypedRunnableModel<TypedModel>;
+type OnnxModel = ort::Session;
 pub struct TwoHeadedNetBase<Game: IGame> {
     model: OnnxModel,
     cache: Option<Arc<ValueFuncCache<Game>>>,
@@ -83,16 +82,20 @@ pub struct TwoHeadedNetBase<Game: IGame> {
 impl<Game: IGame> TwoHeadedNetBase<Game> {
     pub fn new(model_path: &str, device: Device, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
         // Load the model
-        fn load_model(model_path: &str) -> TractResult<OnnxModel> {
-            tract_onnx::onnx()
-                // load the model
-                .model_for_path(model_path)?
-                // optimize the model
-                .into_optimized()?
-                // make the model runnable and fix its inputs and outputs
-                .into_runnable()
+        fn load_model(model_path: &str, device: Device) -> ort::Result<OnnxModel> {
+            ort::SessionBuilder::new()?
+                .with_execution_providers(match device {
+                    Device::Cpu => vec![],
+                    Device::Cuda => vec![
+                        ort::TensorRTExecutionProvider::default().build(),
+                        ort::CUDAExecutionProvider::default().build(),
+                    ],
+                    Device::Mps => vec![ort::CoreMLExecutionProvider::default().build()],
+                })?
+                .with_optimization_level(ort::GraphOptimizationLevel::Level3)?
+                .commit_from_file(model_path)
         }
-        let model = load_model(model_path).unwrap();
+        let model = load_model(model_path, device).unwrap();
 
         Self {
             model,
@@ -112,19 +115,18 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
     }
 
     pub fn run_net(&self, input: Array4<f32>) -> Vec<(Vec<f32>, f32)> {
-        let input: Tensor = input.into();
         let net_run_begin = Instant::now();
-        let outputs = self.model.run(tvec!(input.into())).unwrap();
+        let outputs = self.model.run(ort::inputs![input].unwrap()).unwrap();
         let run_duration = net_run_begin.elapsed();
 
         assert_eq!(outputs.len(), 2);
         let moves_scores: ArrayView2<f32> = outputs[0]
-            .to_array_view::<f32>()
+            .try_extract_tensor()
             .unwrap()
             .into_dimensionality()
             .unwrap();
         let vals: ArrayView2<f32> = outputs[1]
-            .to_array_view::<f32>()
+            .try_extract_tensor()
             .unwrap()
             .into_dimensionality()
             .unwrap();

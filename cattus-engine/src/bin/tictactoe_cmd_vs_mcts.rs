@@ -15,7 +15,7 @@ struct Args {
 }
 
 fn main() {
-    utils::init_python();
+    utils::init_globals(None);
 
     let args = Args::parse();
 

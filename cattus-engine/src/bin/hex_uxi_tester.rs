@@ -122,7 +122,7 @@ struct Args {
  */
 
 fn main() {
-    utils::init_python();
+    utils::init_globals(None);
 
     let mut args = Args::parse();
     if args.workdir == "_CURRENT_DIR_" {
