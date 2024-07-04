@@ -103,9 +103,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
         output_dir1: &String,
         output_dir2: &String,
     ) -> std::io::Result<GamesResults> {
-        if games_num % 2 != 0 {
-            panic!("Games num should be a multiple of 2");
-        }
+        assert!(games_num % 2 == 0, "Games num should be a multiple of 2");
 
         /* Create output dir if doesn't exists */
         for output_dir in [output_dir1, output_dir2] {

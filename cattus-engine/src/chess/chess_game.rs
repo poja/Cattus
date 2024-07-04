@@ -41,7 +41,7 @@ impl ChessMove {
 
     pub fn from_lan(move_str: &str) -> Result<Self, String> {
         if !(move_str.len() == 4 || move_str.len() == 5) {
-            return Err("Invalid LAN length".to_string());
+            return Err(format!("Invalid LAN length: '{}'", move_str));
         }
         #[allow(clippy::iter_nth_zero)]
         let sf = chess::File::from_index(move_str.chars().nth(0).unwrap() as usize - 'a' as usize);
@@ -56,7 +56,12 @@ impl ChessMove {
                 'n' => chess::Piece::Knight,
                 'r' => chess::Piece::Rook,
                 'b' => chess::Piece::Bishop,
-                c => return Err(format!("Unknown promotion char: {:?}", c)),
+                c => {
+                    return Err(format!(
+                        "Unknown promotion char: '{}' in lan str '{}'",
+                        c, move_str
+                    ))
+                }
             })
         } else {
             None
@@ -367,13 +372,11 @@ impl GamePosition for ChessPosition {
     }
 
     fn get_winner(&self) -> Option<GameColor> {
+        assert!(self.is_over(), "Game is not over");
         match self.board.status() {
             chess::BoardStatus::Ongoing => {
-                if self.fifty_rule_count >= 50 {
-                    None
-                } else {
-                    panic!("Game is not over")
-                }
+                assert!(self.fifty_rule_count >= 50);
+                None
             }
             chess::BoardStatus::Stalemate => None,
             chess::BoardStatus::Checkmate => {

@@ -177,9 +177,11 @@ impl<const BOARD_SIZE: usize> HexPosition<BOARD_SIZE> {
 
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
-        if s.chars().count() != BOARD_SIZE * BOARD_SIZE + 1 {
-            panic!("unexpected string length")
-        }
+        assert_eq!(
+            s.chars().count(),
+            BOARD_SIZE * BOARD_SIZE + 1,
+            "unexpected string length"
+        );
 
         let mut board_red = HexBitboard::new();
         let mut board_blue = HexBitboard::new();
