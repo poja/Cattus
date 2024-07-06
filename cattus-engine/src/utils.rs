@@ -17,6 +17,11 @@ pub enum Device {
 }
 
 pub fn init_globals() {
+    env_logger::Builder::new()
+        .filter_level(log::LevelFilter::Info)
+        .target(env_logger::Target::Stdout)
+        .init();
+
     if cfg!(feature = "python") {
         let venv_path = Path::new(&env!("CARGO_MANIFEST_DIR"))
             .parent()

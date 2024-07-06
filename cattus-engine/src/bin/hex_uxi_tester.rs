@@ -31,7 +31,7 @@ fn comapre_engines(
         if engine2_started {
             engine2.stop();
         }
-        eprintln!("Failed to start engines.");
+        log::error!("Failed to start engines.");
         return;
     }
 
@@ -56,10 +56,10 @@ fn compare_players(
 ) {
     let mut rng = rand::thread_rng();
 
-    println!("Comparing between two players:");
-    println!("\tplayer1: {}", player1_display_name);
-    println!("\tplayer2: {}", player2_display_name);
-    println!("\tnumber of games: {}", number_of_games);
+    log::info!("Comparing between two players:");
+    log::info!("\tplayer1: {}", player1_display_name);
+    log::info!("\tplayer2: {}", player2_display_name);
+    log::info!("\tnumber of games: {}", number_of_games);
 
     let run_time = Instant::now();
     let mut player1_wins = 0;
@@ -79,16 +79,20 @@ fn compare_players(
             }
         };
     }
-    println!("Comparison results:");
-    println!(
+    log::info!("Comparison results:");
+    log::info!(
         "\t{}/{} : {}",
-        player1_wins, number_of_games, player1_display_name
+        player1_wins,
+        number_of_games,
+        player1_display_name
     );
-    println!(
+    log::info!(
         "\t{}/{} : {}",
-        player2_wins, number_of_games, player2_display_name
+        player2_wins,
+        number_of_games,
+        player2_display_name
     );
-    println!("\tRunning time: {}s", run_time.elapsed().as_secs());
+    log::info!("\tRunning time: {}s", run_time.elapsed().as_secs());
 }
 
 #[derive(Parser, Debug)]
