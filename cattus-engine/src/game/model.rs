@@ -135,7 +135,9 @@ with torch.no_grad():
                         .collect(),
                 );
                 let mut outputs = model.run(inputs).unwrap();
-                (0..outputs.len())
+
+                let mut outputs = (0..outputs.len())
+                    .rev()
                     .map(|output_idx| {
                         outputs
                             .remove(output_idx)
@@ -144,7 +146,9 @@ with torch.no_grad():
                             .into_array()
                             .unwrap()
                     })
-                    .collect()
+                    .collect::<Vec<_>>();
+                outputs.reverse();
+                outputs
             }
             #[cfg(feature = "ort")]
             ModelImpl::Ort(model) => {
