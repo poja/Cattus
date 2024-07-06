@@ -161,6 +161,12 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
             (moves_probs, val)
         };
 
+        if self.max_batch_size <= 1 {
+            let mut brach_res = self.run_net(planes_to_tensor::<Game>(&[planes]));
+            let sample_res = std::mem::take(&mut brach_res[0]);
+            return to_result(sample_res);
+        }
+
         let (batch_ptr, sample_idx) = loop {
             let mut next_batch_manager = self.next_batch_manager.lock().unwrap();
             let batch_ptr = next_batch_manager.next_batch.clone();

@@ -2,6 +2,7 @@ use itertools::Itertools;
 use std::fs;
 use std::ops::Deref;
 use std::path;
+use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -113,12 +114,10 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
             }
         }
 
+        let games_counter = Arc::new(AtomicUsize::new(0));
         let result = Arc::new(Mutex::new(GamesResults { w1: 0, w2: 0, d: 0 }));
 
-        let job_builder = |thread_idx| {
-            let start_idx = games_num * thread_idx / self.thread_num;
-            let end_idx = games_num * (thread_idx + 1) / self.thread_num;
-
+        let job_builder = || {
             let worker = SelfPlayWorker::new(
                 self.player1_builder.clone(),
                 self.player2_builder.clone(),
@@ -127,23 +126,20 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
                 output_dir1.to_string(),
                 output_dir2.to_string(),
                 result.clone(),
-                start_idx,
-                end_idx,
+                games_counter.clone(),
+                games_num,
             );
 
-            move || match worker.generate_data() {
-                Ok(_) => {}
-                Err(e) => panic!("{:?}", e),
-            }
+            move || worker.generate_data().unwrap()
         };
 
         /* Spawn thread_num-1 to jobs [1..thread_num-1] */
         let threads = (1..self.thread_num)
-            .map(|thread_idx| thread::spawn(job_builder(thread_idx)))
+            .map(|_| thread::spawn(job_builder()))
             .collect_vec();
 
         /* Use current thread to do job 0 */
-        job_builder(0)();
+        job_builder()();
 
         /* Join all threads */
         for t in threads {
@@ -163,8 +159,8 @@ struct SelfPlayWorker<Game: IGame> {
     output_dir1: String,
     output_dir2: String,
     results: Arc<Mutex<GamesResults>>,
-    start_idx: usize,
-    end_idx: usize,
+    games_queue: Arc<AtomicUsize>,
+    games_num: usize,
 }
 
 impl<Game: IGame> SelfPlayWorker<Game> {
@@ -177,8 +173,8 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         output_dir1: String,
         output_dir2: String,
         results: Arc<Mutex<GamesResults>>,
-        start_idx: usize,
-        end_idx: usize,
+        games_queue: Arc<AtomicUsize>,
+        games_num: usize,
     ) -> Self {
         Self {
             player1_builder,
@@ -188,8 +184,8 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             output_dir1,
             output_dir2,
             results,
-            start_idx,
-            end_idx,
+            games_queue,
+            games_num,
         }
     }
 
@@ -197,7 +193,14 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         let mut player1 = self.player1_builder.build();
         let mut player2 = self.player2_builder.build();
 
-        for game_idx in self.start_idx..self.end_idx {
+        loop {
+            let game_idx = self
+                .games_queue
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            if game_idx >= self.games_num {
+                break;
+            }
+
             let mut game = Game::new();
             let mut pos_probs_pairs = Vec::new();
             let players_switch = game_idx % 2 == 1;
@@ -253,6 +256,9 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                 };
                 *counter += 1;
             }
+
+            log::debug!("Game {} done", game_idx);
+            println!("Game {} done", game_idx);
         }
         Ok(())
     }

@@ -1,8 +1,9 @@
 use ndarray::ArrayD;
-use std::{path::Path, sync::Mutex};
+use std::path::Path;
+use std::sync::Mutex;
 
 #[cfg(feature = "python")]
-use {pyo3::prelude::*, pyo3::types::PyDict, pyo3::Py, pyo3::Python};
+use {pyo3::prelude::*, pyo3::Py, pyo3::Python};
 
 #[cfg(feature = "tract")]
 use tract_onnx::prelude::*;
@@ -21,7 +22,7 @@ pub fn set_impl_type(impl_type: ImplType) {
 
 enum ModelImpl {
     #[cfg(feature = "python")]
-    Py(Py<PyDict>),
+    Py(Py<PyAny>),
     #[cfg(feature = "tract")]
     Tract(TypedRunnableModel<TypedModel>),
     #[cfg(feature = "ort")]
@@ -39,23 +40,39 @@ impl Model {
             #[cfg(feature = "python")]
             ImplType::Py => {
                 let model = Python::with_gil(|py| {
-                    let locals = PyDict::new_bound(py);
-                    locals
-                        .set_item("path", path.with_extension("pt").to_str().unwrap())
-                        .unwrap();
-                    py.run_bound(
-                        r#"
+                    let code = r#"
 import torch
-device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-device = torch.device(device)
-model = torch.load(path, map_location=device)
-model.eval()
-                            "#,
-                        None,
-                        Some(&locals),
-                    )
-                    .unwrap();
-                    locals.into()
+class Model:
+    def __init__(self, path):
+        device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+        self.device = torch.device(device)
+        self.model = torch.load(path, map_location=self.device)
+        self.model.eval()
+
+    def run(self, inputs):
+        with torch.no_grad():
+            inputs = [torch.tensor(data).view(shape).to(self.device) for shape, data in inputs]
+            outputs = self.model(*inputs)
+            outputs = [output.detach().cpu().numpy() for output in outputs]
+            outputs = [(o.shape, o.flatten()) for o in outputs]
+        return outputs
+                        "#;
+                    let module = PyModule::from_code_bound(py, &code, "py/model.py", "model")
+                        .map_err(
+                            // print the familiar python stack trace
+                            |err| err.print_and_set_sys_last_vars(py),
+                        )
+                        .unwrap();
+
+                    let py_class = module.getattr("Model").unwrap();
+                    py_class
+                        .call1((path.with_extension("pt"),))
+                        .map_err(
+                            // print the familiar python stack trace
+                            |err| err.print_and_set_sys_last_vars(py),
+                        )
+                        .unwrap()
+                        .into()
                 });
                 ModelImpl::Py(model)
             }
@@ -89,7 +106,7 @@ model.eval()
     pub fn run(&self, inputs: Vec<ArrayD<f32>>) -> Vec<ArrayD<f32>> {
         match &self.model {
             #[cfg(feature = "python")]
-            ModelImpl::Py(locals) => {
+            ModelImpl::Py(model) => {
                 let inputs = inputs
                     .into_iter()
                     .map(|input| {
@@ -99,25 +116,15 @@ model.eval()
                     })
                     .collect::<Vec<_>>();
                 let outputs = Python::with_gil(|py| {
-                    let locals = locals.bind(py);
-                    locals.set_item("inputs", inputs).unwrap();
-                    py.run_bound(
-                        r#"
-with torch.no_grad():
-    inputs = [torch.tensor(data).view(shape).to(device) for shape, data in inputs]
-    outputs = model(*inputs)
-    outputs = [output.detach().cpu().numpy() for output in outputs]
-    outputs = [(o.shape, o.flatten()) for o in outputs]
-                            "#,
-                        None,
-                        Some(locals),
-                    )
-                    .unwrap();
-                    locals
-                        .get_item("outputs")
+                    let py_fn = model.getattr(py, "run").unwrap();
+                    py_fn
+                        .call1(py, (inputs,))
+                        .map_err(
+                            // print the familiar python stack trace
+                            |err| err.print_and_set_sys_last_vars(py),
+                        )
                         .unwrap()
-                        .unwrap()
-                        .extract::<Vec<(Vec<usize>, Vec<f32>)>>()
+                        .extract::<Vec<(Vec<usize>, Vec<f32>)>>(py)
                         .unwrap()
                 });
                 outputs
