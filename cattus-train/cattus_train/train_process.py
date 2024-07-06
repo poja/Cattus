@@ -73,7 +73,9 @@ class TrainProcess:
             self._game = Chess()
         else:
             raise ValueError("Unknown game argument in config file.")
-        self._self_play_exec: str = "{}_self_play_runner".format(self._cfg["game"])
+        self._cfg["engine_path"] = Path(self._cfg["engine_path"])
+        self._self_play_exec_name: str = "{}_self_play_runner".format(self._cfg["game"])
+        self._self_play_exec_path: Path = None
 
         self._net_type: str = self._cfg["model"]["type"]
         base_model_path = self._cfg["model"]["base"]
@@ -154,7 +156,6 @@ class TrainProcess:
     def _self_play(self, model_path: Path):
         logging.info("Self playing using model: %s", model_path)
 
-        profile = "dev" if self._cfg["debug"] else "release"
         games_dir = os.path.join(self._cfg["games_dir"], self._run_id)
         summary_file = os.path.join(games_dir, "selfplay_summary.json")
         data_entries_dir = os.path.join(games_dir, datetime.now().strftime("%y%m%d_%H%M%S_%f"))
@@ -162,18 +163,11 @@ class TrainProcess:
         self_play_start_time = time.time()
         subprocess.run(
             prepare_cmd(
-                "cargo",
-                "run",
-                "--profile",
-                profile,
-                "-q",
-                "--bin",
-                self._self_play_exec,
-                "--",
+                self._self_play_exec_path,
                 "--model1-path",
-                model_path.with_suffix(".onnx"),
+                model_path,
                 "--model2-path",
-                model_path.with_suffix(".onnx"),
+                model_path,
                 "--games-num",
                 self._cfg["self_play"]["games_num"],
                 "--out-dir1",
@@ -362,25 +356,17 @@ class TrainProcess:
                     logging.warn("New model is worse than previous one, losing ratio: %f", losing)
         return best_model
 
-    def _compare_model_impl(self, model1_path: Path, model2_path: Path, model1_games_dir, model2_games_dir):
+    def _compare_model_impl(self, model1_path: Path, model2_path: Path, model1_games_dir: Path, model2_games_dir: Path):
         with tempfile.TemporaryDirectory() as tmp_dir:
             compare_res_file = os.path.join(tmp_dir, "compare_result.json")
-            profile = "dev" if self._cfg["debug"] else "release"
 
             subprocess.run(
                 prepare_cmd(
-                    "cargo",
-                    "run",
-                    "--profile",
-                    profile,
-                    "-q",
-                    "--bin",
-                    self._self_play_exec,
-                    "--",
+                    self._self_play_exec_path,
                     "--model1-path",
-                    model1_path.with_suffix(".onnx"),
+                    model1_path,
                     "--model2-path",
-                    model2_path.with_suffix(".onnx"),
+                    model2_path,
                     "--games-num",
                     self._cfg["model_compare"]["games_num"],
                     "--out-dir1",
@@ -452,13 +438,19 @@ class TrainProcess:
                 profile,
                 "-q",
                 "--bin",
-                self._self_play_exec,
+                self._self_play_exec_name,
             ),
             stderr=sys.stderr,
             stdout=sys.stdout,
             shell=True,
             check=True,
             cwd=self._cfg["engine_path"],
+        )
+        self._self_play_exec_path = (
+            self._cfg["engine_path"]
+            / "target"
+            / ("debug" if self._cfg["debug"] else "release")
+            / self._self_play_exec_name
         )
 
     def _write_metrics(self, filename):

@@ -1,9 +1,11 @@
 use super::mcts::NetStatistics;
+use super::model::Model;
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
 use crate::utils::Device;
 use itertools::Itertools;
-use ndarray::{Array4, ArrayView2};
+use ndarray::{Array2, Array4};
+use std::path::Path;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -68,9 +70,8 @@ struct Statistics {
     batch_size_sum: usize,
 }
 
-type OnnxModel = ort::Session;
 pub struct TwoHeadedNetBase<Game: IGame> {
-    model: OnnxModel,
+    model: Model,
     cache: Option<Arc<ValueFuncCache<Game>>>,
 
     next_batch_manager: Mutex<NextBatchManager<Game>>,
@@ -80,25 +81,13 @@ pub struct TwoHeadedNetBase<Game: IGame> {
 }
 
 impl<Game: IGame> TwoHeadedNetBase<Game> {
-    pub fn new(model_path: &str, device: Device, cache: Option<Arc<ValueFuncCache<Game>>>) -> Self {
-        // Load the model
-        fn load_model(model_path: &str, device: Device) -> ort::Result<OnnxModel> {
-            ort::SessionBuilder::new()?
-                .with_execution_providers(match device {
-                    Device::Cpu => vec![],
-                    Device::Cuda => vec![
-                        ort::TensorRTExecutionProvider::default().build(),
-                        ort::CUDAExecutionProvider::default().build(),
-                    ],
-                    Device::Mps => vec![ort::CoreMLExecutionProvider::default().build()],
-                })?
-                .with_optimization_level(ort::GraphOptimizationLevel::Level3)?
-                .commit_from_file(model_path)
-        }
-        let model = load_model(model_path, device).unwrap();
-
+    pub fn new(
+        model_path: impl AsRef<Path>,
+        device: Device,
+        cache: Option<Arc<ValueFuncCache<Game>>>,
+    ) -> Self {
         Self {
-            model,
+            model: Model::new(model_path),
             cache,
             next_batch_manager: Mutex::new(NextBatchManager::new_empty()),
             max_batch_size: if matches!(device, Device::Cpu) {
@@ -116,27 +105,20 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
 
     pub fn run_net(&self, input: Array4<f32>) -> Vec<(Vec<f32>, f32)> {
         let net_run_begin = Instant::now();
-        let outputs = self.model.run(ort::inputs![input].unwrap()).unwrap();
+        let outputs = self.model.run([input.into_dyn()].to_vec());
         let run_duration = net_run_begin.elapsed();
 
-        assert_eq!(outputs.len(), 2);
-        let moves_scores: ArrayView2<f32> = outputs[0]
-            .try_extract_tensor()
-            .unwrap()
-            .into_dimensionality()
-            .unwrap();
-        let vals: ArrayView2<f32> = outputs[1]
-            .try_extract_tensor()
-            .unwrap()
-            .into_dimensionality()
-            .unwrap();
+        let outputs: [_; 2] = outputs.try_into().unwrap();
+        let (moves_scores, vals) = outputs.try_into().unwrap();
+        let moves_scores: Array2<f32> = moves_scores.into_dimensionality().unwrap();
+        let vals: Array2<f32> = vals.into_dimensionality().unwrap();
 
         let batch_size = vals.len();
         let ret = moves_scores
             .rows()
             .into_iter()
             .zip(vals)
-            .map(|(sample_scores, &val)| {
+            .map(|(sample_scores, val)| {
                 let mut sample_scores = sample_scores.to_vec();
                 for s in sample_scores.iter_mut() {
                     if !s.is_finite() {
