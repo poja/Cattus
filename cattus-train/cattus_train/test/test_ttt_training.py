@@ -6,15 +6,15 @@ from pathlib import Path
 
 REMOVE_TMP_DIR_ON_FINISH = True
 
-TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-TRAIN_MAIN_BIN = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", "bin", "main.py"))
+TESTS_DIR = Path(os.path.realpath(__file__)).parent
+TRAIN_MAIN_BIN = TESTS_DIR.parent.parent / "bin" / "main.py"
 
 
 def test_ttt_training():
     logging.basicConfig(level=logging.DEBUG, format="[TicTactToe Training Test]: %(message)s")
 
     with tempfile.TemporaryDirectory() as tmp_dir:
-        config_file = os.path.join(tmp_dir, "config.yaml")
+        config_file = Path(tmp_dir) / "config.yaml"
 
         with open(config_file, "w") as f:
             f.write(

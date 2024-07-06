@@ -1,9 +1,11 @@
 import os
 import random
 from pathlib import Path
+from typing import Generator
 
 import numpy as np
 import torch
+from torch import Tensor
 from torch.utils.data import IterableDataset
 
 from cattus_train.trainable_game import DataEntryParseError, Game
@@ -18,8 +20,8 @@ class DataSet(IterableDataset):
 
         assert self._cfg["training"]["latest_data_entries"] >= self._cfg["training"]["iteration_data_entries"]
 
-    def _data_entries_filenames_gen(self):
-        filenames = [str(p) for p in Path(self._train_data_dir).rglob("*.traindata")]
+    def _data_entries_filenames_gen(self) -> Generator[int, None, None]:
+        filenames = [p for p in Path(self._train_data_dir).rglob("*.traindata")]
 
         # take the latests files
         latest_de = self._cfg["training"]["latest_data_entries"]
@@ -34,9 +36,9 @@ class DataSet(IterableDataset):
             filenames = filenames[:iter_de]
 
         for filename in filenames:
-            yield os.path.join(self._train_data_dir, filename)
+            yield self._train_data_dir / filename
 
-    def _read_data_entry_gen(self, filenames_gen):
+    def _read_data_entry_gen(self, filenames_gen) -> Generator[tuple[Tensor, tuple[Tensor, Tensor]], None, None]:
         for filename in filenames_gen:
             try:
                 yield self._game.load_data_entry(filename)
@@ -44,7 +46,9 @@ class DataSet(IterableDataset):
                 pass
 
     @staticmethod
-    def unpack_planes(packed_entry, game: Game):
+    def unpack_planes(
+        packed_entry: tuple[Tensor, tuple[Tensor, Tensor]], game: Game
+    ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
         planes, (probs, winner) = packed_entry
         assert len(planes) == game.PLANES_NUM
         plane_size = game.BOARD_SIZE * game.BOARD_SIZE
@@ -54,15 +58,15 @@ class DataSet(IterableDataset):
         planes = planes.reshape((game.PLANES_NUM, game.BOARD_SIZE, game.BOARD_SIZE))
         return planes, (probs, winner)
 
-    def _unpack_planes_gen(self, nparr_packed_gen):
+    def _unpack_planes_gen(self, nparr_packed_gen) -> Generator[tuple[Tensor, tuple[Tensor, Tensor]], None, None]:
         for packed_entry in nparr_packed_gen:
             yield DataSet.unpack_planes(packed_entry, self._game)
 
-    def _move_to_device(self, tensors_gen):
+    def _move_to_device(self, tensors_gen) -> Generator[tuple[Tensor, tuple[Tensor, Tensor]], None, None]:
         for planes, (probs, winner) in tensors_gen:
             yield planes.to(self._device), (probs.to(self._device), winner.to(self._device))
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[tuple[Tensor, tuple[Tensor, Tensor]], None, None]:
         # choose entries
         filenames_gen = self._data_entries_filenames_gen()
         # filename -> tuple of np array with packed planes

@@ -3,15 +3,16 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
-TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-TRAIN_MAIN_BIN = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", "bin", "main.py"))
-CATTUS_TOP = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", ".."))
+TESTS_DIR = Path(os.path.realpath(__file__)).parent
+TRAIN_MAIN_BIN = TESTS_DIR.parent.parent / "bin" / "main.py"
+CATTUS_TOP = TESTS_DIR.parent.parent.parent
 
 
 def _test_convnetv1(game_name):
     with tempfile.TemporaryDirectory() as tmp_dir:
-        config_file = os.path.join(tmp_dir, "config.yaml")
+        config_file = Path(tmp_dir) / "config.yaml"
         with open(config_file, "w") as f:
             f.write(
                 f"""%YAML 1.2
@@ -60,7 +61,7 @@ model_compare:
         logging.info("Running self play and generating new models...")
         python = sys.executable
         subprocess.check_call(
-            " ".join([python, TRAIN_MAIN_BIN, "--config", config_file]),
+            " ".join([python, str(TRAIN_MAIN_BIN), "--config", str(config_file)]),
             env=dict(os.environ, PYTHONPATH=CATTUS_TOP),
             stderr=subprocess.STDOUT,
             shell=True,

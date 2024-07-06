@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 import numpy as np
 
@@ -13,8 +14,8 @@ from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
-TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
-CATTUS_ENGINE_TOP = os.path.abspath(os.path.join(TESTS_DIR, "..", "..", "..", "cattus-engine"))
+TESTS_DIR = Path(os.path.realpath(__file__)).parent
+CATTUS_ENGINE_TOP = TESTS_DIR.parent.parent.parent / "cattus-engine"
 
 logging.basicConfig(level=logging.DEBUG, format="[Serialize Encode Test]: %(message)s")
 
@@ -96,8 +97,9 @@ def test_chess_serialize_encode():
 def _test_serialize_encode(game_name: str, game: Game, positions):
     for position in positions:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            serialize_file = os.path.join(tmp_dir, "serialize_res.json")
-            encode_file = os.path.join(tmp_dir, "encode_res.json")
+            tmp_dir = Path(tmp_dir)
+            serialize_file = tmp_dir / "serialize_res.json"
+            encode_file = tmp_dir / "encode_res.json"
 
             subprocess.run(
                 [

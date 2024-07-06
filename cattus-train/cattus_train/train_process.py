@@ -26,8 +26,6 @@ from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
-CATTUS_TRAIN_TOP = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", ".."))
-
 # For some reason, onnx.export is not thread-safe, so we need to lock it
 ONNX_EXPORT_LOCK = threading.RLock()
 
@@ -54,7 +52,7 @@ class TrainProcess:
         self._cfg: dict = copy.deepcopy(cfg)
 
         working_area = self._cfg["working_area"]
-        working_area = working_area.format(CATTUS_TRAIN_TOP=CATTUS_TRAIN_TOP, GAME_NAME=self._cfg["game"])
+        working_area = working_area.format(CATTUS_TRAIN_TOP=os.getcwd(), GAME_NAME=self._cfg["game"])
         working_area = Path(working_area)
         self._cfg["working_area"] = working_area
         self._cfg["games_dir"] = working_area / "games"
@@ -116,7 +114,7 @@ class TrainProcess:
         if run_id is None:
             run_id = datetime.now().strftime("%y%m%d_%H%M%S_%f")
         self._run_id = run_id
-        metrics_filename = os.path.join(self._cfg["metrics_dir"], f"{self._run_id}.csv")
+        metrics_filename = self._cfg["metrics_dir"] / f"{self._run_id}.csv"
 
         best_model = (
             torch.load(self._base_model_path.with_suffix(".pt")),
@@ -131,9 +129,9 @@ class TrainProcess:
         logging.info("Starting training process with config:")
         for line in dictionary_to_str(self._cfg).splitlines():
             logging.info(line)
-        logging.info("run ID:\t" + self._run_id)
-        logging.info("base model:\t" + str(self._base_model_path))
-        logging.info("metrics file:\t" + metrics_filename)
+        logging.info("run ID:\t%s", self._run_id)
+        logging.info("base model:\t%s", self._base_model_path)
+        logging.info("metrics file:\t%s", metrics_filename)
 
         self._compile_selfplay_exe()
 
@@ -156,9 +154,9 @@ class TrainProcess:
     def _self_play(self, model_path: Path):
         logging.info("Self playing using model: %s", model_path)
 
-        games_dir = os.path.join(self._cfg["games_dir"], self._run_id)
-        summary_file = os.path.join(games_dir, "selfplay_summary.json")
-        data_entries_dir = os.path.join(games_dir, datetime.now().strftime("%y%m%d_%H%M%S_%f"))
+        games_dir = self._cfg["games_dir"] / self._run_id
+        summary_file = games_dir / "selfplay_summary.json"
+        data_entries_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
 
         self_play_start_time = time.time()
         subprocess.run(
@@ -218,7 +216,7 @@ class TrainProcess:
         train_data_dir = (
             self._cfg["games_dir"]
             if self._cfg["training"]["use_train_data_across_runs"]
-            else os.path.join(self._cfg["games_dir"], self._run_id)
+            else self._cfg["games_dir"] / self._run_id
         )
 
         lr = self._lr_scheduler.get_lr(iter_num)
@@ -333,7 +331,7 @@ class TrainProcess:
             # Compare the best model to the latest/trained model
             with tempfile.TemporaryDirectory() as tmp_dir:
                 # take the opportunity to generate more games to main games directory
-                games_dir = Path(self._cfg["games_dir"]) / self._run_id
+                games_dir = self._cfg["games_dir"] / self._run_id
                 best_games_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
                 trained_games_dir = Path(tmp_dir) / "games"
 
@@ -358,7 +356,7 @@ class TrainProcess:
 
     def _compare_model_impl(self, model1_path: Path, model2_path: Path, model1_games_dir: Path, model2_games_dir: Path):
         with tempfile.TemporaryDirectory() as tmp_dir:
-            compare_res_file = os.path.join(tmp_dir, "compare_result.json")
+            compare_res_file = Path(tmp_dir) / "compare_result.json"
 
             subprocess.run(
                 prepare_cmd(
@@ -404,8 +402,7 @@ class TrainProcess:
 
     def _save_model(self, model: nn.Module) -> Path:
         model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(random.randint(0, 1 << 16))
-
-        model_path = Path(self._cfg["models_dir"]) / f"model_{model_time}"
+        model_path = self._cfg["models_dir"] / f"model_{model_time}"
 
         # Save model in Keras format
         torch.save(model, model_path.with_suffix(".pt"))
