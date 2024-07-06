@@ -27,7 +27,7 @@ self_play:
         - [12, 1.0]
         - [0.0]
     games_num: 200
-    threads: 8
+    threads: 16
 
 training:
     latest_data_entries: 36864
@@ -39,7 +39,7 @@ training:
         - [0.0001]
     l2reg: 0.0001
     use_train_data_across_runs: true
-    threads: 8
+    threads: 16
 
 model_compare:
     temperature_policy:
@@ -47,4 +47,4 @@ model_compare:
     games_num: 32
     switching_winning_threshold: 0.55
     warning_losing_threshold: 0.55
-    threads: 8
+    threads: 16
