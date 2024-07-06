@@ -6,7 +6,7 @@ use cattus::hex::hex_game::{HexGame, HexPosition};
 use cattus::hex::net::serializer::HexSerializer;
 use cattus::ttt::net::serializer::TttSerializer;
 use cattus::ttt::ttt_game::TttPosition;
-use cattus::utils::{self, Device};
+use cattus::utils;
 use clap::Parser;
 use itertools::Itertools;
 
@@ -22,7 +22,7 @@ struct Args {
 }
 
 fn main() -> std::io::Result<()> {
-    utils::init_globals(Some(Device::Cpu));
+    utils::init_globals();
 
     let args = Args::parse();
     match args.game.as_str() {

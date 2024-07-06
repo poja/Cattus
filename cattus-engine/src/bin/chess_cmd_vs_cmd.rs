@@ -12,7 +12,7 @@ fn color_to_str(c: Option<GameColor>) -> String {
 }
 
 fn main() {
-    utils::init_globals(None);
+    utils::init_globals();
 
     let mut player1 = ChessPlayerCmd {};
     let mut player2 = ChessPlayerCmd {};

@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -36,9 +37,10 @@ def is_outputs_equals(o1, o2):
 def _test_net_output(game_name: str, game: Game, positions):
     for position in positions:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            model_path = os.path.join(tmp_dir, "model.onnx")
-            encode_path = os.path.join(tmp_dir, "encode_res.json")
-            output_file = os.path.join(tmp_dir, "output.json")
+            tmp_dir = Path(tmp_dir)
+            model_path = tmp_dir / "model"
+            encode_path = tmp_dir / "encode_res.json"
+            output_file = tmp_dir / "output.json"
 
             model = create_model(game, model_path)
 
@@ -121,7 +123,7 @@ def _test_net_output(game_name: str, game: Game, positions):
             assert is_outputs_equals(py_output, rs_output)
 
 
-def create_model(game: Game, path: str) -> nn.Module:
+def create_model(game: Game, path: Path) -> nn.Module:
     cfg = {
         "model": {
             "residual_filter_num": 1,
@@ -137,7 +139,7 @@ def create_model(game: Game, path: str) -> nn.Module:
         torch.onnx.export(
             model,
             torch.randn(game.model_input_shape("ConvNetV1")),
-            path,
+            path.with_suffix(".onnx"),
             verbose=False,
             input_names=["planes"],
             output_names=["policy", "value"],
