@@ -165,7 +165,7 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
         let sample_idx;
         let mut run_net = {
             let mut next_batch_manager = self.next_batch_manager.lock().unwrap();
-            batch = Arc::clone(&(next_batch_manager.next_batch));
+            batch = next_batch_manager.next_batch.clone();
             batch_idx = next_batch_manager.batch_idx;
             let batch_is_full = {
                 let mut batch_data = batch.data.lock().unwrap();

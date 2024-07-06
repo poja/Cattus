@@ -139,11 +139,11 @@ impl<Game: IGame> Builder<MCTSPlayer<Game>> for PlayerBuilder<Game> {
             self.explore_factor,
             self.prior_noise_alpha,
             self.prior_noise_epsilon,
-            Arc::clone(&self.network),
+            self.network.clone(),
         );
 
         player.set_search_duration_callback(Some(Box::new(SearchDurationCallback {
-            metrics: Arc::clone(&self.metrics),
+            metrics: self.metrics.clone(),
         })));
 
         player
@@ -163,7 +163,7 @@ impl<Game: IGame> CacheBuilder<Game> {
     }
     fn build_cache(&mut self) -> Arc<ValueFuncCache<Game>> {
         let cache = Arc::new(ValueFuncCache::new(self.max_size));
-        self.caches.push(Arc::clone(&cache));
+        self.caches.push(cache.clone());
         cache
     }
 
@@ -199,37 +199,37 @@ pub fn run_main<Game: IGame + 'static>(
     let mut cache_builder = CacheBuilder::new(args.cache_size);
     let mut nets = vec![];
 
-    let player1_net = Arc::from(network_builder.build_net(
+    let player1_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
         &args.model1_path,
         cache_builder.build_cache(),
         device,
     ));
-    nets.push(Arc::clone(&player1_net));
+    nets.push(player1_net.clone());
     let player1_builder = Arc::new(PlayerBuilder::new(
         player1_net,
         args.sim_num,
         args.explore_factor,
         args.prior_noise_alpha,
         args.prior_noise_epsilon,
-        Arc::clone(&metrics),
+        metrics.clone(),
     ));
 
     let player2_builder = if args.model1_path == args.model2_path {
-        Arc::clone(&player1_builder)
+        player1_builder.clone()
     } else {
-        let player2_net = Arc::from(network_builder.build_net(
+        let player2_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
             &args.model2_path,
             cache_builder.build_cache(),
             device,
         ));
-        nets.push(Arc::clone(&player2_net));
+        nets.push(player2_net.clone());
         Arc::new(PlayerBuilder::new(
             player2_net,
             args.sim_num,
             args.explore_factor,
             args.prior_noise_alpha,
             args.prior_noise_epsilon,
-            Arc::clone(&metrics),
+            metrics.clone(),
         ))
     };
 

@@ -120,13 +120,13 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
             let end_idx = games_num * (thread_idx + 1) / self.thread_num;
 
             let worker = SelfPlayWorker::new(
-                Arc::clone(&self.player1_builder),
-                Arc::clone(&self.player2_builder),
+                self.player1_builder.clone(),
+                self.player2_builder.clone(),
                 &self.temperature_policy,
-                Arc::clone(&self.serializer),
+                self.serializer.clone(),
                 output_dir1.to_string(),
                 output_dir2.to_string(),
-                Arc::clone(&result),
+                result.clone(),
                 start_idx,
                 end_idx,
             );
