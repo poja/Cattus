@@ -110,7 +110,7 @@ with torch.no_grad():
     outputs = [(o.shape, o.flatten()) for o in outputs]
                             "#,
                         None,
-                        Some(&locals),
+                        Some(locals),
                     )
                     .unwrap();
                     locals
