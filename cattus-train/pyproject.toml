@@ -14,7 +14,7 @@ numpy = "^2.0.0"
 chess = "^1.9.3"
 PyYAML = "^6.0"
 construct = "^2.10.68"
-torch = "~2.3.1"
+torch = "~2.4.0"
 onnx = "^1.16.0"
 
 
