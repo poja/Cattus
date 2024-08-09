@@ -123,8 +123,7 @@ class TrainProcess:
         latest_models = [best_model]
         if self._cfg["model_num"] > 1:
             for _ in range(self._cfg["model_num"] - 1):
-                model = self._game.create_model(self._net_type, self._cfg)
-                latest_models.append((model, self._save_model(model)))
+                latest_models.append(copy.deepcopy(best_model))
 
         logging.info("Starting training process with config:")
         for line in dictionary_to_str(self._cfg).splitlines():
