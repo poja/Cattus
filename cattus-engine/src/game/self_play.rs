@@ -256,7 +256,6 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             }
 
             log::debug!("Game {} done", game_idx);
-            println!("Game {} done", game_idx);
         }
         Ok(())
     }
