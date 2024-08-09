@@ -3,7 +3,6 @@ name = "cattus"
 version = "0.1.0"
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 log = "0.4"
@@ -23,10 +22,10 @@ num-traits = "0.2"
 # Optional dependencies for model inference
 pyo3 = { version = "0.26.0", features = ["auto-initialize"], optional = true }
 tract-onnx = { version = "0.22", optional = true }
-ort_lib = { package = "ort", version = "2.0.0-rc.10", optional = true }
+ort = { version = "2.0.0-rc.10", optional = true }
 
 [features]
-default = ["tract"]
-python = ["pyo3"]
-tract = ["tract-onnx"]
-ort = ["ort_lib"]
+default = ["onnx-tract"]
+torch-python = ["pyo3"]
+onnx-tract = ["tract-onnx"]
+onnx-ort = ["ort"]

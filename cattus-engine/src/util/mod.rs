@@ -8,7 +8,7 @@ use crate::game::model;
 use std::env;
 use std::path::Path;
 
-#[cfg(feature = "python")]
+#[cfg(feature = "torch-python")]
 use pyo3::types::PyAnyMethods;
 
 pub trait Builder<T>: Sync + Send {
@@ -28,7 +28,7 @@ pub fn init_globals() {
         .target(env_logger::Target::Stdout)
         .init();
 
-    if cfg!(feature = "python") {
+    if cfg!(feature = "torch-python") {
         let venv_path = Path::new(&env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
@@ -45,7 +45,7 @@ pub fn init_globals() {
     }
 
     let mps_available = {
-        #[cfg(feature = "python")]
+        #[cfg(feature = "torch-python")]
         {
             pyo3::Python::attach(|py| {
                 let locals = pyo3::types::PyDict::new(py);
@@ -61,19 +61,19 @@ mps_available = torch.backends.mps.is_available()
                 locals.get_item("mps_available").unwrap().extract().unwrap()
             })
         }
-        #[cfg(not(feature = "python"))]
+        #[cfg(not(feature = "torch-python"))]
         {
             false
         }
     };
 
-    let model_impl = if cfg!(feature = "python") && mps_available {
+    let model_impl = if cfg!(feature = "torch-python") && mps_available {
         model::ImplType::Py
-    } else if cfg!(feature = "tract") {
+    } else if cfg!(feature = "onnx-tract") {
         model::ImplType::Tract
-    } else if cfg!(feature = "ort") {
+    } else if cfg!(feature = "onnx-ort") {
         model::ImplType::Ort
-    } else if cfg!(feature = "python") {
+    } else if cfg!(feature = "torch-python") {
         model::ImplType::Py
     } else {
         panic!("No model implementation available");
@@ -83,12 +83,12 @@ mps_available = torch.backends.mps.is_available()
         model::ImplType::Py => {}
         model::ImplType::Tract => {}
         model::ImplType::Ort => {
-            #[cfg(feature = "ort")]
-            ort_lib::init()
+            #[cfg(feature = "onnx-ort")]
+            ort::init()
                 .with_execution_providers(vec![
-                    ort_lib::execution_providers::TensorRTExecutionProvider::default().build(),
-                    ort_lib::execution_providers::CUDAExecutionProvider::default().build(),
-                    ort_lib::execution_providers::CoreMLExecutionProvider::default().build(),
+                    ort::execution_providers::TensorRTExecutionProvider::default().build(),
+                    ort::execution_providers::CUDAExecutionProvider::default().build(),
+                    ort::execution_providers::CoreMLExecutionProvider::default().build(),
                 ])
                 .commit()
                 .unwrap();

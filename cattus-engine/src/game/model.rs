@@ -2,10 +2,10 @@ use ndarray::ArrayD;
 use std::path::Path;
 use std::sync::Mutex;
 
-#[cfg(feature = "python")]
-use {pyo3::prelude::*, pyo3::Py, pyo3::Python};
+#[cfg(feature = "torch-python")]
+use pyo3::prelude::*;
 
-#[cfg(feature = "tract")]
+#[cfg(feature = "onnx-tract")]
 use tract_onnx::prelude::*;
 
 #[derive(Clone, Copy, Debug)]
@@ -22,13 +22,13 @@ pub fn set_impl_type(impl_type: ImplType) {
 
 #[allow(clippy::large_enum_variant)]
 enum ModelImpl {
-    #[cfg(feature = "python")]
+    #[cfg(feature = "torch-python")]
     Py(Py<PyAny>),
-    #[cfg(feature = "tract")]
+    #[cfg(feature = "onnx-tract")]
     Tract(TypedRunnableModel<TypedModel>),
-    #[cfg(feature = "ort")]
+    #[cfg(feature = "onnx-ort")]
     Ort {
-        model: ort_lib::session::Session,
+        model: ort::session::Session,
         output_names: Vec<String>,
     },
 }
@@ -41,7 +41,7 @@ impl Model {
         let path = path.as_ref();
         let impl_type = IMPL_TYPE.lock().unwrap().expect("impl_type not set");
         let model = match impl_type {
-            #[cfg(feature = "python")]
+            #[cfg(feature = "torch-python")]
             ImplType::Py => {
                 let model = Python::attach(|py| {
                     let code = cr#"
@@ -80,7 +80,7 @@ class Model:
                 });
                 ModelImpl::Py(model)
             }
-            #[cfg(feature = "tract")]
+            #[cfg(feature = "onnx-tract")]
             ImplType::Tract => {
                 let model = tract_onnx::onnx()
                     .model_for_path(path.with_extension("onnx"))
@@ -91,13 +91,11 @@ class Model:
                     .unwrap();
                 ModelImpl::Tract(model)
             }
-            #[cfg(feature = "ort")]
+            #[cfg(feature = "onnx-ort")]
             ImplType::Ort => {
-                let model = ort_lib::session::Session::builder()
+                let model = ort::session::Session::builder()
                     .unwrap()
-                    .with_optimization_level(
-                        ort_lib::session::builder::GraphOptimizationLevel::Level3,
-                    )
+                    .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
                     .unwrap()
                     .commit_from_file(path.with_extension("onnx"))
                     .unwrap();
@@ -107,7 +105,11 @@ class Model:
                     output_names,
                 }
             }
-            #[cfg(not(all(feature = "python", feature = "tract", feature = "ort")))]
+            #[cfg(not(all(
+                feature = "torch-python",
+                feature = "onnx-tract",
+                feature = "onnx-ort"
+            )))]
             unsupported_type => panic!("Unsupported impl_type: {:?}", unsupported_type),
         };
         Self { model }
@@ -115,7 +117,7 @@ class Model:
 
     pub fn run(&mut self, inputs: Vec<ArrayD<f32>>) -> Vec<ArrayD<f32>> {
         match &mut self.model {
-            #[cfg(feature = "python")]
+            #[cfg(feature = "torch-python")]
             ModelImpl::Py(model) => {
                 let inputs = inputs
                     .into_iter()
@@ -143,7 +145,7 @@ class Model:
                     .map(|(shape, data)| ArrayD::from_shape_vec(shape, data).unwrap())
                     .collect()
             }
-            #[cfg(feature = "tract")]
+            #[cfg(feature = "onnx-tract")]
             ModelImpl::Tract(model) => {
                 let inputs = TVec::from_vec(
                     inputs
@@ -168,7 +170,7 @@ class Model:
                 outputs.reverse();
                 outputs
             }
-            #[cfg(feature = "ort")]
+            #[cfg(feature = "onnx-ort")]
             ModelImpl::Ort {
                 model,
                 output_names,
@@ -176,12 +178,12 @@ class Model:
                 let inputs = inputs
                     .into_iter()
                     .map(|input| {
-                        ort_lib::session::SessionInputValue::from(
-                            ort_lib::value::Value::from_array(input).unwrap(),
+                        ort::session::SessionInputValue::from(
+                            ort::value::Value::from_array(input).unwrap(),
                         )
                     })
                     .collect::<Vec<_>>();
-                let inputs: &[ort_lib::session::SessionInputValue] = &inputs;
+                let inputs: &[ort::session::SessionInputValue] = &inputs;
                 let mut outputs = model.run(inputs).unwrap();
                 output_names
                     .iter()
