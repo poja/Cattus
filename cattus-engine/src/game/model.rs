@@ -16,7 +16,7 @@ pub enum ImplType {
 }
 static IMPL_TYPE: Mutex<Option<ImplType>> = Mutex::new(None);
 pub fn set_impl_type(impl_type: ImplType) {
-    log::info!("Setting model implementation: {:?}", impl_type);
+    log::debug!("Setting model implementation: {:?}", impl_type);
     *IMPL_TYPE.lock().unwrap() = Some(impl_type);
 }
 
