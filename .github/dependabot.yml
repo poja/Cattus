@@ -3,12 +3,12 @@ updates:
   - package-ecosystem: "cargo"
     directory: "cattus-engine/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
   - package-ecosystem: "pip"
     directory: "cattus-train/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
