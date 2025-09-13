@@ -1,6 +1,5 @@
 use chess;
 use itertools::Itertools;
-use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::fmt::{self, Display};
 use std::hash::{Hash, Hasher};
@@ -628,7 +627,7 @@ impl IGame for ChessGame {
     }
 }
 
-static NN_INDEX_TO_MOVE: Lazy<Vec<ChessMove>> = Lazy::new(|| {
+static NN_INDEX_TO_MOVE: std::sync::LazyLock<Vec<ChessMove>> = std::sync::LazyLock::new(|| {
     [
         "a1b1", "a1c1", "a1d1", "a1e1", "a1f1", "a1g1", "a1h1", "a1a2", "a1b2", "a1c2", "a1a3",
         "a1b3", "a1c3", "a1a4", "a1d4", "a1a5", "a1e5", "a1a6", "a1f6", "a1a7", "a1g7", "a1a8",
@@ -808,7 +807,7 @@ static NN_INDEX_TO_MOVE: Lazy<Vec<ChessMove>> = Lazy::new(|| {
     .collect_vec()
 });
 
-static MOVE_TO_NN_INDEX: Lazy<Vec<u16>> = Lazy::new(|| {
+static MOVE_TO_NN_INDEX: std::sync::LazyLock<Vec<u16>> = std::sync::LazyLock::new(|| {
     let no_move = u16::MAX;
     let mut res = vec![no_move; 64 * 64 + 22 * 4];
     for (idx, m) in NN_INDEX_TO_MOVE.iter().enumerate() {

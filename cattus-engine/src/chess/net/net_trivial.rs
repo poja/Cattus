@@ -1,18 +1,14 @@
 use crate::chess::chess_game::{ChessGame, ChessPosition};
 use crate::game::common::{GamePosition, IGame};
-use crate::game::mcts::{ValueFunction, NetStatistics};
+use crate::game::mcts::{NetStatistics, ValueFunction};
 use crate::game::net;
-use once_cell::sync::Lazy;
 
 /* Copied from https://github.com/LeelaChessZero/lc0/blob/master/src/neural/network_trivial.cc */
 
 pub struct TrivialNet {}
 
 impl ValueFunction<ChessGame> for TrivialNet {
-    fn evaluate(
-        &self,
-        position: &ChessPosition,
-    ) -> ( Vec<(<ChessGame as IGame>::Move, f32)>, f32) {
+    fn evaluate(&self, position: &ChessPosition) -> (Vec<(<ChessGame as IGame>::Move, f32)>, f32) {
         let (position, is_flipped) = net::flip_pos_if_needed(*position);
         let positionf = position.get_flip();
 
@@ -80,7 +76,8 @@ fn dot_product(
     res
 }
 
-static POLICY: Lazy<Vec<f32>> = Lazy::new(|| {vec![
+#[rustfmt::skip]
+static POLICY: std::sync::LazyLock<Vec<f32>> = std::sync::LazyLock::new(|| {vec![
     -3.27805, -2.55371, -2.46718, -2.59232, -2.74631, -2.59647, -2.47084,
     -3.65601, -2.09820, -1.43034, -3.51708, -1.26485, -2.36647, -2.94045,
     -2.40305, -2.70842, -2.52492, -2.57050, -2.48690, -2.21723, -2.35995,
@@ -352,6 +349,7 @@ static POLICY: Lazy<Vec<f32>> = Lazy::new(|| {vec![
     -0.0,     -0.0,     -0.0,     -0.0
 ]});
 
+#[rustfmt::skip]
 static PAWNS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     -0.00000, -0.00000, -0.00000, -0.00000, 0.00000,  -0.00000, 0.00000,
     -0.00000, 0.06662,  0.09583,  0.06643,  0.05536,  0.02236,  0.04939,
@@ -365,6 +363,7 @@ static PAWNS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     -0.00000
 ];
 
+#[rustfmt::skip]
 static KNIGHTS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.12549, 0.05358, 0.06001, 0.08798, 0.09084, 0.07007, 0.05983,
     0.07110, 0.03532, 0.08703, 0.13308, 0.07691, 0.11283, 0.06292,
@@ -378,6 +377,7 @@ static KNIGHTS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.20774,
 ];
 
+#[rustfmt::skip]
 static BISHOPS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.08299, 0.11050, 0.11387, 0.12347, 0.13993, 0.10414, 0.18594,
     0.06085, 0.10235, 0.15733, 0.13970, 0.13631, 0.10189, 0.17399,
@@ -391,6 +391,7 @@ static BISHOPS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.14240,
 ];
 
+#[rustfmt::skip]
 static ROOKS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.19343, 0.22010, 0.19814, 0.20439, 0.20660, 0.20584, 0.19275,
     0.20042, 0.18159, 0.19006, 0.19286, 0.19677, 0.22751, 0.22487,
@@ -404,6 +405,7 @@ static ROOKS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.21579,
 ];
 
+#[rustfmt::skip]
 static QUEENS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.23063, 0.23157, 0.25371, 0.27579, 0.27878, 0.23600, 0.29552,
     0.29963, 0.27729, 0.29837, 0.29026, 0.25105, 0.27772, 0.28502,
@@ -417,6 +419,7 @@ static QUEENS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.28824,
 ];
 
+#[rustfmt::skip]
 static KINGS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.02852,  0.00453,  -0.05309, -0.02416, -0.14581, -0.01472, -0.02206,
     0.02207,  0.03712,  0.02324,  -0.02501, -0.06653, -0.07605, -0.01135,
@@ -430,6 +433,7 @@ static KINGS: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     0.00145,
 ];
 
+#[rustfmt::skip]
 static KINGS_ENDGAME: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE] = [
     -0.03908, -0.02837, -0.02194, -0.03649, -0.04754, -0.03390, -0.03172,
     0.02852,  -0.02071, -0.01429, -0.02296, -0.01087, -0.02774, -0.01505,
