@@ -47,10 +47,10 @@ pub fn init_globals() {
     let mps_available = {
         #[cfg(feature = "python")]
         {
-            pyo3::Python::with_gil(|py| {
-                let locals = pyo3::types::PyDict::new_bound(py);
-                py.run_bound(
-                    "
+            pyo3::Python::attach(|py| {
+                let locals = pyo3::types::PyDict::new(py);
+                py.run(
+                    c"
 import torch
 mps_available = torch.backends.mps.is_available()
                     ",
