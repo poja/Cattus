@@ -2,7 +2,7 @@ use super::mcts::NetStatistics;
 use super::model::Model;
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
-use crate::utils::Device;
+use crate::util::Device;
 use itertools::Itertools;
 use ndarray::{Array2, Array4};
 use std::path::Path;

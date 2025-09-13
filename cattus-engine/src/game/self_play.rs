@@ -9,7 +9,7 @@ use std::thread;
 use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
 use crate::game::mcts::MCTSPlayer;
 use crate::game::net;
-use crate::utils::Builder;
+use crate::util::Builder;
 
 pub struct DataEntry<Game: IGame> {
     pub pos: Game::Position,

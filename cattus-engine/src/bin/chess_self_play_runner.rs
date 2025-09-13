@@ -4,7 +4,7 @@ use cattus::chess::net::serializer::ChessSerializer;
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::mcts::ValueFunction;
 use cattus::game::self_play_cmd::{run_main, INNetworkBuilder};
-use cattus::utils::Device;
+use cattus::util::Device;
 use std::sync::Arc;
 
 struct NNetworkBuilder;

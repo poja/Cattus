@@ -41,7 +41,7 @@ mod tests {
 
     #[test]
     fn flip_rand() {
-        let seed: u64 = rand::thread_rng().gen();
+        let seed: u64 = rand::rng().random();
         println!("[{}] Using seed {}", stringify!(flip_rand), seed);
         let mut rand = StdRng::seed_from_u64(seed);
 

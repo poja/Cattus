@@ -3,7 +3,7 @@ use crate::game::common::IGame;
 use crate::game::mcts::{MCTSPlayer, ValueFunction};
 use crate::game::self_play::{DataSerializer, SelfPlayRunner};
 use crate::game::utils::Callback;
-use crate::utils::{self, Builder, Device};
+use crate::util::{self, Builder, Device};
 use clap::Parser;
 use itertools::Itertools;
 use std::fs;
@@ -186,7 +186,7 @@ pub fn run_main<Game: IGame + 'static>(
     network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {
-    utils::init_globals();
+    util::init_globals();
     let args = SelfPlayArgs::parse();
     let device = match args.device.to_uppercase().as_str() {
         "CPU" => Device::Cpu,

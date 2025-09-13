@@ -122,17 +122,17 @@ mod tests {
     fn flip() {
         let pos = HexStandardPosition::from_str(
             "eebeeeeeeer\
-        eeeeeeeeeee\
-        eeeebeeeree\
-        eeeeeeereee\
-        eeeeeereeee\
-        eeeeereeeee\
-        eeeerebeeee\
-        eeereeeeeee\
-        eereeereeee\
-        ereeeeeeeee\
-        reeeeebeeee\
-        b",
+            eeeeeeeeeee\
+            eeeebeeeree\
+            eeeeeeereee\
+            eeeeeereeee\
+            eeeeereeeee\
+            eeeerebeeee\
+            eeereeeeeee\
+            eereeereeee\
+            ereeeeeeeee\
+            reeeeebeeee\
+            b",
         );
         assert!(pos.get_turn() == GameColor::Player2);
         assert!(pos.get_flip().get_turn() == GameColor::Player1);
@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn flip_rand() {
-        let seed: u64 = rand::thread_rng().gen();
+        let seed: u64 = rand::rng().random();
         println!("[{}] Using seed {}", stringify!(flip_rand), seed);
         let mut rand = StdRng::seed_from_u64(seed);
 

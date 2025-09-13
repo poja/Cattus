@@ -2,7 +2,6 @@ use cattus::chess::chess_game::{ChessGame, ChessPosition};
 use cattus::game::net;
 use cattus::hex::hex_game::{HexGame, HexPosition};
 use cattus::ttt::ttt_game::{TttGame, TttPosition};
-use cattus::utils;
 use cattus::{chess, hex, ttt};
 use clap::Parser;
 use ndarray::{Array3, Array4, Axis};
@@ -20,7 +19,7 @@ struct Args {
 }
 
 fn main() -> std::io::Result<()> {
-    utils::init_globals();
+    cattus::util::init_globals();
 
     let args = Args::parse();
     let tensor = match args.game.as_str() {

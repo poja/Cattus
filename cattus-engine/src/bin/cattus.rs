@@ -2,8 +2,7 @@ use cattus::chess::chess_game::ChessGame;
 use cattus::chess::net::net_stockfish::StockfishNet;
 use cattus::chess::uci::UCI;
 use cattus::game::mcts::MCTSPlayer;
-use cattus::utils;
-use cattus::utils::Builder;
+use cattus::util::Builder;
 use clap::Parser;
 use std::sync::Arc;
 
@@ -25,7 +24,7 @@ impl Builder<MCTSPlayer<ChessGame>> for PlayerBuilder {
 }
 
 fn main() {
-    utils::init_globals();
+    cattus::util::init_globals();
 
     let args = Args::parse();
 

@@ -1,6 +1,5 @@
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
-use rand_distr::Distribution;
+use rand::prelude::*;
+
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
@@ -104,7 +103,7 @@ impl Default for PlayerRand {
 }
 impl PlayerRand {
     pub fn new() -> Self {
-        Self::from_seed(rand::thread_rng().gen())
+        Self::from_seed(rand::rng().random())
     }
 
     pub fn from_seed(seed: u64) -> Self {
@@ -120,8 +119,7 @@ impl<Game: IGame> GamePlayer<Game> for PlayerRand {
         if moves.is_empty() {
             None
         } else {
-            let dist = rand::distributions::Uniform::from(0..moves.len());
-            Some(moves[dist.sample(&mut self.rand)])
+            Some(moves[self.rand.random_range(0..moves.len())])
         }
     }
 }

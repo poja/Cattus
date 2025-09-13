@@ -31,6 +31,7 @@ mod tests {
     fn fifty_rule_count() {
         let mut pos = ChessPosition::new();
 
+        #[rustfmt::skip]
         let moves = vec![
             "e4", "e5",
             "Ke2", "Ke7", "Ke1", "Ke8",
@@ -92,7 +93,7 @@ mod tests {
 
     #[test]
     fn flip_rand() {
-        let seed: u64 = rand::thread_rng().gen();
+        let seed: u64 = rand::rng().random();
         println!("[{}] Using seed {}", stringify!(flip_rand), seed);
         let mut rand = StdRng::seed_from_u64(seed);
 
