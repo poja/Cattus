@@ -25,7 +25,6 @@ use std::{io, process, thread, time};
  *          the next move of the engine
  *              indices - the engine move, two numbers with comma separation, "c,r"
  */
-
 pub struct HexPlayerUXI {
     exe_filename: String,
     // err_filename: String,

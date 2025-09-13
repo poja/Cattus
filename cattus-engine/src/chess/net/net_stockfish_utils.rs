@@ -235,7 +235,7 @@ const STORM_DANGER: [[[Value; RANK_CNT]; 4]; 4] = [
 
 pub static mut CONNECTED: [[[[Score; RANK_CNT]; 3]; 2]; 2] = [[[[Score(0, 0); RANK_CNT]; 3]; 2]; 2];
 
-/// Initalizes the CONNECTED table.
+// /// Initalizes the CONNECTED table.
 // #[cold]
 // pub fn init() {
 //     unsafe {
@@ -382,7 +382,7 @@ impl PawnEntry {
         self.semiopen_files[player as usize] & (1 << file as u8) != 0
     }
 
-    /// Returns if a side of a file is semi-open, meaning no enemy pieces.
+    // /// Returns if a side of a file is semi-open, meaning no enemy pieces.
     // #[inline]
     // pub fn semiopen_side(&self, player: Player, file: File, left_side: bool) -> bool {
     //     let side_mask: u8 = if left_side {

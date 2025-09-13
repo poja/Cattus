@@ -20,6 +20,7 @@ pub fn set_impl_type(impl_type: ImplType) {
     *IMPL_TYPE.lock().unwrap() = Some(impl_type);
 }
 
+#[allow(clippy::large_enum_variant)]
 enum ModelImpl {
     #[cfg(feature = "python")]
     Py(Py<PyAny>),
@@ -57,7 +58,7 @@ class Model:
             outputs = [(o.shape, o.flatten()) for o in outputs]
         return outputs
                         "#;
-                    let module = PyModule::from_code_bound(py, &code, "py/model.py", "model")
+                    let module = PyModule::from_code_bound(py, code, "py/model.py", "model")
                         .map_err(
                             // print the familiar python stack trace
                             |err| err.print_and_set_sys_last_vars(py),

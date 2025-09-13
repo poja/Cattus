@@ -303,7 +303,8 @@ impl TemperatureScheduler {
     /// # Arguments
     ///
     /// * `s` - A string representing the temperature policy. The string should contain an odd number of numbers,
-    /// with a ',' between them.
+    ///   with a ',' between them.
+    ///
     /// The string will be split into pairs of two numbers, and a final number.
     /// Each pair should be of the form (moves_num, temperature) and the final number is the final temperature.
     /// Each pair represent an interval of moves number in which the corresponding temperature will be assigned.
