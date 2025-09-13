@@ -13,7 +13,6 @@ rand = "0.9"
 rand_distr = "0.5"
 lazy_static = "1.5.*"
 petgraph = "0.8"
-cached = "0.53.*"
 clap = { version = "4.5.16", features = ["derive"] }
 json = "0.12.*"
 ndarray = "0.15.6"
