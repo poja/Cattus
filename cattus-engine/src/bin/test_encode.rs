@@ -62,7 +62,7 @@ fn tensor_to_json(tensor: Array3<f32>, filename: &String) -> std::io::Result<()>
         filename,
         json::object! {
             shape: tensor.shape().to_vec(),
-            data: tensor.into_raw_vec(),
+            data: tensor.iter().cloned().collect::<Vec<f32>>(),
         }
         .dump(),
     )

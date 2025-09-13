@@ -86,9 +86,9 @@ mps_available = torch.backends.mps.is_available()
             #[cfg(feature = "ort")]
             ort_lib::init()
                 .with_execution_providers(vec![
-                    ort_lib::TensorRTExecutionProvider::default().build(),
-                    ort_lib::CUDAExecutionProvider::default().build(),
-                    ort_lib::CoreMLExecutionProvider::default().build(),
+                    ort_lib::execution_providers::TensorRTExecutionProvider::default().build(),
+                    ort_lib::execution_providers::CUDAExecutionProvider::default().build(),
+                    ort_lib::execution_providers::CoreMLExecutionProvider::default().build(),
                 ])
                 .commit()
                 .unwrap();
