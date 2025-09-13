@@ -65,7 +65,7 @@ class Model:
 
                     let py_class = module.getattr("Model").unwrap();
                     py_class
-                        .call1((path.with_extension("pt"),))
+                        .call1((path.with_extension("jit"),))
                         .unwrapy(py)
                         .into()
                 });

@@ -78,8 +78,7 @@ class TrainProcess:
         self._net_type: str = self._cfg["model"]["type"]
         base_model_path = self._cfg["model"]["base"]
         if base_model_path == "[none]":
-            model = self._game.create_model(self._net_type, self._cfg)
-            base_model_path = self._save_model(model)
+            base_model_path = self._save_model(self._create_model())
         elif base_model_path == "[latest]":
             logging.warning("Choosing latest model based on directory name format")
             all_models = list(self._cfg["models_dir"].iterdir())
@@ -116,10 +115,7 @@ class TrainProcess:
         self._run_id = run_id
         metrics_filename = self._cfg["metrics_dir"] / f"{self._run_id}.csv"
 
-        best_model = (
-            torch.load(self._base_model_path.with_suffix(".pt"), weights_only=False),
-            self._base_model_path,
-        )
+        best_model = (self._load_model(self._base_model_path), self._base_model_path)
         latest_models = [best_model]
         if self._cfg["model_num"] > 1:
             for _ in range(self._cfg["model_num"] - 1):
@@ -399,23 +395,27 @@ class TrainProcess:
             total_games = w1 + w2 + d
             return w1 / total_games, w2 / total_games
 
+    def _create_model(self) -> nn.Module:
+        return self._game.create_model(self._net_type, self._cfg)
+
     def _save_model(self, model: nn.Module, batch_size: int = 1) -> Path:
         model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(random.randint(0, 1 << 16))
         model_path = self._cfg["models_dir"] / f"model_{model_time}"
         input_shape = self._game.model_input_shape(self._net_type)
         input_shape = (batch_size,) + input_shape[1:]
 
-        # Save model
         model.eval()
         with torch.no_grad():
             sample_input = torch.randn(input_shape)
-            traced_model = torch.jit.trace(model, sample_input)
-            torch.jit.save(traced_model, model_path.with_suffix(".pt"))
 
-        # Save model in ONNX format
-        model.eval()
-        with torch.no_grad():
-            sample_input = torch.randn(input_shape)
+            # Save model as state dict
+            torch.save(model.state_dict(), model_path.with_suffix(".pt"))
+
+            # Save model in torch.jit format
+            traced_model = torch.jit.trace(model, sample_input)
+            torch.jit.save(traced_model, model_path.with_suffix(".jit"))
+
+            # Save model in ONNX format
             with ONNX_EXPORT_LOCK:
                 torch.onnx.export(
                     model,
@@ -427,6 +427,12 @@ class TrainProcess:
                 )
 
         return model_path
+
+    def _load_model(self, model_path: Path) -> nn.Module:
+        model = self._create_model()
+        state_dict = torch.load(model_path.with_suffix(".pt"), map_location="cpu")
+        model.load_state_dict(state_dict)
+        return model
 
     def _compile_selfplay_exe(self):
         logging.info("Building Self-play executable...")
