@@ -22,7 +22,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          python-version: 3.11
+          python-version: 3.12
           activate-environment: true
       - name: Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
