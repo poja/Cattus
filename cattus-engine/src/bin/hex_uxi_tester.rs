@@ -124,7 +124,6 @@ struct Args {
  *      --engine1 ./target/release/hex_uxi_mcts --engine1-params \"--sim-num\ 600\"
  *      --engine2 ./target/release/hex_uxi_mcts --engine2-params \"--sim-num\ 1500\"
  */
-
 fn main() {
     utils::init_globals();
 

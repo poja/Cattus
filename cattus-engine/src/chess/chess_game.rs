@@ -309,7 +309,7 @@ impl PartialEq for ChessPosition {
     fn eq(&self, other: &Self) -> bool {
         let b1 = &self.board;
         let b2 = &other.board;
-        return b1.color_combined(chess::Color::White) == b2.color_combined(chess::Color::White)
+        b1.color_combined(chess::Color::White) == b2.color_combined(chess::Color::White)
             && b1.color_combined(chess::Color::Black) == b2.color_combined(chess::Color::Black)
             && b1.pieces(chess::Piece::Pawn) == b2.pieces(chess::Piece::Pawn)
             && b1.pieces(chess::Piece::Knight) == b2.pieces(chess::Piece::Knight)
@@ -320,7 +320,7 @@ impl PartialEq for ChessPosition {
             && b1.castle_rights(chess::Color::White) == b2.castle_rights(chess::Color::White)
             && b1.castle_rights(chess::Color::Black) == b2.castle_rights(chess::Color::Black)
             && b1.en_passant() == b2.en_passant()
-            && b1.side_to_move() == b2.side_to_move();
+            && b1.side_to_move() == b2.side_to_move()
     }
 }
 impl Eq for ChessPosition {}
