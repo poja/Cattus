@@ -6,7 +6,7 @@ use cattus::ttt::ttt_game::{TttGame, TttPosition};
 use cattus::{chess, hex, ttt};
 use clap::Parser;
 use itertools::Itertools;
-use ndarray::{Array2, ArrayD};
+use ndarray::{Array2, ArrayD, Axis};
 use std::fs;
 
 #[derive(Parser, Debug)]
@@ -18,6 +18,8 @@ struct Args {
     position: String,
     #[clap(long)]
     model_path: String,
+    #[clap(long)]
+    batch_size: usize,
     #[clap(long)]
     outfile: String,
     #[clap(long, default_value = "1")]
@@ -45,31 +47,65 @@ fn main() -> std::io::Result<()> {
 fn run_net_tictactoe(args: &Args) -> Vec<ArrayD<f32>> {
     let pos = TttPosition::from_str(&args.position);
     let mut model = Model::new(&args.model_path);
-    let samples = (0..args.repeat)
-        .map(|_| ttt::net::common::position_to_planes(&pos))
+    let outputs = (0..args.repeat)
+        .map(|_| {
+            let samples = ttt::net::common::position_to_planes(&pos);
+            let tensor = net::planes_to_tensor::<TttGame>(&[samples], args.batch_size);
+            model.run(vec![tensor.into_dyn()])
+        })
         .collect_vec();
-    let tensor = net::planes_to_tensor::<TttGame>(&samples);
-    model.run(vec![tensor.into_dyn()])
+    (0..outputs[0].len())
+        .map(|output_idx| {
+            let outputs = outputs
+                .iter()
+                .map(|outputs| outputs[output_idx].view())
+                .collect_vec();
+            ndarray::concatenate(Axis(0), &outputs).unwrap()
+        })
+        .collect()
 }
 
 fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<ArrayD<f32>> {
     let pos = HexPosition::from_str(&args.position);
     let mut model = Model::new(&args.model_path);
-    let samples = (0..args.repeat)
-        .map(|_| hex::net::common::position_to_planes(&pos))
+    let outputs = (0..args.repeat)
+        .map(|_| {
+            let samples = hex::net::common::position_to_planes(&pos);
+            let tensor = net::planes_to_tensor::<HexGame<BOARD_SIZE>>(&[samples], args.batch_size);
+            model.run(vec![tensor.into_dyn()])
+        })
         .collect_vec();
-    let tensor = net::planes_to_tensor::<HexGame<BOARD_SIZE>>(&samples);
-    model.run(vec![tensor.into_dyn()])
+    (0..outputs[0].len())
+        .map(|output_idx| {
+            let outputs = outputs
+                .iter()
+                .map(|outputs| outputs[output_idx].view())
+                .collect_vec();
+            ndarray::concatenate(Axis(0), &outputs).unwrap()
+        })
+        .collect()
 }
 
 fn run_net_chess(args: &Args) -> Vec<ArrayD<f32>> {
     let pos = ChessPosition::from_str(&args.position);
     let mut model = Model::new(&args.model_path);
-    let samples = (0..args.repeat)
-        .map(|_| chess::net::common::position_to_planes(&pos))
+
+    let outputs = (0..args.repeat)
+        .map(|_| {
+            let samples = chess::net::common::position_to_planes(&pos);
+            let tensor = net::planes_to_tensor::<ChessGame>(&[samples], args.batch_size);
+            model.run(vec![tensor.into_dyn()])
+        })
         .collect_vec();
-    let tensor = net::planes_to_tensor::<ChessGame>(&samples);
-    model.run(vec![tensor.into_dyn()])
+    (0..outputs[0].len())
+        .map(|output_idx| {
+            let outputs = outputs
+                .iter()
+                .map(|outputs| outputs[output_idx].view())
+                .collect_vec();
+            ndarray::concatenate(Axis(0), &outputs).unwrap()
+        })
+        .collect()
 }
 
 fn outputs_to_json(mut outputs: Vec<ArrayD<f32>>, filename: &String) -> std::io::Result<()> {

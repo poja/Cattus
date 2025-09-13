@@ -35,6 +35,7 @@ mcts:
 self_play:
     temperature_policy:
         - [       0.0]
+    batch_size: 1
     games_num: 8
     threads: 1
 training:

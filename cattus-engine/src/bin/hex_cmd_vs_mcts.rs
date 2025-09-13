@@ -18,6 +18,8 @@ struct Args {
     model_path: String,
     #[clap(long, default_value = "100")]
     sim_num: u32,
+    #[clap(long)]
+    batch_size: usize,
     #[clap(long, default_value = "1.41421")]
     explore_factor: f32,
     #[clap(long, default_value = "0.0")]
@@ -37,6 +39,7 @@ fn run_main<const BOARD_SIZE: usize>(args: Args) {
     let value_func = Arc::new(TwoHeadedNet::<BOARD_SIZE>::with_cache(
         &args.model_path,
         Device::Cpu,
+        args.batch_size,
         cache,
     ));
     let mut player2 = MCTSPlayer::new_custom(

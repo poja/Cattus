@@ -43,18 +43,18 @@ fn main() -> std::io::Result<()> {
 fn create_tensor_tictactoe(args: &Args) -> Array4<f32> {
     let pos = TttPosition::from_str(&args.position);
     let planes = ttt::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<TttGame>(&[planes])
+    net::planes_to_tensor::<TttGame>(&[planes], 1)
 }
 fn create_tensor_hex<const BOARD_SIZE: usize>(args: &Args) -> Array4<f32> {
     let pos = HexPosition::from_str(&args.position);
     let planes = hex::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<HexGame<BOARD_SIZE>>(&[planes])
+    net::planes_to_tensor::<HexGame<BOARD_SIZE>>(&[planes], 1)
 }
 
 fn create_tensor_chess(args: &Args) -> Array4<f32> {
     let pos = ChessPosition::from_str(&args.position);
     let planes = chess::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<ChessGame>(&[planes])
+    net::planes_to_tensor::<ChessGame>(&[planes], 1)
 }
 
 fn tensor_to_json(tensor: Array3<f32>, filename: &String) -> std::io::Result<()> {
