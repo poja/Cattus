@@ -214,7 +214,6 @@ dependencies = [
  "log",
  "ndarray",
  "num-traits",
- "once_cell",
  "ort",
  "petgraph",
  "pleco",
