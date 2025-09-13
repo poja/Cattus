@@ -41,7 +41,7 @@ pub fn init_globals() {
                 .join("python3.12")
                 .join("site-packages")
         };
-        env::set_var("PYTHONPATH", py_packages_path.to_str().unwrap());
+        unsafe { env::set_var("PYTHONPATH", py_packages_path.to_str().unwrap()) };
     }
 
     let mps_available = {
