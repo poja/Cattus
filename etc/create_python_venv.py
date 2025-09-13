@@ -14,7 +14,7 @@ def main() -> None:
         bin_dir = ROOT_DIR / ".venv" / "bin"
         uv_exe = "uv"
     if not (bin_dir / uv_exe).exists():
-        subprocess.check_call(["uv", "venv", "-p", "3.11", "--seed"], cwd=ROOT_DIR)
+        subprocess.check_call(["uv", "venv", "-p", "3.12", "--seed"], cwd=ROOT_DIR)
         subprocess.check_call([bin_dir / "pip", "install", "uv"], cwd=ROOT_DIR)
     subprocess.check_call(
         [bin_dir / "python", ROOT_DIR / "etc" / "install_python_requirements.py"],
