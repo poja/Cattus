@@ -399,17 +399,23 @@ class TrainProcess:
             total_games = w1 + w2 + d
             return w1 / total_games, w2 / total_games
 
-    def _save_model(self, model: nn.Module) -> Path:
+    def _save_model(self, model: nn.Module, batch_size: int = 1) -> Path:
         model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(random.randint(0, 1 << 16))
         model_path = self._cfg["models_dir"] / f"model_{model_time}"
+        input_shape = self._game.model_input_shape(self._net_type)
+        input_shape = (batch_size,) + input_shape[1:]
 
-        # Save model in Keras format
-        torch.save(model, model_path.with_suffix(".pt"))
+        # Save model
+        model.eval()
+        with torch.no_grad():
+            sample_input = torch.randn(input_shape)
+            traced_model = torch.jit.trace(model, sample_input)
+            torch.jit.save(traced_model, model_path.with_suffix(".pt"))
 
         # Save model in ONNX format
         model.eval()
         with torch.no_grad():
-            sample_input = torch.randn(self._game.model_input_shape(self._net_type))
+            sample_input = torch.randn(input_shape)
             with ONNX_EXPORT_LOCK:
                 torch.onnx.export(
                     model,
@@ -418,7 +424,6 @@ class TrainProcess:
                     verbose=False,
                     input_names=["planes"],
                     output_names=["policy", "value"],
-                    dynamic_axes={"planes": {0: "batch"}},  # TODO: consider removing this, may affect performance
                 )
 
         return model_path
