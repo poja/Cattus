@@ -1,4 +1,4 @@
-use cattus::utils::Device;
+use cattus::util::Device;
 use clap::Parser;
 use std::sync::Arc;
 

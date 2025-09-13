@@ -1,9 +1,8 @@
 use itertools::Itertools;
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use petgraph::visit::EdgeRef;
-use rand::distributions::WeightedIndex;
+use rand::distr::weighted::WeightedIndex;
 use rand::prelude::*;
-use rand_distr::Dirichlet;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::sync::Arc;
@@ -399,7 +398,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
             let probs_sum: f32 = probabilities.iter().sum();
             let probabilities = probabilities.iter().map(|p| p / probs_sum).collect_vec();
             let distribution = WeightedIndex::new(probabilities).unwrap();
-            Some(moves_probs[distribution.sample(&mut rand::thread_rng())].0)
+            Some(moves_probs[distribution.sample(&mut rand::rng())].0)
         }
     }
 
@@ -426,14 +425,15 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
         /* The Dirichlet implementation seems to return NaNs and INFs sometimes. */
         /* Keep drawing random noises until valid values are achieved */
-        let dist = Dirichlet::new_with_size(self.prior_noise_alpha, moves.len()).unwrap();
-        let mut noise_vec;
-        loop {
-            noise_vec = dist.sample(&mut rand::thread_rng());
+        let dist =
+            crate::util::dirichlet::Dirichlet::new(&vec![self.prior_noise_alpha; moves.len()])
+                .unwrap();
+        let noise_vec = loop {
+            let noise_vec = dist.sample(&mut rand::rng());
             if noise_vec.iter().all(|n| n.is_finite()) {
-                break;
+                break noise_vec;
             }
-        }
+        };
 
         for (edge_id, noise) in moves.into_iter().zip(noise_vec.into_iter()) {
             let m = self.search_tree.edge_weight_mut(edge_id).unwrap();

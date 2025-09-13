@@ -2,7 +2,7 @@ use cattus::game::mcts::MCTSPlayer;
 use cattus::hex::hex_game::HEX_STANDARD_BOARD_SIZE;
 use cattus::hex::net::two_headed_net::TwoHeadedNet;
 use cattus::hex::uxi;
-use cattus::utils::{self, Device};
+use cattus::util::Device;
 use clap::Parser;
 use std::sync::Arc;
 
@@ -16,7 +16,7 @@ struct Args {
 }
 
 fn main() {
-    utils::init_globals();
+    cattus::util::init_globals();
 
     let args = Args::parse();
 

@@ -4,7 +4,7 @@ use crate::game::self_play_cmd::{self, INNetworkBuilder};
 use crate::hex::hex_game::HexGame;
 use crate::hex::net::serializer::HexSerializer;
 use crate::hex::net::two_headed_net::TwoHeadedNet;
-use crate::utils::Device;
+use crate::util::Device;
 use std::sync::Arc;
 
 struct NNetworkBuilder<const BOARD_SIZE: usize>;

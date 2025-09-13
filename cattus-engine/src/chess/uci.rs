@@ -1,7 +1,7 @@
 use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
 use crate::game::common::{GamePlayer, GamePosition};
 use crate::game::mcts::MCTSPlayer;
-use crate::utils::Builder;
+use crate::util::Builder;
 use itertools::Itertools;
 use std::collections::HashMap;
 // use std::fs::{File, OpenOptions};

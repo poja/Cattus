@@ -4,7 +4,7 @@ use crate::game::mcts::{NetStatistics, ValueFunction};
 use crate::game::net::TwoHeadedNetBase;
 use crate::ttt::net::common;
 use crate::ttt::ttt_game::{TttGame, TttPosition};
-use crate::utils::Device;
+use crate::util::Device;
 use std::sync::Arc;
 
 pub struct TwoHeadedNet {

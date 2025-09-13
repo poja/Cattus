@@ -1,7 +1,6 @@
 use cattus::game::common::{GameColor, GamePlayer, IGame};
 use cattus::hex::hex_game::{HexGameStandard, HexPosition};
 use cattus::hex::uxi::HexPlayerUXI;
-use cattus::utils;
 use clap::Parser;
 use rand::Rng;
 use std::path::Path;
@@ -54,7 +53,7 @@ fn compare_players(
     player1_display_name: &String,
     player2_display_name: &String,
 ) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     log::info!("Comparing between two players:");
     log::info!("\tplayer1: {}", player1_display_name);
@@ -65,7 +64,7 @@ fn compare_players(
     let mut player1_wins = 0;
     let mut player2_wins = 0;
     for _ in 0..number_of_games {
-        let starting_player = match rng.gen::<bool>() {
+        let starting_player = match rng.random::<bool>() {
             true => GameColor::Player1,
             false => GameColor::Player2,
         };
@@ -125,7 +124,7 @@ struct Args {
  *      --engine2 ./target/release/hex_uxi_mcts --engine2-params \"--sim-num\ 1500\"
  */
 fn main() {
-    utils::init_globals();
+    cattus::util::init_globals();
 
     let mut args = Args::parse();
     if args.workdir == "_CURRENT_DIR_" {

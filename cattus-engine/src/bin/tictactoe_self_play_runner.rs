@@ -4,7 +4,7 @@ use cattus::game::self_play_cmd::{run_main, INNetworkBuilder};
 use cattus::ttt::net::serializer::TttSerializer;
 use cattus::ttt::net::two_headed_net::TwoHeadedNet;
 use cattus::ttt::ttt_game::TttGame;
-use cattus::utils::Device;
+use cattus::util::Device;
 use std::sync::Arc;
 
 struct NNetworkBuilder;

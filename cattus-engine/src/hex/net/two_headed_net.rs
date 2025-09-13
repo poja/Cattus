@@ -3,7 +3,7 @@ use crate::game::mcts::{NetStatistics, ValueFunction};
 use crate::game::net::TwoHeadedNetBase;
 use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 use crate::hex::net::common;
-use crate::utils::Device;
+use crate::util::Device;
 use std::sync::Arc;
 
 pub struct TwoHeadedNet<const BOARD_SIZE: usize> {

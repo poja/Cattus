@@ -3,7 +3,6 @@ use cattus::chess::cmd_player::ChessPlayerCmd;
 use cattus::chess::net::net_stockfish::StockfishNet;
 use cattus::game::common::{GameColor, GamePosition, IGame};
 use cattus::game::mcts::MCTSPlayer;
-use cattus::utils;
 use std::sync::Arc;
 
 fn color_to_str(c: Option<GameColor>) -> String {
@@ -15,7 +14,7 @@ fn color_to_str(c: Option<GameColor>) -> String {
 }
 
 fn main() {
-    utils::init_globals();
+    cattus::util::init_globals();
 
     let mut player1 = ChessPlayerCmd {};
     let value_func = Arc::new(StockfishNet {});
