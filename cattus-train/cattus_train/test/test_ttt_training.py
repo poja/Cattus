@@ -42,6 +42,7 @@ self_play:
     temperature_policy:
         - [5,   1.0]
         - [     0.0]
+    batch_size: 4
     games_num: 100
     threads: 8
 training:

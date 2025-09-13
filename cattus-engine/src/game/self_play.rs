@@ -132,6 +132,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
         };
 
         /* Spawn thread_num-1 to jobs [1..thread_num-1] */
+        // TODO: add termination mechanism, detect if one of the threads panic
         let threads = (1..self.thread_num)
             .map(|_| thread::spawn(job_builder()))
             .collect_vec();

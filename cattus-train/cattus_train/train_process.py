@@ -18,6 +18,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from executorch.exir import to_edge_transform_and_lower
 from torch.utils.data import DataLoader
 
 from cattus_train.chess import Chess
@@ -171,6 +172,8 @@ class TrainProcess:
                 summary_file,
                 "--sim-num",
                 self._cfg["mcts"]["sim_num"],
+                "--batch-size",
+                self._cfg["self_play"]["batch_size"],
                 "--explore-factor",
                 self._cfg["mcts"]["explore_factor"],
                 "--temperature-policy",
@@ -370,6 +373,8 @@ class TrainProcess:
                     compare_res_file,
                     "--sim-num",
                     self._cfg["mcts"]["sim_num"],
+                    "--batch-size",
+                    self._cfg["self_play"]["batch_size"],
                     "--explore-factor",
                     self._cfg["mcts"]["explore_factor"],
                     "--temperature-policy",
@@ -398,28 +403,38 @@ class TrainProcess:
     def _create_model(self) -> nn.Module:
         return self._game.create_model(self._net_type, self._cfg)
 
-    def _save_model(self, model: nn.Module, batch_size: int = 1) -> Path:
+    def _save_model(self, model: nn.Module) -> Path:
         model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(random.randint(0, 1 << 16))
         model_path = self._cfg["models_dir"] / f"model_{model_time}"
-        input_shape = self._game.model_input_shape(self._net_type)
-        input_shape = (batch_size,) + input_shape[1:]
 
         model.eval()
         with torch.no_grad():
-            sample_input = torch.randn(input_shape)
-
             # Save model as state dict
             torch.save(model.state_dict(), model_path.with_suffix(".pt"))
 
+            #### Export model for self play
+            # Export using a batch size different from training
+            self_play_input_shape = self._game.model_input_shape(self._net_type)
+            self_play_input_shape = (self._cfg["self_play"]["batch_size"],) + self_play_input_shape[1:]
+            self_play_sample_input = torch.randn(self_play_input_shape)
+
             # Save model in torch.jit format
-            traced_model = torch.jit.trace(model, sample_input)
+            traced_model = torch.jit.trace(model, self_play_sample_input)
             torch.jit.save(traced_model, model_path.with_suffix(".jit"))
+
+            # Save model in executorch format
+            et_program = to_edge_transform_and_lower(
+                torch.export.export(model, (self_play_sample_input,)),
+                # partitioner=[XnnpackPartitioner()] # TODO
+            ).to_executorch()
+            with open(model_path.with_suffix(".pte"), "wb") as f:
+                f.write(et_program.buffer)
 
             # Save model in ONNX format
             with ONNX_EXPORT_LOCK:
                 torch.onnx.export(
                     model,
-                    sample_input,
+                    self_play_sample_input,
                     model_path.with_suffix(".onnx"),
                     verbose=False,
                     input_names=["planes"],

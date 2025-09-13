@@ -16,9 +16,10 @@ impl<const BOARD_SIZE: usize> INNetworkBuilder<HexGame<BOARD_SIZE>>
         model_path: &str,
         cache: Arc<ValueFuncCache<HexGame<BOARD_SIZE>>>,
         device: Device,
+        batch_size: usize,
     ) -> Box<dyn ValueFunction<HexGame<BOARD_SIZE>>> {
         Box::new(TwoHeadedNet::<BOARD_SIZE>::with_cache(
-            model_path, device, cache,
+            model_path, device, batch_size, cache,
         ))
     }
 }

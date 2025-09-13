@@ -1,3 +1,5 @@
+pub(crate) mod batch;
+
 /// A copy of rand_dist::dirichlet of version 0.4.0
 /// Remove once we bump to 0.6.0
 #[allow(dead_code)]
@@ -71,21 +73,76 @@ mps_available = torch.backends.mps.is_available()
     };
 
     let model_impl = if cfg!(feature = "torch-python") && mps_available {
-        model::ImplType::Py
+        model::ImplType::TorchPy
     } else if cfg!(feature = "onnx-tract") {
-        model::ImplType::Tract
+        model::ImplType::OnnxTract
     } else if cfg!(feature = "onnx-ort") {
-        model::ImplType::Ort
+        model::ImplType::OnnxOrt
     } else if cfg!(feature = "torch-python") {
-        model::ImplType::Py
+        model::ImplType::TorchPy
+    } else if cfg!(feature = "executorch") {
+        model::ImplType::Executorch
     } else {
         panic!("No model implementation available");
     };
 
     match model_impl {
-        model::ImplType::Py => {}
-        model::ImplType::Tract => {}
-        model::ImplType::Ort => {
+        model::ImplType::TorchPy => {}
+        model::ImplType::Executorch => {
+            cfg_if::cfg_if! { if #[cfg(feature = "executorch")] {
+                unsafe extern "C" fn cattus_executorch_emit_log(
+                    #[allow(unused)] timestamp: executorch_sys::executorch_timestamp_t,
+                    level: executorch_sys::executorch_pal_log_level,
+                    filename: *const ::core::ffi::c_char,
+                    #[allow(unused)] function: *const ::core::ffi::c_char,
+                    line: usize,
+                    message: *const ::core::ffi::c_char,
+                    length: usize,
+                ) {
+                    let filename = unsafe {
+                        assert!(!filename.is_null());
+                        let filename = std::ffi::CStr::from_ptr(filename);
+                        filename.to_str().unwrap()
+                    };
+                    let message = unsafe {
+                        assert!(!message.is_null());
+                        let bytes = std::slice::from_raw_parts(message.cast(), length);
+                        let message = std::ffi::CStr::from_bytes_with_nul_unchecked(bytes);
+                        message.to_str().unwrap()
+                    };
+                    let level = match level {
+                        executorch_sys::executorch_pal_log_level::EXECUTORCH_PAL_LOG_LEVEL_DEBUG => log::Level::Debug,
+                        executorch_sys::executorch_pal_log_level::EXECUTORCH_PAL_LOG_LEVEL_INFO => log::Level::Info,
+                        executorch_sys::executorch_pal_log_level::EXECUTORCH_PAL_LOG_LEVEL_ERROR => log::Level::Error,
+                        executorch_sys::executorch_pal_log_level::EXECUTORCH_PAL_LOG_LEVEL_FATAL => log::Level::Error,
+                        executorch_sys::executorch_pal_log_level::EXECUTORCH_PAL_LOG_LEVEL_UNKNOWN => log::Level::Error,
+                    };
+                    let logger = log::logger();
+                    logger .log(&log::Record::builder()
+                        .args(format_args!("{message}"))
+                        .level(level)
+                        .file(Some(filename))
+                        .line(Some(line as u32))
+                        .build());
+                    logger.flush();
+                }
+                unsafe {
+                    executorch_sys::executorch_register_pal(executorch_sys::ExecutorchPalImpl {
+                        init: None,
+                        abort: None,
+                        current_ticks: None,
+                        ticks_to_ns_multiplier: None,
+                        emit_log_message: Some(cattus_executorch_emit_log),
+                        allocate: None,
+                        free: None,
+                        source_filename: std::ptr::null(),
+                    });
+                    executorch::platform::pal_init();
+                }
+            } }
+        }
+        model::ImplType::OnnxTract => {}
+        model::ImplType::OnnxOrt => {
             #[cfg(feature = "onnx-ort")]
             ort::init()
                 .with_execution_providers(vec![

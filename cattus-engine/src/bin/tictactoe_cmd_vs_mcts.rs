@@ -2,7 +2,7 @@ use cattus::game::common::{GamePosition, IGame};
 use cattus::game::mcts::MCTSPlayer;
 use cattus::ttt::cmd_player::TttPlayerCmd;
 use cattus::ttt::net::two_headed_net::TwoHeadedNet;
-use cattus::ttt::ttt_game::{color_to_str, TttGame};
+use cattus::ttt::ttt_game::{TttGame, color_to_str};
 use cattus::util::Device;
 use clap::Parser;
 use std::sync::Arc;
@@ -12,6 +12,8 @@ use std::sync::Arc;
 struct Args {
     #[clap(long)]
     model_path: String,
+    #[clap(long)]
+    batch_size: usize,
 }
 
 fn main() {
@@ -19,7 +21,11 @@ fn main() {
 
     let args = Args::parse();
 
-    let value_func = Arc::new(TwoHeadedNet::new(&args.model_path, Device::Cpu));
+    let value_func = Arc::new(TwoHeadedNet::new(
+        &args.model_path,
+        args.batch_size,
+        Device::Cpu,
+    ));
     let mut player1 = MCTSPlayer::new(1000, value_func);
 
     let mut player2 = TttPlayerCmd {};

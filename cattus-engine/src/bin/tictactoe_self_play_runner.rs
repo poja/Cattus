@@ -1,6 +1,6 @@
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::mcts::ValueFunction;
-use cattus::game::self_play_cmd::{run_main, INNetworkBuilder};
+use cattus::game::self_play_cmd::{INNetworkBuilder, run_main};
 use cattus::ttt::net::serializer::TttSerializer;
 use cattus::ttt::net::two_headed_net::TwoHeadedNet;
 use cattus::ttt::ttt_game::TttGame;
@@ -14,8 +14,11 @@ impl INNetworkBuilder<TttGame> for NNetworkBuilder {
         model_path: &str,
         cache: Arc<ValueFuncCache<TttGame>>,
         device: Device,
+        batch_size: usize,
     ) -> Box<dyn ValueFunction<TttGame>> {
-        Box::new(TwoHeadedNet::with_cache(model_path, device, cache))
+        Box::new(TwoHeadedNet::with_cache(
+            model_path, device, batch_size, cache,
+        ))
     }
 }
 

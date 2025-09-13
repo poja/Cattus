@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
+from executorch.exir import to_edge_transform_and_lower
 
 from cattus_train.chess import Chess
 from cattus_train.hex import Hex
@@ -106,6 +107,8 @@ def _test_net_output(game_name: str, game: Game, positions):
                     output_file,
                     "--repeat",
                     str(ASSERT_RUST_OUTPUT_EQ_REPEAT),
+                    "--batch-size",
+                    "1",
                 ],
                 stderr=sys.stderr,
                 stdout=sys.stdout,
@@ -136,14 +139,24 @@ def create_model(game: Game, path: Path) -> nn.Module:
 
     model.eval()
     with torch.no_grad():
+        input_shape = game.model_input_shape("ConvNetV1")
+        input_shape = (1,) + tuple(input_shape[1:])
+        sample_input = torch.randn(input_shape)
+
+        et_program = to_edge_transform_and_lower(
+            torch.export.export(model, (sample_input,)),
+            # partitioner=[XnnpackPartitioner()] # TODO
+        ).to_executorch()
+        with open(path.with_suffix(".pte"), "wb") as f:
+            f.write(et_program.buffer)
+
         torch.onnx.export(
             model,
-            torch.randn(game.model_input_shape("ConvNetV1")),
+            torch.randn(input_shape),
             path.with_suffix(".onnx"),
             verbose=False,
             input_names=["planes"],
             output_names=["policy", "value"],
-            dynamic_axes={"planes": {0: "batch"}},  # TODO: consider removing this, may affect performance
         )
 
     return model

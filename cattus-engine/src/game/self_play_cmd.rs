@@ -29,6 +29,8 @@ struct SelfPlayArgs {
     summary_file: String,
     #[clap(long, default_value = "100")]
     sim_num: u32,
+    #[clap(long)]
+    batch_size: usize,
     #[clap(long, default_value = "1.41421")]
     explore_factor: f32,
     #[clap(long, default_value = "1.0")]
@@ -99,6 +101,7 @@ pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
         model_path: &str,
         cache: Arc<ValueFuncCache<Game>>,
         device: Device,
+        batch_size: usize,
     ) -> Box<dyn ValueFunction<Game>>;
 }
 
@@ -203,6 +206,7 @@ pub fn run_main<Game: IGame + 'static>(
         &args.model1_path,
         cache_builder.build_cache(),
         device,
+        args.batch_size,
     ));
     nets.push(player1_net.clone());
     let player1_builder = Arc::new(PlayerBuilder::new(
@@ -221,6 +225,7 @@ pub fn run_main<Game: IGame + 'static>(
             &args.model2_path,
             cache_builder.build_cache(),
             device,
+            args.batch_size,
         ));
         nets.push(player2_net.clone());
         Arc::new(PlayerBuilder::new(

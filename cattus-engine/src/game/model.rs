@@ -10,9 +10,10 @@ use tract_onnx::prelude::*;
 
 #[derive(Clone, Copy, Debug)]
 pub enum ImplType {
-    Py,
-    Tract,
-    Ort,
+    TorchPy,
+    Executorch,
+    OnnxTract,
+    OnnxOrt,
 }
 static IMPL_TYPE: Mutex<Option<ImplType>> = Mutex::new(None);
 pub fn set_impl_type(impl_type: ImplType) {
@@ -24,6 +25,8 @@ pub fn set_impl_type(impl_type: ImplType) {
 enum ModelImpl {
     #[cfg(feature = "torch-python")]
     Py(Py<PyAny>),
+    #[cfg(feature = "executorch")]
+    Executorch(executorch::module::Module<'static>),
     #[cfg(feature = "onnx-tract")]
     Tract(TypedRunnableModel<TypedModel>),
     #[cfg(feature = "onnx-ort")]
@@ -42,7 +45,7 @@ impl Model {
         let impl_type = IMPL_TYPE.lock().unwrap().expect("impl_type not set");
         let model = match impl_type {
             #[cfg(feature = "torch-python")]
-            ImplType::Py => {
+            ImplType::TorchPy => {
                 let model = Python::attach(|py| {
                     let code = cr#"
 import torch
@@ -71,8 +74,20 @@ class Model:
                 });
                 ModelImpl::Py(model)
             }
+            #[cfg(feature = "executorch")]
+            ImplType::Executorch => {
+                let mut model =
+                    executorch::module::Module::from_file_path(path.with_extension("pte"));
+                model
+                    .load(Some(
+                        executorch::program::ProgramVerification::InternalConsistency,
+                    ))
+                    .unwrap();
+                model.load_method("forward", None, None).unwrap();
+                ModelImpl::Executorch(model)
+            }
             #[cfg(feature = "onnx-tract")]
-            ImplType::Tract => {
+            ImplType::OnnxTract => {
                 let model = tract_onnx::onnx()
                     .model_for_path(path.with_extension("onnx"))
                     .unwrap()
@@ -83,7 +98,7 @@ class Model:
                 ModelImpl::Tract(model)
             }
             #[cfg(feature = "onnx-ort")]
-            ImplType::Ort => {
+            ImplType::OnnxOrt => {
                 let model = ort::session::Session::builder()
                     .unwrap()
                     .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
@@ -98,6 +113,7 @@ class Model:
             }
             #[cfg(not(all(
                 feature = "torch-python",
+                feature = "executorch",
                 feature = "onnx-tract",
                 feature = "onnx-ort"
             )))]
@@ -125,6 +141,22 @@ class Model:
                     .map(|o| o.into_bound(py).to_owned_array())
                     .collect_vec()
             }),
+            #[cfg(feature = "executorch")]
+            ModelImpl::Executorch(model) => {
+                let inputs = inputs
+                    .into_iter()
+                    .map(|input| executorch::tensor::TensorPtr::from_array(input).unwrap())
+                    .collect::<Vec<_>>();
+                let inputs = inputs
+                    .iter()
+                    .map(executorch::evalue::EValue::from)
+                    .collect::<Vec<_>>();
+                let outputs = model.forward(&inputs).unwrap();
+                outputs
+                    .into_iter()
+                    .map(|o| o.as_tensor().into_typed::<f32>().as_array().to_owned())
+                    .collect()
+            }
             #[cfg(feature = "onnx-tract")]
             ModelImpl::Tract(model) => {
                 let inputs = TVec::from_vec(
@@ -134,21 +166,11 @@ class Model:
                         .map(TValue::from)
                         .collect(),
                 );
-                let mut outputs = model.run(inputs).unwrap();
-
-                let mut outputs = (0..outputs.len())
-                    .rev()
-                    .map(|output_idx| {
-                        outputs
-                            .remove(output_idx)
-                            .into_arc_tensor()
-                            .into_tensor()
-                            .into_array()
-                            .unwrap()
-                    })
-                    .collect::<Vec<_>>();
-                outputs.reverse();
+                let outputs = model.run(inputs).unwrap();
                 outputs
+                    .into_iter()
+                    .map(|o| o.into_tensor().into_array::<f32>().unwrap())
+                    .collect()
             }
             #[cfg(feature = "onnx-ort")]
             ModelImpl::Ort {

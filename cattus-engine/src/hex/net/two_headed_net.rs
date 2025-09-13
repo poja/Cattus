@@ -11,19 +11,20 @@ pub struct TwoHeadedNet<const BOARD_SIZE: usize> {
 }
 
 impl<const BOARD_SIZE: usize> TwoHeadedNet<BOARD_SIZE> {
-    pub fn new(model_path: &str, device: Device) -> Self {
+    pub fn new(model_path: &str, batch_size: usize, device: Device) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, device, None),
+            base: TwoHeadedNetBase::new(model_path, device, batch_size, None),
         }
     }
 
     pub fn with_cache(
         model_path: &str,
         device: Device,
+        batch_size: usize,
         cache: Arc<ValueFuncCache<HexGame<BOARD_SIZE>>>,
     ) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, device, Some(cache)),
+            base: TwoHeadedNetBase::new(model_path, device, batch_size, Some(cache)),
         }
     }
 }

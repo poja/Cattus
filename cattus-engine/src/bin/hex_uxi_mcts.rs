@@ -11,6 +11,8 @@ use std::sync::Arc;
 struct Args {
     #[clap(long, default_value = "100")]
     sim_num: u32,
+    #[clap(long)]
+    batch_size: usize,
     #[clap(long, default_value = "_NONE_")]
     model_path: String,
 }
@@ -22,6 +24,7 @@ fn main() {
 
     let value_func = Arc::new(TwoHeadedNet::<HEX_STANDARD_BOARD_SIZE>::new(
         &args.model_path,
+        args.batch_size,
         Device::Cpu,
     ));
     let player = Box::new(MCTSPlayer::new(args.sim_num, value_func));

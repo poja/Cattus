@@ -1,0 +1,2 @@
+[env]
+EXECUTORCH_RS_EXECUTORCH_LIB_DIR = { value = "cattus-engine/third-party/executorch/build/", relative = true }
