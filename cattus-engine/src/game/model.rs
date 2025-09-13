@@ -43,8 +43,8 @@ impl Model {
         let model = match impl_type {
             #[cfg(feature = "python")]
             ImplType::Py => {
-                let model = Python::with_gil(|py| {
-                    let code = r#"
+                let model = Python::attach(|py| {
+                    let code = cr#"
 import torch
 class Model:
     def __init__(self, path):
@@ -61,7 +61,7 @@ class Model:
             outputs = [(o.shape, o.flatten()) for o in outputs]
         return outputs
                         "#;
-                    let module = PyModule::from_code_bound(py, code, "py/model.py", "model")
+                    let module = PyModule::from_code(py, code, c"py/model.py", c"model")
                         .map_err(
                             // print the familiar python stack trace
                             |err| err.print_and_set_sys_last_vars(py),
@@ -126,7 +126,7 @@ class Model:
                         (shape, data)
                     })
                     .collect::<Vec<_>>();
-                let outputs = Python::with_gil(|py| {
+                let outputs = Python::attach(|py| {
                     let py_fn = model.getattr(py, "run").unwrap();
                     py_fn
                         .call1(py, (inputs,))

@@ -13,7 +13,7 @@ rand = "0.9"
 rand_distr = "0.5"
 lazy_static = "1.5.*"
 petgraph = "0.8"
-clap = { version = "4.5.16", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }
 json = "0.12.*"
 ndarray = "0.16"
 chess = "3.2.*"
@@ -21,7 +21,7 @@ pleco = "0.5.*"
 num-traits = "0.2"
 
 # Optional dependencies for model inference
-pyo3 = { version = "0.22.0", features = ["auto-initialize"], optional = true }
+pyo3 = { version = "0.26.0", features = ["auto-initialize"], optional = true }
 tract-onnx = { version = "0.22", optional = true }
 ort_lib = { package = "ort", version = "2.0.0-rc.10", optional = true }
 
