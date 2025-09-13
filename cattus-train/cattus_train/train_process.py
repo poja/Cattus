@@ -117,7 +117,7 @@ class TrainProcess:
         metrics_filename = self._cfg["metrics_dir"] / f"{self._run_id}.csv"
 
         best_model = (
-            torch.load(self._base_model_path.with_suffix(".pt")),
+            torch.load(self._base_model_path.with_suffix(".pt"), weights_only=False),
             self._base_model_path,
         )
         latest_models = [best_model]
