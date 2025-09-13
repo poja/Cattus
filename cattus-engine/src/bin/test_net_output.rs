@@ -44,7 +44,7 @@ fn main() -> std::io::Result<()> {
 
 fn run_net_tictactoe(args: &Args) -> Vec<ArrayD<f32>> {
     let pos = TttPosition::from_str(&args.position);
-    let model = Model::new(&args.model_path);
+    let mut model = Model::new(&args.model_path);
     let samples = (0..args.repeat)
         .map(|_| ttt::net::common::position_to_planes(&pos))
         .collect_vec();
@@ -54,7 +54,7 @@ fn run_net_tictactoe(args: &Args) -> Vec<ArrayD<f32>> {
 
 fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<ArrayD<f32>> {
     let pos = HexPosition::from_str(&args.position);
-    let model = Model::new(&args.model_path);
+    let mut model = Model::new(&args.model_path);
     let samples = (0..args.repeat)
         .map(|_| hex::net::common::position_to_planes(&pos))
         .collect_vec();
@@ -64,7 +64,7 @@ fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<ArrayD<f32>> {
 
 fn run_net_chess(args: &Args) -> Vec<ArrayD<f32>> {
     let pos = ChessPosition::from_str(&args.position);
-    let model = Model::new(&args.model_path);
+    let mut model = Model::new(&args.model_path);
     let samples = (0..args.repeat)
         .map(|_| chess::net::common::position_to_planes(&pos))
         .collect_vec();
@@ -82,7 +82,7 @@ fn outputs_to_json(mut outputs: Vec<ArrayD<f32>>, filename: &String) -> std::io:
         .map(|row| row.to_vec())
         .collect_vec();
     assert_eq!(vals.shape()[1], 1);
-    let vals = vals.into_raw_vec();
+    let vals = vals.iter().cloned().collect_vec();
     fs::write(
         filename,
         json::object! {

@@ -12,7 +12,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 pub struct TwoHeadedNetBase<Game: IGame> {
-    model: Model,
+    model: Mutex<Model>,
     cache: Option<Arc<ValueFuncCache<Game>>>,
 
     next_batch: Mutex<Arc<Batch<Game>>>,
@@ -28,7 +28,7 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
         cache: Option<Arc<ValueFuncCache<Game>>>,
     ) -> Self {
         Self {
-            model: Model::new(model_path),
+            model: Mutex::new(Model::new(model_path)),
             cache,
             next_batch: Mutex::new(Arc::new(Batch::new())),
             max_batch_size: if matches!(device, Device::Cpu) {
@@ -46,7 +46,7 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
 
     pub fn run_net(&self, input: Array4<f32>) -> Vec<(Vec<f32>, f32)> {
         let net_run_begin = Instant::now();
-        let outputs = self.model.run([input.into_dyn()].to_vec());
+        let outputs = self.model.lock().unwrap().run([input.into_dyn()].to_vec());
         let run_duration = net_run_begin.elapsed();
 
         let (moves_scores, vals) = outputs.into_iter().collect_tuple().unwrap();

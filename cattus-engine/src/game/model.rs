@@ -27,7 +27,10 @@ enum ModelImpl {
     #[cfg(feature = "tract")]
     Tract(TypedRunnableModel<TypedModel>),
     #[cfg(feature = "ort")]
-    Ort(ort_lib::Session),
+    Ort {
+        model: ort_lib::session::Session,
+        output_names: Vec<String>,
+    },
 }
 
 pub struct Model {
@@ -90,13 +93,19 @@ class Model:
             }
             #[cfg(feature = "ort")]
             ImplType::Ort => {
-                let model = ort_lib::SessionBuilder::new()
+                let model = ort_lib::session::Session::builder()
                     .unwrap()
-                    .with_optimization_level(ort_lib::GraphOptimizationLevel::Level3)
+                    .with_optimization_level(
+                        ort_lib::session::builder::GraphOptimizationLevel::Level3,
+                    )
                     .unwrap()
                     .commit_from_file(path.with_extension("onnx"))
                     .unwrap();
-                ModelImpl::Ort(model)
+                let output_names = model.outputs.iter().map(|o| o.name.clone()).collect();
+                ModelImpl::Ort {
+                    model,
+                    output_names,
+                }
             }
             #[cfg(not(all(feature = "python", feature = "tract", feature = "ort")))]
             unsupported_type => panic!("Unsupported impl_type: {:?}", unsupported_type),
@@ -104,15 +113,16 @@ class Model:
         Self { model }
     }
 
-    pub fn run(&self, inputs: Vec<ArrayD<f32>>) -> Vec<ArrayD<f32>> {
-        match &self.model {
+    pub fn run(&mut self, inputs: Vec<ArrayD<f32>>) -> Vec<ArrayD<f32>> {
+        match &mut self.model {
             #[cfg(feature = "python")]
             ModelImpl::Py(model) => {
                 let inputs = inputs
                     .into_iter()
                     .map(|input| {
                         let shape = input.shape().to_vec();
-                        let data = input.into_raw_vec();
+                        #[allow(deprecated)]
+                        let data = input.into_raw_vec(); // TODO: use numpy crate
                         (shape, data)
                     })
                     .collect::<Vec<_>>();
@@ -159,25 +169,27 @@ class Model:
                 outputs
             }
             #[cfg(feature = "ort")]
-            ModelImpl::Ort(model) => {
+            ModelImpl::Ort {
+                model,
+                output_names,
+            } => {
                 let inputs = inputs
                     .into_iter()
                     .map(|input| {
-                        ort_lib::SessionInputValue::from(
-                            ort_lib::DynValue::try_from(input).unwrap(),
+                        ort_lib::session::SessionInputValue::from(
+                            ort_lib::value::Value::from_array(input).unwrap(),
                         )
                     })
                     .collect::<Vec<_>>();
-                let inputs: &[ort_lib::SessionInputValue] = &inputs;
+                let inputs: &[ort_lib::session::SessionInputValue] = &inputs;
                 let mut outputs = model.run(inputs).unwrap();
-                model
-                    .outputs
+                output_names
                     .iter()
-                    .map(|output_def| {
+                    .map(|output_name| {
                         outputs
-                            .remove(output_def.name.as_str())
+                            .remove(output_name)
                             .unwrap()
-                            .try_extract_tensor()
+                            .try_extract_array::<f32>()
                             .unwrap()
                             .into_owned()
                     })
