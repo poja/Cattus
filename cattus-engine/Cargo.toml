@@ -21,11 +21,12 @@ num-traits = "0.2"
 
 # Optional dependencies for model inference
 pyo3 = { version = "0.26.0", features = ["auto-initialize"], optional = true }
+numpy = { version = "0.26.0", default-features = false, optional = true }
 tract-onnx = { version = "0.22", optional = true }
 ort = { version = "2.0.0-rc.10", optional = true }
 
 [features]
 default = ["onnx-tract"]
-torch-python = ["pyo3"]
+torch-python = ["pyo3", "numpy"]
 onnx-tract = ["tract-onnx"]
 onnx-ort = ["ort"]

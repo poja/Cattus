@@ -55,10 +55,9 @@ class Model:
 
     def run(self, inputs):
         with torch.no_grad():
-            inputs = [torch.tensor(data).view(shape).to(self.device) for shape, data in inputs]
+            inputs = [torch.from_numpy(input).to(self.device) for input in inputs]
             outputs = self.model(*inputs)
             outputs = [output.detach().cpu().numpy() for output in outputs]
-            outputs = [(o.shape, o.flatten()) for o in outputs]
         return outputs
                         "#;
                     let module =
@@ -110,29 +109,22 @@ class Model:
     pub fn run(&mut self, inputs: Vec<ArrayD<f32>>) -> Vec<ArrayD<f32>> {
         match &mut self.model {
             #[cfg(feature = "torch-python")]
-            ModelImpl::Py(model) => {
+            ModelImpl::Py(model) => Python::attach(|py| {
+                use itertools::Itertools;
+                use numpy::{IntoPyArray, PyArrayMethods};
+
                 let inputs = inputs
                     .into_iter()
-                    .map(|input| {
-                        let shape = input.shape().to_vec();
-                        #[allow(deprecated)]
-                        let data = input.into_raw_vec(); // TODO: use numpy crate
-                        (shape, data)
-                    })
+                    .map(|input| input.into_pyarray(py))
                     .collect::<Vec<_>>();
-                let outputs = Python::attach(|py| {
-                    let py_fn = model.getattr(py, "run").unwrap();
-                    py_fn
-                        .call1(py, (inputs,))
-                        .unwrapy(py)
-                        .extract::<Vec<(Vec<usize>, Vec<f32>)>>(py)
-                        .unwrap()
-                });
+                let outputs = model.bind(py).call_method1("run", (inputs,)).unwrap();
                 outputs
+                    .extract::<Vec<Py<numpy::PyArrayDyn<f32>>>>()
+                    .unwrap()
                     .into_iter()
-                    .map(|(shape, data)| ArrayD::from_shape_vec(shape, data).unwrap())
-                    .collect()
-            }
+                    .map(|o| o.into_bound(py).to_owned_array())
+                    .collect_vec()
+            }),
             #[cfg(feature = "onnx-tract")]
             ModelImpl::Tract(model) => {
                 let inputs = TVec::from_vec(
