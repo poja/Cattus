@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::Mutex;
 
 #[cfg(feature = "torch-python")]
-use pyo3::prelude::*;
+use {crate::util::python::Unwrapy, pyo3::prelude::*};
 
 #[cfg(feature = "onnx-tract")]
 use tract_onnx::prelude::*;
@@ -61,21 +61,13 @@ class Model:
             outputs = [(o.shape, o.flatten()) for o in outputs]
         return outputs
                         "#;
-                    let module = PyModule::from_code(py, code, c"py/model.py", c"model")
-                        .map_err(
-                            // print the familiar python stack trace
-                            |err| err.print_and_set_sys_last_vars(py),
-                        )
-                        .unwrap();
+                    let module =
+                        PyModule::from_code(py, code, c"py/model.py", c"model").unwrapy(py);
 
                     let py_class = module.getattr("Model").unwrap();
                     py_class
                         .call1((path.with_extension("pt"),))
-                        .map_err(
-                            // print the familiar python stack trace
-                            |err| err.print_and_set_sys_last_vars(py),
-                        )
-                        .unwrap()
+                        .unwrapy(py)
                         .into()
                 });
                 ModelImpl::Py(model)
@@ -132,11 +124,7 @@ class Model:
                     let py_fn = model.getattr(py, "run").unwrap();
                     py_fn
                         .call1(py, (inputs,))
-                        .map_err(
-                            // print the familiar python stack trace
-                            |err| err.print_and_set_sys_last_vars(py),
-                        )
-                        .unwrap()
+                        .unwrapy(py)
                         .extract::<Vec<(Vec<usize>, Vec<f32>)>>(py)
                         .unwrap()
                 });

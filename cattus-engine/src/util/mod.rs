@@ -4,6 +4,9 @@
 #[allow(clippy::neg_cmp_op_on_partial_ord)]
 pub(crate) mod dirichlet;
 
+#[cfg(feature = "torch-python")]
+pub(crate) mod python;
+
 use crate::game::model;
 use std::env;
 use std::path::Path;
