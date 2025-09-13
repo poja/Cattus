@@ -50,7 +50,7 @@ class Model:
     def __init__(self, path):
         device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         self.device = torch.device(device)
-        self.model = torch.load(path, map_location=self.device)
+        self.model = torch.jit.load(path, map_location=self.device)
         self.model.eval()
 
     def run(self, inputs):
