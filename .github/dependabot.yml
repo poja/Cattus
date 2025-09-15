@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "monthly"
   - package-ecosystem: "pip"
-    directory: "cattus-train/"
+    directory: "training/"
     schedule:
       interval: "monthly"
   - package-ecosystem: "github-actions"

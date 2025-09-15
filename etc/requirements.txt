@@ -1,2 +1,2 @@
--e cattus-train
+-e training
 pytest

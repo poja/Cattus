@@ -42,5 +42,5 @@ To run the training process, first one should install the python project:
 
 Then start the training process:
 ```bash
-python cattus-train/bin/main.py --config cattus-train/config/chess_dev.yaml
+python training/bin/main.py --config training/config/chess_dev.yaml
 ```
