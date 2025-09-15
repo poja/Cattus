@@ -33,6 +33,17 @@ jobs:
       - name: Install Python dependencies
         run: python etc/install_python_requirements.py
 
+      # Build executorch
+      - name: Cache Cpp ExecuTorch compiled libraries
+        id: cache-executorch-build
+        uses: actions/cache@v4
+        with:
+          path: cattus-engine/third-party/executorch/build/
+          key: cache-executorch-build-${{ runner.OS }}-${{ hashFiles('cattus-engine/scripts/build_executorch.py') }}
+      - name: Setup dev env, install executorch and its deps
+        if: steps.cache-executorch-build.outputs.cache-hit != 'true'
+        run: python cattus-engine/scripts/build_executorch.py
+
       # Build
       - name: Build Rust
         run: cargo build
