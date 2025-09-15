@@ -6,17 +6,17 @@ from torch import Tensor
 
 
 class Game(ABC):
-    @abstractmethod
-    def create_model(self, net_type: str, cfg: dict) -> nn.Module:
-        ...
+    PLANES_NUM: int
+    BOARD_SIZE: int
 
     @abstractmethod
-    def model_input_shape(self, net_type: str) -> tuple:
-        ...
+    def create_model(self, net_type: str, cfg: dict) -> nn.Module: ...
 
     @abstractmethod
-    def load_data_entry(self, path: Path) -> tuple[Tensor, tuple[Tensor, Tensor]]:
-        ...
+    def model_input_shape(self, net_type: str) -> tuple: ...
+
+    @abstractmethod
+    def load_data_entry(self, path: Path) -> tuple[Tensor, tuple[Tensor, Tensor]]: ...
 
 
 class DataEntryParseError(ValueError):

@@ -57,17 +57,17 @@ class Chess(Game):
     def _get_input_shape(self):
         return (1, self.PLANES_NUM, self.BOARD_SIZE, self.BOARD_SIZE)
 
-    def _create_model_convnetv1(self, cfg):
+    def _create_model_convnetv1(self, cfg: dict):
         return net_utils.ConvNetV1(
             input_shape=self._get_input_shape(),
-            residual_block_num=cfg["model"]["residual_block_num"],
-            residual_filter_num=cfg["model"]["residual_filter_num"],
-            value_head_conv_output_channels_num=cfg["model"]["value_head_conv_output_channels_num"],
-            policy_head_conv_output_channels_num=cfg["model"]["policy_head_conv_output_channels_num"],
+            residual_block_num=cfg["residual_block_num"],
+            residual_filter_num=cfg["residual_filter_num"],
+            value_head_conv_output_channels_num=cfg["value_head_conv_output_channels_num"],
+            policy_head_conv_output_channels_num=cfg["policy_head_conv_output_channels_num"],
             moves_num=self.MOVE_NUM,
         )
 
-    def create_model(self, net_type: str, cfg) -> nn.Module:
+    def create_model(self, net_type: str, cfg: dict) -> nn.Module:
         if net_type == NetType.SimpleTwoHeaded:
             return net_utils.SimpleTwoHeadedModel(self._get_input_shape(), self.MOVE_NUM)
         elif net_type == NetType.ConvNetV1:

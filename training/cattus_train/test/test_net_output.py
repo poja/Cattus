@@ -128,12 +128,10 @@ def _test_net_output(game_name: str, game: Game, positions):
 
 def create_model(game: Game, path: Path) -> nn.Module:
     cfg = {
-        "model": {
-            "residual_filter_num": 1,
-            "residual_block_num": 1,
-            "value_head_conv_output_channels_num": 1,
-            "policy_head_conv_output_channels_num": 1,
-        },
+        "residual_filter_num": 1,
+        "residual_block_num": 1,
+        "value_head_conv_output_channels_num": 1,
+        "policy_head_conv_output_channels_num": 1,
     }
     model = game.create_model("ConvNetV1", cfg)
 

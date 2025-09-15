@@ -109,7 +109,7 @@ training:
 
     # L2 regularization factor
     # suggested value: 10^-4
-    l2reg: 0.00005
+    # l2reg: 0.00005
 
     # If true, training data will be reused from multiple runs, always with preference to newer data
     # Suggested value: true

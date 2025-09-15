@@ -37,7 +37,7 @@ training:
         - [25, 0.01]
         - [50, 0.001]
         - [0.0001]
-    l2reg: 0.0001
+    # l2reg: 0.0001
     use_train_data_across_runs: true
 
 model_compare:
