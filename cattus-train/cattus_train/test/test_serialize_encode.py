@@ -15,7 +15,7 @@ from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
 TESTS_DIR = Path(os.path.realpath(__file__)).parent
-CATTUS_ENGINE_TOP = TESTS_DIR.parent.parent.parent / "cattus-engine"
+CATTUS_ENGINE_TOP = TESTS_DIR.parent.parent.parent / "engine"
 
 logging.basicConfig(level=logging.DEBUG, format="[Serialize Encode Test]: %(message)s")
 

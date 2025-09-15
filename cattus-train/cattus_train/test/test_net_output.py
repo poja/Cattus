@@ -18,7 +18,7 @@ from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
 TESTS_DIR = Path(os.path.realpath(__file__)).parent
-CATTUS_ENGINE_TOP = TESTS_DIR.parent.parent.parent / "cattus-engine"
+CATTUS_ENGINE_TOP = TESTS_DIR.parent.parent.parent / "engine"
 
 ASSERT_PYTHON_OUTPUT_EQ_REPEAT = 8
 ASSERT_RUST_OUTPUT_EQ_REPEAT = 8
