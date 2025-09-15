@@ -10,7 +10,7 @@ from cattus_train.train_process import TrainProcess
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 
 
-CATTUS_ENGINE_TOP = Path(os.path.realpath(__file__)).parent.parent.parent / "cattus-engine"
+CATTUS_ENGINE_TOP = Path(os.path.realpath(__file__)).parent.parent.parent / "engine"
 
 
 def main():

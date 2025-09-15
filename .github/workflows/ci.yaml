@@ -29,7 +29,7 @@ jobs:
         with:
           toolchain: 1.89.0
           components: clippy
-          cache-workspaces: cattus-engine
+          cache-workspaces: engine
       - name: Install Python dependencies
         run: python etc/install_python_requirements.py
 
@@ -38,22 +38,22 @@ jobs:
         id: cache-executorch-build
         uses: actions/cache@v4
         with:
-          path: cattus-engine/third-party/executorch/build/
-          key: cache-executorch-build-${{ runner.OS }}-${{ hashFiles('cattus-engine/scripts/build_executorch.py') }}
+          path: engine/third-party/executorch/build/
+          key: cache-executorch-build-${{ runner.OS }}-${{ hashFiles('engine/scripts/build_executorch.py') }}
       - name: Setup dev env, install executorch and its deps
         if: steps.cache-executorch-build.outputs.cache-hit != 'true'
-        run: python cattus-engine/scripts/build_executorch.py
+        run: python engine/scripts/build_executorch.py
 
       # Build
       - name: Build Rust
         run: cargo build
-        working-directory: cattus-engine
+        working-directory: engine
 
       # Linters
       - name: Rust Clippy linter
         uses: auguwu/clippy-action@1.4.0
         with:
-          working-directory: cattus-engine
+          working-directory: engine
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Python Ruff linter
         uses: chartboost/ruff-action@v1
@@ -63,7 +63,7 @@ jobs:
       # Tests
       - name: Rust tests
         run: cargo test
-        working-directory: cattus-engine
+        working-directory: engine
       - name: Python tests
         run: pytest -s
         working-directory: cattus-train
