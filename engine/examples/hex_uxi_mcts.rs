@@ -4,6 +4,7 @@ use cattus::hex::net::two_headed_net::TwoHeadedNet;
 use cattus::hex::uxi;
 use cattus::util::Device;
 use clap::Parser;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Parser, Debug)]
@@ -13,8 +14,8 @@ struct Args {
     sim_num: u32,
     #[clap(long)]
     batch_size: usize,
-    #[clap(long, default_value = "_NONE_")]
-    model_path: String,
+    #[clap(long)]
+    model_path: PathBuf,
 }
 
 fn main() {

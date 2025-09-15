@@ -8,6 +8,7 @@ use clap::Parser;
 use itertools::Itertools;
 use std::fs;
 use std::ops::Deref;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -16,17 +17,17 @@ use std::time::Duration;
 #[clap(about, long_about = None)]
 struct SelfPlayArgs {
     #[clap(long)]
-    model1_path: String,
+    model1_path: PathBuf,
     #[clap(long)]
-    model2_path: String,
+    model2_path: PathBuf,
     #[clap(long)]
     games_num: u32,
     #[clap(long)]
-    out_dir1: String,
+    out_dir1: PathBuf,
     #[clap(long)]
-    out_dir2: String,
-    #[clap(long, default_value = "_NONE_")]
-    summary_file: String,
+    out_dir2: PathBuf,
+    #[clap(long)]
+    summary_file: Option<PathBuf>,
     #[clap(long, default_value = "100")]
     sim_num: u32,
     #[clap(long)]
@@ -98,7 +99,7 @@ impl Callback<Duration> for SearchDurationCallback {
 pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
     fn build_net(
         &self,
-        model_path: &str,
+        model_path: &Path,
         cache: Arc<ValueFuncCache<Game>>,
         device: Device,
         batch_size: usize,
@@ -247,7 +248,7 @@ pub fn run_main<Game: IGame + 'static>(
     )
     .generate_data(args.games_num as usize, &args.out_dir1, &args.out_dir2)?;
 
-    if args.summary_file != "_NONE_" {
+    if let Some(summary_file) = args.summary_file {
         let cache_hits = cache_builder.get_hits_counter();
         let cache_uses = cache_hits + cache_builder.get_misses_counter();
 
@@ -274,7 +275,7 @@ pub fn run_main<Game: IGame + 'static>(
         let metrics = metrics.get_raw_data();
 
         fs::write(
-            args.summary_file,
+            &summary_file,
             json::object! {
                 player1_wins: result.w1,
                 player2_wins: result.w2,

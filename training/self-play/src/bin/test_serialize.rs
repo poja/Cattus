@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use cattus::chess::chess_game::ChessPosition;
 use cattus::chess::net::serializer::ChessSerializer;
 use cattus::game::common::{GameColor, GamePosition, IGame};
@@ -17,7 +19,7 @@ struct Args {
     #[clap(long)]
     position: String,
     #[clap(long)]
-    outfile: String,
+    outfile: PathBuf,
 }
 
 fn main() -> std::io::Result<()> {
@@ -57,7 +59,7 @@ fn test_chess(args: Args) -> std::io::Result<()> {
 fn serialize_position<Game: IGame>(
     pos: Game::Position,
     serializer: &dyn DataSerializer<Game>,
-    filename: &str,
+    filename: &Path,
 ) -> std::io::Result<()> {
     let moves = pos.get_legal_moves();
     let moves_num = moves.len();

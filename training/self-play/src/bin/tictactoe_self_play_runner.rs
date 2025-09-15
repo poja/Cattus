@@ -5,13 +5,14 @@ use cattus::ttt::net::serializer::TttSerializer;
 use cattus::ttt::net::two_headed_net::TwoHeadedNet;
 use cattus::ttt::ttt_game::TttGame;
 use cattus::util::Device;
+use std::path::Path;
 use std::sync::Arc;
 
 struct NNetworkBuilder;
 impl INNetworkBuilder<TttGame> for NNetworkBuilder {
     fn build_net(
         &self,
-        model_path: &str,
+        model_path: &Path,
         cache: Arc<ValueFuncCache<TttGame>>,
         device: Device,
         batch_size: usize,

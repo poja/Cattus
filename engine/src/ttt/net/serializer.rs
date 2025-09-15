@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use itertools::Itertools;
 
 use crate::game::common::{GameColor, GamePosition};
@@ -10,7 +12,7 @@ impl DataSerializer<TttGame> for TttSerializer {
     fn serialize_data_entry(
         &self,
         entry: DataEntry<TttGame>,
-        filename: &str,
+        filename: &Path,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(entry.winner) as i8;

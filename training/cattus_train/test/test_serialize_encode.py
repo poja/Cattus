@@ -15,7 +15,7 @@ from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
 TESTS_DIR = Path(os.path.realpath(__file__)).parent
-CATTUS_ENGINE_TOP = TESTS_DIR.parent.parent.parent / "engine"
+SELF_PLAY_TOP = TESTS_DIR.parent.parent / "self-play"
 
 logging.basicConfig(level=logging.DEBUG, format="[Serialize Encode Test]: %(message)s")
 
@@ -121,7 +121,7 @@ def _test_serialize_encode(game_name: str, game: Game, positions):
                 stderr=sys.stderr,
                 stdout=sys.stdout,
                 check=True,
-                cwd=CATTUS_ENGINE_TOP,
+                cwd=SELF_PLAY_TOP,
             )
             subprocess.run(
                 [
@@ -143,7 +143,7 @@ def _test_serialize_encode(game_name: str, game: Game, positions):
                 stderr=sys.stderr,
                 stdout=sys.stdout,
                 check=True,
-                cwd=CATTUS_ENGINE_TOP,
+                cwd=SELF_PLAY_TOP,
             )
 
             packed_entry = game.load_data_entry(serialize_file)

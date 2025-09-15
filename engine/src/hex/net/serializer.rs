@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::game::common::{GameColor, GamePosition};
 use crate::game::self_play::{DataEntry, DataSerializer, SerializerBase};
 use crate::hex::hex_game::HexGame;
@@ -9,7 +11,7 @@ impl<const BOARD_SIZE: usize> DataSerializer<HexGame<BOARD_SIZE>> for HexSeriali
     fn serialize_data_entry(
         &self,
         entry: DataEntry<HexGame<BOARD_SIZE>>,
-        filename: &str,
+        filename: &Path,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(entry.winner) as i8;

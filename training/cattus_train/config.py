@@ -57,7 +57,6 @@ class Config:
     models_dir: Optional[Path] = None
     metrics_dir: Optional[Path] = None
     game: str
-    engine_path: Path
     model: ModelConfig
     self_play: SelfPlayConfig
     model_compare: ModelCompareConfig

@@ -32,8 +32,6 @@ def main():
 
     with open(args.config, "r") as config_file:
         config = yaml.safe_load(config_file)
-    if "engine_path" not in config:
-        config["engine_path"] = CATTUS_ENGINE_TOP
 
     tp = TrainProcess(Config(**config))
     tp.run_training_loop(run_id=args.run_id)

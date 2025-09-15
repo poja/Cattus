@@ -6,6 +6,7 @@ use cattus::{chess, hex, ttt};
 use clap::Parser;
 use ndarray::{Array3, Array4, Axis};
 use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -15,7 +16,7 @@ struct Args {
     #[clap(long)]
     position: String,
     #[clap(long)]
-    outfile: String,
+    outfile: PathBuf,
 }
 
 fn main() -> std::io::Result<()> {
@@ -57,7 +58,7 @@ fn create_tensor_chess(args: &Args) -> Array4<f32> {
     net::planes_to_tensor::<ChessGame>(&[planes], 1)
 }
 
-fn tensor_to_json(tensor: Array3<f32>, filename: &String) -> std::io::Result<()> {
+fn tensor_to_json(tensor: Array3<f32>, filename: &Path) -> std::io::Result<()> {
     fs::write(
         filename,
         json::object! {

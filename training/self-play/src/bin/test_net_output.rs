@@ -8,6 +8,7 @@ use clap::Parser;
 use itertools::Itertools;
 use ndarray::{Array2, ArrayD, Axis};
 use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -17,11 +18,11 @@ struct Args {
     #[clap(long)]
     position: String,
     #[clap(long)]
-    model_path: String,
+    model_path: PathBuf,
     #[clap(long)]
     batch_size: usize,
     #[clap(long)]
-    outfile: String,
+    outfile: PathBuf,
     #[clap(long, default_value = "1")]
     repeat: u32,
 }
@@ -108,7 +109,7 @@ fn run_net_chess(args: &Args) -> Vec<ArrayD<f32>> {
         .collect()
 }
 
-fn outputs_to_json(mut outputs: Vec<ArrayD<f32>>, filename: &String) -> std::io::Result<()> {
+fn outputs_to_json(mut outputs: Vec<ArrayD<f32>>, filename: &Path) -> std::io::Result<()> {
     assert_eq!(outputs.len(), 2);
     let probs: Array2<f32> = outputs.remove(0).into_dimensionality().unwrap();
     let vals: Array2<f32> = outputs.remove(0).into_dimensionality().unwrap();

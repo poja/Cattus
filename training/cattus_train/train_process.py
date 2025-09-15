@@ -29,7 +29,8 @@ from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
-CATTUS_TRAIN_TOP = Path(__file__).parent.parent.parent.resolve()
+CATTUS_TOP = Path(__file__).parent.parent.parent.resolve()
+SELF_PLAY_CRATE_DIR = CATTUS_TOP / "training" / "self-play"
 
 # For some reason, onnx.export is not thread-safe, so we need to lock it
 ONNX_EXPORT_LOCK = threading.RLock()
@@ -39,7 +40,7 @@ class TrainProcess:
     def __init__(self, cfg: Config):
         self._cfg: Config = cfg
 
-        cfg.working_area = CATTUS_TRAIN_TOP / cfg.working_area
+        cfg.working_area = CATTUS_TOP / cfg.working_area
         cfg.games_dir = cfg.games_dir or cfg.working_area / "games"
         cfg.models_dir = cfg.working_area / "models"
         cfg.metrics_dir = cfg.working_area / "metrics"
@@ -154,7 +155,7 @@ class TrainProcess:
             stdout=sys.stdout,
             shell=True,
             check=True,
-            cwd=self._cfg.engine_path,
+            cwd=SELF_PLAY_CRATE_DIR,
         )
         self._metrics["self_play_duration"] = time.time() - self_play_start_time
 
@@ -337,7 +338,7 @@ class TrainProcess:
                 stdout=sys.stdout,
                 shell=True,
                 check=True,
-                cwd=self._cfg.engine_path,
+                cwd=SELF_PLAY_CRATE_DIR,
             )
             with open(compare_res_file, "r") as res_file:
                 res = json.load(res_file)
@@ -409,10 +410,10 @@ class TrainProcess:
             stdout=sys.stdout,
             shell=True,
             check=True,
-            cwd=self._cfg.engine_path,
+            cwd=SELF_PLAY_CRATE_DIR,
         )
         self._self_play_exec_path = (
-            self._cfg.engine_path / "target" / ("debug" if self._cfg.debug else "release") / self._self_play_exec_name
+            SELF_PLAY_CRATE_DIR / "target" / ("debug" if self._cfg.debug else "release") / self._self_play_exec_name
         )
 
     def _write_metrics(self, filename):

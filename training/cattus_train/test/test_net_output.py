@@ -18,7 +18,7 @@ from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
 TESTS_DIR = Path(os.path.realpath(__file__)).parent
-CATTUS_ENGINE_TOP = TESTS_DIR.parent.parent.parent / "engine"
+SELF_PLAY_TOP = TESTS_DIR.parent.parent / "self-play"
 
 ASSERT_PYTHON_OUTPUT_EQ_REPEAT = 8
 ASSERT_RUST_OUTPUT_EQ_REPEAT = 8
@@ -66,7 +66,7 @@ def _test_net_output(game_name: str, game: Game, positions):
                 stderr=sys.stderr,
                 stdout=sys.stdout,
                 check=True,
-                cwd=CATTUS_ENGINE_TOP,
+                cwd=SELF_PLAY_TOP,
             )
             with open(encode_path, "r") as encode_file:
                 tensor_data = json.load(encode_file)
@@ -113,7 +113,7 @@ def _test_net_output(game_name: str, game: Game, positions):
                 stderr=sys.stderr,
                 stdout=sys.stdout,
                 check=True,
-                cwd=CATTUS_ENGINE_TOP,
+                cwd=SELF_PLAY_TOP,
             )
             with open(output_file, "r") as output_file:
                 output = json.load(output_file)

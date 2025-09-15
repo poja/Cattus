@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use std::fs;
 use std::ops::Deref;
-use std::path;
+use std::path::{self, Path, PathBuf};
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -28,7 +28,7 @@ impl<Game: IGame> Clone for DataEntry<Game> {
 }
 
 pub trait DataSerializer<Game: IGame>: Sync + Send {
-    fn serialize_data_entry(&self, entry: DataEntry<Game>, filename: &str) -> std::io::Result<()>;
+    fn serialize_data_entry(&self, entry: DataEntry<Game>, filename: &Path) -> std::io::Result<()>;
 }
 
 pub struct SerializerBase;
@@ -37,7 +37,7 @@ impl SerializerBase {
         planes: Vec<u64>,
         probs: Vec<(Game::Move, f32)>,
         winner: i8,
-        filename: &str,
+        filename: &Path,
     ) -> std::io::Result<()> {
         /* Use -1 for illegal moves */
         let mut probs_vec = vec![-1.0f32; Game::MOVES_NUM];
@@ -100,8 +100,8 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
     pub fn generate_data(
         &self,
         games_num: usize,
-        output_dir1: &String,
-        output_dir2: &String,
+        output_dir1: &Path,
+        output_dir2: &Path,
     ) -> std::io::Result<GamesResults> {
         assert!(games_num % 2 == 0, "Games num should be a multiple of 2");
 
@@ -121,8 +121,8 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
                 self.player2_builder.clone(),
                 &self.temperature_policy,
                 self.serializer.clone(),
-                output_dir1.to_string(),
-                output_dir2.to_string(),
+                output_dir1.to_path_buf(),
+                output_dir2.to_path_buf(),
                 result.clone(),
                 games_counter.clone(),
                 games_num,
@@ -155,8 +155,8 @@ struct SelfPlayWorker<Game: IGame> {
     player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
     temperature_scheduler: TemperatureScheduler,
     serializer: Arc<dyn DataSerializer<Game>>,
-    output_dir1: String,
-    output_dir2: String,
+    output_dir1: PathBuf,
+    output_dir2: PathBuf,
     results: Arc<Mutex<GamesResults>>,
     games_queue: Arc<AtomicUsize>,
     games_num: usize,
@@ -169,8 +169,8 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
         temperature_policy: &str,
         serializer: Arc<dyn DataSerializer<Game>>,
-        output_dir1: String,
-        output_dir2: String,
+        output_dir1: PathBuf,
+        output_dir2: PathBuf,
         results: Arc<Mutex<GamesResults>>,
         games_queue: Arc<AtomicUsize>,
         games_num: usize,
@@ -283,10 +283,9 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         for (transform_idx, entry) in entries.into_iter().enumerate() {
             self.serializer.serialize_data_entry(
                 entry,
-                &format!(
-                    "{}/{:#08}_{:#03}_{:#02}.traindata",
-                    output_dir, game_idx, pos_idx, transform_idx
-                ),
+                &output_dir.join(format!(
+                    "{game_idx:#08}_{pos_idx:#03}_{transform_idx:#02}.traindata",
+                )),
             )?;
         }
         Ok(())

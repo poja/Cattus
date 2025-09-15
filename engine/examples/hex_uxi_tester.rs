@@ -3,22 +3,22 @@ use cattus::hex::hex_game::{HexGameStandard, HexPosition};
 use cattus::hex::uxi::HexPlayerUXI;
 use clap::Parser;
 use rand::Rng;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 fn comapre_engines(
-    engine1_filename: &String,
-    engine2_filename: &String,
+    engine1_filename: &Path,
+    engine2_filename: &Path,
     engine1_params: &Vec<String>,
     engine2_params: &Vec<String>,
     number_of_games: usize,
-    _working_dir: &str,
+    _working_dir: &Path,
 ) {
     // let mut rng = rand::thread_rng();
     // let engine1_errfile = working_dir.join("errlog" + rng.gen::<u64>().to_string());
     // let engine2_errfile = working_dir.join("errlog" + rng.gen::<u64>().to_string());
-    let mut engine1 = HexPlayerUXI::new(Path::new(engine1_filename) /*, engine1_errfile*/);
-    let mut engine2 = HexPlayerUXI::new(Path::new(engine2_filename) /*, engine2_errfile*/);
+    let mut engine1 = HexPlayerUXI::new(engine1_filename.to_path_buf() /*, engine1_errfile*/);
+    let mut engine2 = HexPlayerUXI::new(engine2_filename.to_path_buf() /*, engine2_errfile*/);
 
     let engine1_started = engine1.start(engine1_params);
     let engine2_started = engine2.start(engine2_params);
@@ -38,8 +38,8 @@ fn comapre_engines(
         &mut engine1,
         &mut engine2,
         number_of_games,
-        engine1_filename,
-        engine2_filename,
+        engine1_filename.to_str().unwrap(),
+        engine2_filename.to_str().unwrap(),
     );
 
     engine1.stop();
@@ -50,8 +50,8 @@ fn compare_players(
     player1: &mut dyn GamePlayer<HexGameStandard>,
     player2: &mut dyn GamePlayer<HexGameStandard>,
     number_of_games: usize,
-    player1_display_name: &String,
-    player2_display_name: &String,
+    player1_display_name: &str,
+    player2_display_name: &str,
 ) {
     let mut rng = rand::rng();
 
@@ -98,17 +98,17 @@ fn compare_players(
 #[clap(about, long_about = None)]
 struct Args {
     #[clap(long)]
-    engine1: String,
+    engine1: PathBuf,
     #[clap(long)]
-    engine2: String,
+    engine2: PathBuf,
     #[clap(long, default_value = "")]
     engine1_params: String,
     #[clap(long, default_value = "")]
     engine2_params: String,
     #[clap(short, long, default_value_t = 10)]
     repeat: usize,
-    #[clap(short, long, default_value = "_CURRENT_DIR_")]
-    workdir: String,
+    #[clap(short, long, default_value = "./")]
+    workdir: PathBuf,
 }
 
 /**
@@ -126,10 +126,7 @@ struct Args {
 fn main() {
     cattus::util::init_globals();
 
-    let mut args = Args::parse();
-    if args.workdir == "_CURRENT_DIR_" {
-        args.workdir = String::from(std::env::current_dir().unwrap().to_str().unwrap());
-    }
+    let args = Args::parse();
     let parse_engine_args = |engine_args_str0: String| -> Option<Vec<String>> {
         let mut engine_args_str = engine_args_str0;
         if engine_args_str.is_empty() {
