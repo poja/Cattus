@@ -47,7 +47,7 @@ training:
     batch_size: 4
     learning_rate:
         - [       0.001]
-    l2reg: 0.00005
+    # l2reg: 0.00005
     use_train_data_across_runs: false
 model_compare:
     temperature_policy:

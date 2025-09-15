@@ -8,29 +8,28 @@ import torch
 from torch import Tensor
 from torch.utils.data import IterableDataset
 
+from cattus_train.config import TrainingConfig
 from cattus_train.trainable_game import DataEntryParseError, Game
 
 
 class DataSet(IterableDataset):
-    def __init__(self, game: Game, train_data_dir: Path, cfg: dict, device: torch.device):
+    def __init__(self, game: Game, train_data_dir: Path, cfg: TrainingConfig, device: torch.device):
         self._game: Game = game
         self._train_data_dir: Path = train_data_dir
-        self._cfg: dict = cfg
+        self._cfg = cfg
         self._device: torch.device = device
-
-        assert self._cfg["training"]["latest_data_entries"] >= self._cfg["training"]["iteration_data_entries"]
 
     def _data_entries_filenames_gen(self) -> Generator[int, None, None]:
         filenames = [p for p in Path(self._train_data_dir).rglob("*.traindata")]
 
         # take the latests files
-        latest_de = self._cfg["training"]["latest_data_entries"]
+        latest_de = self._cfg.latest_data_entries
         filenames.sort(key=os.path.getmtime, reverse=True)
         if len(filenames) > latest_de:
             filenames = filenames[:latest_de]
 
         # take a sub set
-        iter_de = self._cfg["training"]["iteration_data_entries"]
+        iter_de = self._cfg.iteration_data_entries
         random.shuffle(filenames)
         if len(filenames) > iter_de:
             filenames = filenames[:iter_de]
