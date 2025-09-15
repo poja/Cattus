@@ -5,13 +5,14 @@ use cattus::game::cache::ValueFuncCache;
 use cattus::game::mcts::ValueFunction;
 use cattus::game::self_play_cmd::{INNetworkBuilder, run_main};
 use cattus::util::Device;
+use std::path::Path;
 use std::sync::Arc;
 
 struct NNetworkBuilder;
 impl INNetworkBuilder<ChessGame> for NNetworkBuilder {
     fn build_net(
         &self,
-        model_path: &str,
+        model_path: &Path,
         cache: Arc<ValueFuncCache<ChessGame>>,
         device: Device,
         batch_size: usize,

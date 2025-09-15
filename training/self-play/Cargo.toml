@@ -1,0 +1,12 @@
+[package]
+name = "cattus-self-play"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+cattus = { path = "../../engine" }
+ndarray = "0.16"
+itertools = "0.14"
+clap = { version = "4.5", features = ["derive"] }
+json = "0.12.*"

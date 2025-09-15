@@ -3,6 +3,7 @@ use itertools::Itertools;
 use crate::game::common::{GameBitboard, GameColor, GamePlayer, GamePosition, IGame};
 use crate::hex::hex_game::{HexBitboard, HexGameStandard, HexMove, HexPosition};
 use std::io::{BufRead, BufReader, Write};
+use std::path::PathBuf;
 use std::string::String;
 use std::{io, process, thread, time};
 
@@ -26,17 +27,17 @@ use std::{io, process, thread, time};
  *              indices - the engine move, two numbers with comma separation, "c,r"
  */
 pub struct HexPlayerUXI {
-    exe_filename: String,
-    // err_filename: String,
+    exe_filename: PathBuf,
+    // err_filename: PathBuf,
     // err_file: Option<File>,
     process: Option<process::Child>,
 }
 
 impl HexPlayerUXI {
-    pub fn new(exe_filename: &std::path::Path /*, err_filename: &std::path::Path*/) -> Self {
+    pub fn new(exe_filename: PathBuf /*, err_filename: PathBuf*/) -> Self {
         Self {
-            exe_filename: String::from(exe_filename.to_str().unwrap()),
-            // err_filename: String::from(err_filename.to_str().unwrap()),
+            exe_filename,
+            // err_filename,
             // err_file: None,
             process: None,
         }
@@ -50,7 +51,8 @@ impl HexPlayerUXI {
 
         println!(
             "[UXIPlayer] launching engine: {} {:?}",
-            self.exe_filename, engine_params
+            self.exe_filename.display(),
+            engine_params
         );
 
         // assert!(self.err_file.is_none());

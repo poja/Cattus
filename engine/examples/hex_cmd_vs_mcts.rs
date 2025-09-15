@@ -1,5 +1,6 @@
 use cattus::util::Device;
 use clap::Parser;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use cattus::game::cache::ValueFuncCache;
@@ -15,7 +16,7 @@ struct Args {
     #[clap(long, default_value = "11")]
     board_size: u32,
     #[clap(long)]
-    model_path: String,
+    model_path: PathBuf,
     #[clap(long, default_value = "100")]
     sim_num: u32,
     #[clap(long)]

@@ -4,6 +4,7 @@ use crate::game::net::TwoHeadedNetBase;
 use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 use crate::hex::net::common;
 use crate::util::Device;
+use std::path::Path;
 use std::sync::Arc;
 
 pub struct TwoHeadedNet<const BOARD_SIZE: usize> {
@@ -11,14 +12,14 @@ pub struct TwoHeadedNet<const BOARD_SIZE: usize> {
 }
 
 impl<const BOARD_SIZE: usize> TwoHeadedNet<BOARD_SIZE> {
-    pub fn new(model_path: &str, batch_size: usize, device: Device) -> Self {
+    pub fn new(model_path: &Path, batch_size: usize, device: Device) -> Self {
         Self {
             base: TwoHeadedNetBase::new(model_path, device, batch_size, None),
         }
     }
 
     pub fn with_cache(
-        model_path: &str,
+        model_path: &Path,
         device: Device,
         batch_size: usize,
         cache: Arc<ValueFuncCache<HexGame<BOARD_SIZE>>>,

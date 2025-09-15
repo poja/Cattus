@@ -29,7 +29,9 @@ jobs:
         with:
           toolchain: 1.89.0
           components: clippy
-          cache-workspaces: engine
+          cache-workspaces: |
+            engine
+            training/self-play
       - name: Install Python dependencies
         run: python etc/install_python_requirements.py
 
@@ -44,26 +46,34 @@ jobs:
         if: steps.cache-executorch-build.outputs.cache-hit != 'true'
         run: python engine/scripts/build_executorch.py
 
-      # Build
+      # Engine
       - name: Build Rust
         run: cargo build
         working-directory: engine
-
-      # Linters
       - name: Rust Clippy linter
         uses: auguwu/clippy-action@1.4.0
         with:
           working-directory: engine
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Rust tests
+        run: cargo test
+        working-directory: engine
+
+      # Self-play crate
+      - name: Build Rust
+        run: cargo build
+        working-directory: training/self-play
+      - name: Rust Clippy linter
+        uses: auguwu/clippy-action@1.4.0
+        with:
+          working-directory: training/self-play
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Training package
       - name: Python Ruff linter
         uses: chartboost/ruff-action@v1
         with:
           args: check training
-
-      # Tests
-      - name: Rust tests
-        run: cargo test
-        working-directory: engine
       - name: Python tests
         run: pytest -s
         working-directory: training

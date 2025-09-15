@@ -5,13 +5,14 @@ use cattus::ttt::net::two_headed_net::TwoHeadedNet;
 use cattus::ttt::ttt_game::{TttGame, color_to_str};
 use cattus::util::Device;
 use clap::Parser;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
 struct Args {
     #[clap(long)]
-    model_path: String,
+    model_path: PathBuf,
     #[clap(long)]
     batch_size: usize,
 }

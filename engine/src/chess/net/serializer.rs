@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use std::fs;
+use std::path::Path;
 
 use crate::chess::chess_game::ChessGame;
 use crate::chess::net::common;
@@ -12,7 +13,7 @@ impl DataSerializer<ChessGame> for ChessSerializer {
     fn serialize_data_entry(
         &self,
         mut entry: DataEntry<ChessGame>,
-        filename: &str,
+        filename: &Path,
     ) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(entry.winner) as i8;
