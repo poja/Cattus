@@ -1,4 +1,5 @@
 pub(crate) mod batch;
+pub(crate) mod metrics;
 
 /// A copy of rand_dist::dirichlet of version 0.4.0
 /// Remove once we bump to 0.6.0

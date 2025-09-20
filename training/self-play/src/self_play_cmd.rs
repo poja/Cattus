@@ -1,15 +1,11 @@
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::common::IGame;
 use cattus::game::mcts::{MctsPlayer, ValueFunction};
-use cattus::game::utils::Callback;
 use cattus::util::{self, Builder, Device};
 use clap::Parser;
-use itertools::Itertools;
-use std::fs;
-use std::ops::Deref;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::sync::Arc;
 
 use crate::self_play::{GameExt, SelfPlayRunner};
 use crate::serialize::DataSerializer;
@@ -49,54 +45,6 @@ struct SelfPlayArgs {
     cache_size: usize,
 }
 
-#[derive(Copy, Clone)]
-struct MetricsData {
-    pub search_count: u32,
-    pub search_duration: Duration,
-}
-impl MetricsData {
-    fn get_search_duration_average(&self) -> Duration {
-        if self.search_count > 0 {
-            self.search_duration / self.search_count
-        } else {
-            Duration::ZERO
-        }
-    }
-}
-
-struct Metrics {
-    data: Mutex<MetricsData>,
-}
-impl Metrics {
-    fn new() -> Self {
-        Self {
-            data: Mutex::new(MetricsData {
-                search_count: 0,
-                search_duration: Duration::ZERO,
-            }),
-        }
-    }
-
-    fn add_search_duration(&self, duration: Duration) {
-        let mut data = self.data.lock().unwrap();
-        data.search_count += 1;
-        data.search_duration += duration;
-    }
-
-    fn get_raw_data(&self) -> MetricsData {
-        *self.data.lock().unwrap().deref()
-    }
-}
-
-struct SearchDurationCallback {
-    metrics: Arc<Metrics>,
-}
-impl Callback<Duration> for SearchDurationCallback {
-    fn call(&self, duration: Duration) {
-        self.metrics.add_search_duration(duration)
-    }
-}
-
 pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
     fn build_net(
         &self,
@@ -113,7 +61,6 @@ struct PlayerBuilder<Game: IGame> {
     explore_factor: f32,
     prior_noise_alpha: f32,
     prior_noise_epsilon: f32,
-    metrics: Arc<Metrics>,
 }
 
 impl<Game: IGame> PlayerBuilder<Game> {
@@ -124,7 +71,6 @@ impl<Game: IGame> PlayerBuilder<Game> {
         explore_factor: f32,
         prior_noise_alpha: f32,
         prior_noise_epsilon: f32,
-        metrics: Arc<Metrics>,
     ) -> Self {
         Self {
             network,
@@ -132,26 +78,19 @@ impl<Game: IGame> PlayerBuilder<Game> {
             explore_factor,
             prior_noise_alpha,
             prior_noise_epsilon,
-            metrics,
         }
     }
 }
 
 impl<Game: IGame> Builder<MctsPlayer<Game>> for PlayerBuilder<Game> {
     fn build(&self) -> MctsPlayer<Game> {
-        let mut player = MctsPlayer::new_custom(
+        MctsPlayer::new_custom(
             self.sim_num,
             self.explore_factor,
             self.prior_noise_alpha,
             self.prior_noise_epsilon,
             self.network.clone(),
-        );
-
-        player.set_search_duration_callback(Some(Box::new(SearchDurationCallback {
-            metrics: self.metrics.clone(),
-        })));
-
-        player
+        )
     }
 }
 
@@ -171,20 +110,6 @@ impl<Game: IGame> CacheBuilder<Game> {
         self.caches.push(cache.clone());
         cache
     }
-
-    fn get_hits_counter(&self) -> usize {
-        self.caches
-            .iter()
-            .map(|cache| cache.get_hits_counter())
-            .sum()
-    }
-
-    fn get_misses_counter(&self) -> usize {
-        self.caches
-            .iter()
-            .map(|cache| cache.get_misses_counter())
-            .sum()
-    }
 }
 
 pub fn run_main<Game: GameExt + 'static>(
@@ -193,6 +118,14 @@ pub fn run_main<Game: GameExt + 'static>(
 ) -> std::io::Result<()> {
     util::init_globals(None);
     let args = SelfPlayArgs::parse();
+
+    let metrics_snapshotter = args.summary_file.is_some().then(|| {
+        let recorder = metrics_util::debugging::DebuggingRecorder::new();
+        let snapshotter = recorder.snapshotter();
+        recorder.install().unwrap();
+        snapshotter
+    });
+
     let device = match args.device.to_uppercase().as_str() {
         "CPU" => Device::Cpu,
         "GPU" => Device::Cuda,
@@ -200,7 +133,6 @@ pub fn run_main<Game: GameExt + 'static>(
         unknown_pu => panic!("unknown processing unit '{unknown_pu}'"),
     };
 
-    let metrics = Arc::new(Metrics::new());
     let mut cache_builder = CacheBuilder::new(args.cache_size);
     let mut nets = vec![];
 
@@ -217,7 +149,6 @@ pub fn run_main<Game: GameExt + 'static>(
         args.explore_factor,
         args.prior_noise_alpha,
         args.prior_noise_epsilon,
-        metrics.clone(),
     ));
 
     let player2_builder = if args.model1_path == args.model2_path {
@@ -236,7 +167,6 @@ pub fn run_main<Game: GameExt + 'static>(
             args.explore_factor,
             args.prior_noise_alpha,
             args.prior_noise_epsilon,
-            metrics.clone(),
         ))
     };
 
@@ -250,46 +180,46 @@ pub fn run_main<Game: GameExt + 'static>(
     .generate_data(args.games_num as usize, &args.out_dir1, &args.out_dir2)?;
 
     if let Some(summary_file) = args.summary_file {
-        let cache_hits = cache_builder.get_hits_counter();
-        let cache_uses = cache_hits + cache_builder.get_misses_counter();
-
-        let nets_stats = nets.iter().map(|net| net.get_statistics()).collect_vec();
-        let net_activation_count: usize = nets_stats
-            .iter()
-            .map(|net_stats| net_stats.activation_count.unwrap())
-            .sum();
-        let net_run_duration_average: Duration = nets_stats
-            .iter()
-            .map(|net_stats| {
-                net_stats.run_duration_average.unwrap() * net_stats.activation_count.unwrap() as u32
-            })
-            .sum::<Duration>()
-            / net_activation_count as u32;
-        let batch_size_average: f32 = nets_stats
-            .iter()
-            .map(|net_stats| {
-                net_stats.batch_size_average.unwrap() * net_stats.activation_count.unwrap() as f32
-            })
-            .sum::<f32>()
-            / net_activation_count as f32;
-
-        let metrics = metrics.get_raw_data();
-
-        fs::write(
-            &summary_file,
-            json::object! {
-                player1_wins: result.w1,
-                player2_wins: result.w2,
-                draws: result.d,
-                net_activations_count: net_activation_count,
-                net_run_duration_average_us: net_run_duration_average.as_micros() as u64,
-                batch_size_average: batch_size_average,
-                search_count: metrics.search_count,
-                search_duration_average_ms: metrics.get_search_duration_average().as_millis() as u64,
-                cache_hit_ratio: cache_hits as f32 / cache_uses as f32,
+        let mut metrics = HashMap::new();
+        for (key, _unit, _desc, value) in metrics_snapshotter.unwrap().snapshot().into_vec() {
+            let key = key.key().name().to_string();
+            let value = match value {
+                metrics_util::debugging::DebugValue::Counter(value) => {
+                    serde_json::Value::Number(serde_json::Number::from(value))
+                }
+                metrics_util::debugging::DebugValue::Gauge(value) => {
+                    serde_json::Value::Number(serde_json::Number::from_f64(value.0).unwrap())
+                }
+                metrics_util::debugging::DebugValue::Histogram(values) => serde_json::Value::Array(
+                    values
+                        .into_iter()
+                        .map(|v| {
+                            serde_json::Value::Number(serde_json::Number::from_f64(v.0).unwrap())
+                        })
+                        .collect(),
+                ),
+            };
+            if metrics.contains_key(&key) {
+                panic!()
             }
-            .dump(),
-        )?;
+            metrics.insert(key, value);
+        }
+
+        #[derive(serde::Serialize)]
+        struct Summary {
+            player1_wins: u32,
+            player2_wins: u32,
+            draws: u32,
+            metrics: HashMap<String, serde_json::Value>,
+        }
+        let summary = Summary {
+            player1_wins: result.w1,
+            player2_wins: result.w2,
+            draws: result.d,
+            metrics,
+        };
+        let writer = std::fs::File::create_new(summary_file).unwrap();
+        serde_json::to_writer(writer, &summary).unwrap()
     }
 
     Ok(())

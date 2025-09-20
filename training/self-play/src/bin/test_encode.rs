@@ -59,12 +59,18 @@ fn create_tensor_chess(args: &Args) -> Array4<f32> {
 }
 
 fn tensor_to_json(tensor: Array3<f32>, filename: &Path) -> std::io::Result<()> {
-    fs::write(
-        filename,
-        json::object! {
+    #[derive(serde::Serialize)]
+    struct JsonTensor {
+        shape: Vec<usize>,
+        data: Vec<f32>,
+    }
+    let writer = fs::File::create_new(filename)?;
+    serde_json::to_writer(
+        writer,
+        &JsonTensor {
             shape: tensor.shape().to_vec(),
-            data: tensor.iter().cloned().collect::<Vec<f32>>(),
-        }
-        .dump(),
-    )
+            data: tensor.iter().cloned().collect(),
+        },
+    )?;
+    Ok(())
 }

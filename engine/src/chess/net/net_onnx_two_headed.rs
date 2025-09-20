@@ -2,7 +2,7 @@ use crate::chess::chess_game::{ChessGame, ChessPosition};
 use crate::chess::net::common;
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::IGame;
-use crate::game::mcts::{NetStatistics, ValueFunction};
+use crate::game::mcts::ValueFunction;
 use crate::game::net::TwoHeadedNetBase;
 use crate::util::Device;
 use std::path::Path;
@@ -34,9 +34,5 @@ impl TwoHeadedNet {
 impl ValueFunction<ChessGame> for TwoHeadedNet {
     fn evaluate(&self, position: &ChessPosition) -> (Vec<(<ChessGame as IGame>::Move, f32)>, f32) {
         self.base.evaluate(position, common::position_to_planes)
-    }
-
-    fn get_statistics(&self) -> NetStatistics {
-        self.base.get_statistics()
     }
 }

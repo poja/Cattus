@@ -1,9 +1,9 @@
-use super::mcts::NetStatistics;
 use super::model::Model;
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
 use crate::util::Device;
 use crate::util::batch::Batcher;
+use crate::util::metrics::RunningAverage;
 use itertools::Itertools;
 use ndarray::{Array2, Array4};
 use std::path::Path;
@@ -16,7 +16,7 @@ pub struct TwoHeadedNetBase<Game: IGame> {
 
     batcher: Batcher<Vec<Game::Bitboard>, (Vec<f32>, f32)>,
 
-    stats: Mutex<Statistics>,
+    metrics: Mutex<Metrics>,
 }
 
 impl<Game: IGame> TwoHeadedNetBase<Game> {
@@ -30,10 +30,9 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
             model: Mutex::new(Model::new(model_path)),
             cache,
             batcher: Batcher::new(batch_size),
-            stats: Mutex::new(Statistics {
-                activation_count: 0,
-                run_duration_sum: Duration::ZERO,
-                batch_size_sum: 0,
+            metrics: Mutex::new(Metrics {
+                activation_count: metrics::counter!("model.activation_count"),
+                run_duration: RunningAverage::new(0.99, metrics::gauge!("model.run_duration")),
             }),
         }
     }
@@ -47,7 +46,7 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
         let moves_scores: Array2<f32> = moves_scores.into_dimensionality().unwrap();
         let vals: Array2<f32> = vals.into_dimensionality().unwrap();
 
-        let batch_size = vals.len();
+        // let batch_size = vals.len();
         let ret = moves_scores
             .rows()
             .into_iter()
@@ -63,11 +62,10 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
             })
             .collect_vec();
 
-        // update stats
-        let mut stats = self.stats.lock().unwrap();
-        stats.activation_count += 1;
-        stats.batch_size_sum += batch_size;
-        stats.run_duration_sum += run_duration;
+        // update metrics
+        let mut metrics = self.metrics.lock().unwrap();
+        metrics.activation_count.increment(1);
+        metrics.run_duration.set(run_duration.as_secs_f64());
 
         ret
     }
@@ -103,15 +101,6 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
         let moves = pos.get_legal_moves();
         let moves_probs = calc_moves_probs::<Game>(moves, &move_scores);
         (moves_probs, val)
-    }
-
-    pub fn get_statistics(&self) -> NetStatistics {
-        let stats = self.stats.lock().unwrap();
-        NetStatistics {
-            activation_count: Some(stats.activation_count),
-            run_duration_average: Some(stats.run_duration_sum / stats.activation_count as u32),
-            batch_size_average: Some(stats.batch_size_sum as f32 / stats.activation_count as f32),
-        }
     }
 }
 
@@ -205,8 +194,7 @@ pub fn flip_score_if_needed<Move: GameMove>(
     (moves_probs, val)
 }
 
-struct Statistics {
-    activation_count: usize,
-    run_duration_sum: Duration,
-    batch_size_sum: usize,
+struct Metrics {
+    activation_count: metrics::Counter,
+    run_duration: RunningAverage,
 }

@@ -4,17 +4,13 @@ use pleco::core::mono_traits::*;
 use pleco::core::score::*;
 use pleco::core::*;
 use pleco::helper::prelude::*;
-use pleco::BitBoard;
-use pleco::File;
-use pleco::Rank;
-use pleco::SQ;
-use pleco::{Board, PieceType, Player};
+use pleco::{BitBoard, Board, File, PieceType, Player, Rank, SQ};
 use std::mem::MaybeUninit;
 
 use crate::chess::chess_game::{ChessGame, ChessPosition};
 use crate::chess::net::net_stockfish_utils::*;
 use crate::game::common::{GamePosition, IGame};
-use crate::game::mcts::{NetStatistics, ValueFunction};
+use crate::game::mcts::ValueFunction;
 use crate::game::net;
 
 pub struct StockfishNet;
@@ -33,10 +29,6 @@ impl ValueFunction<ChessGame> for StockfishNet {
             .collect_vec();
 
         net::flip_score_if_needed((moves_probs, val), is_flipped)
-    }
-
-    fn get_statistics(&self) -> NetStatistics {
-        NetStatistics::empty()
     }
 }
 
