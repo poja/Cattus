@@ -24,7 +24,7 @@ impl Builder<MCTSPlayer<ChessGame>> for PlayerBuilder {
 }
 
 fn main() {
-    cattus::util::init_globals();
+    cattus::util::init_globals(None);
 
     let args = Args::parse();
 

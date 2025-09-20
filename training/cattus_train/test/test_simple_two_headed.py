@@ -1,4 +1,5 @@
 import logging
+import os
 import tempfile
 
 import yaml
@@ -7,6 +8,7 @@ import cattus_train
 
 
 def _test_simple_two_headed(game_name):
+    inference_engine = os.getenv("CATTUS_TEST_INFERENCE_ENGINE", "executorch")
     with tempfile.TemporaryDirectory() as tmp_dir:
         config = f"""%YAML 1.2
 ---
@@ -45,6 +47,8 @@ model_compare:
     switching_winning_threshold: 0.55
     warning_losing_threshold: 0.55
     threads: 1
+inference:
+    engine: {inference_engine}
 """
 
         logging.info("Running self play and generating new models...")

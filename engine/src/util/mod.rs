@@ -27,7 +27,7 @@ pub enum Device {
     Mps,
 }
 
-pub fn init_globals() {
+pub fn init_globals(model_impl: Option<model::ImplType>) {
     env_logger::Builder::new()
         .filter_level(log::LevelFilter::Info)
         .target(env_logger::Target::Stdout)
@@ -72,24 +72,27 @@ mps_available = torch.backends.mps.is_available()
         }
     };
 
-    let model_impl = if cfg!(feature = "torch-python") && mps_available {
-        model::ImplType::TorchPy
-    } else if cfg!(feature = "onnx-tract") {
-        model::ImplType::OnnxTract
-    } else if cfg!(feature = "onnx-ort") {
-        model::ImplType::OnnxOrt
-    } else if cfg!(feature = "torch-python") {
-        model::ImplType::TorchPy
-    } else if cfg!(feature = "executorch") {
-        model::ImplType::Executorch
-    } else {
-        panic!("No model implementation available");
-    };
+    let model_impl = model_impl.unwrap_or_else(|| {
+        if cfg!(feature = "executorch") {
+            model::ImplType::Executorch
+        } else if cfg!(feature = "torch-python") && mps_available {
+            model::ImplType::TorchPy
+        } else if cfg!(feature = "onnx-tract") {
+            model::ImplType::OnnxTract
+        } else if cfg!(feature = "onnx-ort") {
+            model::ImplType::OnnxOrt
+        } else if cfg!(feature = "torch-python") {
+            model::ImplType::TorchPy
+        } else {
+            panic!("No model implementations available in this build");
+        }
+    });
 
     match model_impl {
         model::ImplType::TorchPy => {}
         model::ImplType::Executorch => {
-            cfg_if::cfg_if! { if #[cfg(feature = "executorch")] {
+            #[cfg(feature = "executorch")]
+            {
                 unsafe extern "C" fn cattus_executorch_emit_log(
                     #[allow(unused)] timestamp: executorch_sys::executorch_timestamp_t,
                     level: executorch_sys::executorch_pal_log_level,
@@ -118,12 +121,14 @@ mps_available = torch.backends.mps.is_available()
                         executorch_sys::executorch_pal_log_level::EXECUTORCH_PAL_LOG_LEVEL_UNKNOWN => log::Level::Error,
                     };
                     let logger = log::logger();
-                    logger .log(&log::Record::builder()
-                        .args(format_args!("{message}"))
-                        .level(level)
-                        .file(Some(filename))
-                        .line(Some(line as u32))
-                        .build());
+                    logger.log(
+                        &log::Record::builder()
+                            .args(format_args!("{message}"))
+                            .level(level)
+                            .file(Some(filename))
+                            .line(Some(line as u32))
+                            .build(),
+                    );
                     logger.flush();
                 }
                 unsafe {
@@ -139,7 +144,7 @@ mps_available = torch.backends.mps.is_available()
                     });
                     executorch::platform::pal_init();
                 }
-            } }
+            }
         }
         model::ImplType::OnnxTract => {}
         model::ImplType::OnnxOrt => {

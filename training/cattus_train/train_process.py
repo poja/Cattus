@@ -6,20 +6,21 @@ import random
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import threading
 import time
+import warnings
 from dataclasses import asdict
 from datetime import datetime
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
+import executorch.exir
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from executorch.exir import to_edge_transform_and_lower
+from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
 from torch.utils.data import DataLoader
 
 from cattus_train.chess import Chess
@@ -133,24 +134,24 @@ class TrainProcess:
 
         self_play_start_time = time.time()
         subprocess.check_call(
-            prepare_cmd(
+            [
                 self._self_play_exec_path,
-                *["--model1-path", model_path],
-                *["--model2-path", model_path],
-                *["--games-num", self._cfg.self_play.games_num],
-                *["--out-dir1", data_entries_dir],
-                *["--out-dir2", data_entries_dir],
-                *["--summary-file", summary_file],
-                *["--sim-num", self._cfg.mcts.sim_num],
-                *["--batch-size", self._cfg.self_play.batch_size],
-                *["--explore-factor", self._cfg.mcts.explore_factor],
-                *["--temperature-policy", temperature_policy_to_str(self._cfg.self_play.temperature_policy)],
-                *["--prior-noise-alpha", self._cfg.mcts.prior_noise_alpha],
-                *["--prior-noise-epsilon", self._cfg.mcts.prior_noise_epsilon],
-                *["--threads", self._cfg.self_play.threads],
-                *["--device", self._cfg.device],
-                *["--cache-size", self._cfg.mcts.cache_size],
-            ),
+                f"--model1-path={model_path}",
+                f"--model2-path={model_path}",
+                f"--games-num={self._cfg.self_play.games_num}",
+                f"--out-dir1={data_entries_dir}",
+                f"--out-dir2={data_entries_dir}",
+                f"--summary-file={summary_file}",
+                f"--sim-num={self._cfg.mcts.sim_num}",
+                f"--batch-size={self._cfg.self_play.batch_size}",
+                f"--explore-factor={self._cfg.mcts.explore_factor}",
+                f"--temperature-policy={temperature_policy_to_str(self._cfg.self_play.temperature_policy)}",
+                f"--prior-noise-alpha={self._cfg.mcts.prior_noise_alpha}",
+                f"--prior-noise-epsilon={self._cfg.mcts.prior_noise_epsilon}",
+                f"--threads={self._cfg.self_play.threads}",
+                f"--device={self._cfg.device}",
+                f"--cache-size={self._cfg.mcts.cache_size}",
+            ],
             cwd=SELF_PLAY_CRATE_DIR,
         )
         self._metrics["self_play_duration"] = time.time() - self_play_start_time
@@ -313,23 +314,23 @@ class TrainProcess:
             compare_res_file = Path(tmp_dir) / "compare_result.json"
 
             subprocess.check_call(
-                prepare_cmd(
+                [
                     self._self_play_exec_path,
-                    *["--model1-path", model1_path],
-                    *["--model2-path", model2_path],
-                    *["--games-num", self._cfg.model_compare.games_num],
-                    *["--out-dir1", model1_games_dir],
-                    *["--out-dir2", model2_games_dir],
-                    *["--summary-file", compare_res_file],
-                    *["--sim-num", self._cfg.mcts.sim_num],
-                    *["--batch-size", self._cfg.self_play.batch_size],
-                    *["--explore-factor", self._cfg.mcts.explore_factor],
-                    *["--temperature-policy", temperature_policy_to_str(self._cfg.model_compare.temperature_policy)],
-                    *["--prior-noise-alpha", self._cfg.mcts.prior_noise_alpha],
-                    *["--prior-noise-epsilon", self._cfg.mcts.prior_noise_epsilon],
-                    *["--threads", self._cfg.model_compare.threads],
-                    *["--device", self._cfg.device],
-                ),
+                    f"--model1-path={model1_path}",
+                    f"--model2-path={model2_path}",
+                    f"--games-num={self._cfg.model_compare.games_num}",
+                    f"--out-dir1={model1_games_dir}",
+                    f"--out-dir2={model2_games_dir}",
+                    f"--summary-file={compare_res_file}",
+                    f"--sim-num={self._cfg.mcts.sim_num}",
+                    f"--batch-size={self._cfg.self_play.batch_size}",
+                    f"--explore-factor={self._cfg.mcts.explore_factor}",
+                    f"--temperature-policy={temperature_policy_to_str(self._cfg.model_compare.temperature_policy)}",
+                    f"--prior-noise-alpha={self._cfg.mcts.prior_noise_alpha}",
+                    f"--prior-noise-epsilon={self._cfg.mcts.prior_noise_epsilon}",
+                    f"--threads={self._cfg.model_compare.threads}",
+                    f"--device={self._cfg.device}",
+                ],
                 cwd=SELF_PLAY_CRATE_DIR,
             )
             with open(compare_res_file, "r") as res_file:
@@ -345,39 +346,61 @@ class TrainProcess:
         model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(random.randint(0, 1 << 16))
         model_path = self._cfg.models_dir / f"model_{model_time}"
 
+        # Save model as state dict
+        torch.save(model.state_dict(), model_path.with_suffix(".pt"))
+
+        #### Export model for self play
         model.eval()
         with torch.no_grad():
-            # Save model as state dict
-            torch.save(model.state_dict(), model_path.with_suffix(".pt"))
-
-            #### Export model for self play
             # Export using a batch size different from training
             self_play_input_shape = self._game.model_input_shape(self._net_type)
             self_play_input_shape = (self._cfg.self_play.batch_size,) + self_play_input_shape[1:]
             self_play_sample_input = torch.randn(self_play_input_shape)
 
-            # Save model in torch.jit format
-            traced_model = torch.jit.trace(model, self_play_sample_input)
-            torch.jit.save(traced_model, model_path.with_suffix(".jit"))
+            match self._cfg.inference.engine:
+                case "torch-py":  # torch.jit
+                    traced_model = torch.jit.trace(model, self_play_sample_input)
+                    torch.jit.save(traced_model, model_path.with_suffix(".jit"))
+                case "executorch" | "executorch-xnnpack":  # executorch
+                    with warnings.catch_warnings():
+                        exported_model = torch.export.export(model, (self_play_sample_input,))
+                        edge_program = executorch.exir.to_edge(exported_model)
 
-            # Save model in executorch format
-            et_program = to_edge_transform_and_lower(
-                torch.export.export(model, (self_play_sample_input,)),
-                # partitioner=[XnnpackPartitioner()] # TODO
-            ).to_executorch()
-            with open(model_path.with_suffix(".pte"), "wb") as f:
-                f.write(et_program.buffer)
+                        # use_fp16 = True
+                        # compile_specs = [CompileSpec("use_fp16", bytes([use_fp16]))]
+                        # use_partitioner = True
+                        # if use_partitioner:
+                        #     et_model = et_model.to_backend(MPSPartitioner(compile_specs=compile_specs))
+                        # else:
+                        #     et_model = to_backend(MPSBackend.__name__, et_model.exported_program(), compile_specs)
+                        #     et_model = export_to_edge(et_model, (self_play_sample_input,))
+                        # et_program = et_model.to_executorch(config=ExecutorchBackendConfig(extract_delegate_segments=False))
+                        # et_program = to_edge_transform_and_lower(
+                        #     et_model,
+                        #     # partitioner=[MPSPartitioner(compile_specs=[CompileSpec("use_fp16", bytes([True]))])],
+                        #     partitioner=[XnnpackPartitioner()]
+                        # ).to_executorch()
 
-            # Save model in ONNX format
-            with ONNX_EXPORT_LOCK:
-                torch.onnx.export(
-                    model,
-                    self_play_sample_input,
-                    model_path.with_suffix(".onnx"),
-                    verbose=False,
-                    input_names=["planes"],
-                    output_names=["policy", "value"],
-                )
+                        if self._cfg.inference.engine == "executorch-xnnpack":
+                            edge_program = edge_program.to_backend(XnnpackPartitioner())
+
+                        et_program = edge_program.to_executorch()
+
+                        with open(model_path.with_suffix(".pte"), "wb") as f:
+                            et_program.write_to_file(f)
+                case "onnx-tract" | "onnx-ort":  # onnx
+                    with ONNX_EXPORT_LOCK:
+                        torch.onnx.export(
+                            model,
+                            self_play_sample_input,
+                            model_path.with_suffix(".onnx"),
+                            verbose=False,
+                            input_names=["planes"],
+                            output_names=["policy", "value"],
+                        )
+                    pass
+                case _:
+                    raise ValueError(f"Unsupported inference engine: {self._cfg.inference.engine}")
 
         return model_path
 
@@ -390,15 +413,30 @@ class TrainProcess:
     def _compile_selfplay_exe(self):
         logging.info("Building Self-play executable...")
         profile = "dev" if self._cfg.debug else "release"
+        env = os.environ.copy()
+        match self._cfg.inference.engine:
+            case "torch-py":
+                features = ["torch-python"]
+            case "executorch":
+                features = ["executorch"]
+            case "executorch-xnnpack":
+                features = ["executorch"]
+                env["CATTUS_XNNPACK"] = "1"
+            case "onnx-tract":
+                features = ["onnx-tract"]
+            case "onnx-ort":
+                features = ["onnx-ort"]
         subprocess.check_call(
-            prepare_cmd(
+            [
                 "cargo",
                 "build",
                 *["--profile", profile],
+                *["--features", ",".join(features)],
                 "-q",
                 *["--bin", self._self_play_exec_name],
-            ),
+            ],
             cwd=SELF_PLAY_CRATE_DIR,
+            env=env,
         )
         self._self_play_exec_path = (
             SELF_PLAY_CRATE_DIR / "target" / ("debug" if self._cfg.debug else "release") / self._self_play_exec_name
@@ -496,9 +534,3 @@ def dic2str(d, indent=0):
         else:
             s += "  " * indent + str(key) + ": \t" + str(value) + "\n"
     return s
-
-
-def prepare_cmd(*args):
-    if None in args:
-        raise ValueError(f"CMD error: None at index {args.index(None)}")
-    return " ".join([str(arg) for arg in args])

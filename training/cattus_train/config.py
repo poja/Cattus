@@ -42,6 +42,11 @@ class TrainingConfig:
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
+class InferenceConfig:
+    engine: Literal["torch-py", "executorch", "executorch-xnnpack", "onnx-tract", "onnx-ort"]
+
+
+@dataclass(config={"extra": "forbid"}, kw_only=True)
 class ModelCompareConfig:
     games_num: int
     temperature_policy: list[list[int | float]]
@@ -65,4 +70,5 @@ class Config:
     iterations: int
     mcts: MctsConfig
     training: TrainingConfig
+    inference: InferenceConfig
     debug: bool

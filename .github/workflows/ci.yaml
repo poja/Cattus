@@ -48,25 +48,27 @@ jobs:
 
       # Engine
       - name: Build Rust
-        run: cargo build
+        run: cargo build --all-features
         working-directory: engine
       - name: Rust Clippy linter
         uses: auguwu/clippy-action@1.4.0
         with:
           working-directory: engine
+          check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Rust tests
-        run: cargo test
+        run: cargo test --all-features
         working-directory: engine
 
       # Self-play crate
       - name: Build Rust
-        run: cargo build
+        run: cargo build --all-features
         working-directory: training/self-play
       - name: Rust Clippy linter
         uses: auguwu/clippy-action@1.4.0
         with:
           working-directory: training/self-play
+          check-args: --all-features
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # Training package

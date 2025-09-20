@@ -141,3 +141,8 @@ model_compare:
 
     # Number of threads used to during model comparison
     threads: 8
+
+# Inference engine configuration
+inference:
+    # Inference engine to use
+    engine: "executorch-xnnpack"

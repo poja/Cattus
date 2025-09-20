@@ -23,7 +23,7 @@ struct Args {
 }
 
 fn main() -> std::io::Result<()> {
-    cattus::util::init_globals();
+    cattus::util::init_globals(None);
 
     let args = Args::parse();
     match args.game.as_str() {
