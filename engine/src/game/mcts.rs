@@ -14,18 +14,18 @@ use crate::game::utils::Callback;
 /// Monte Carlo Tree Search (MCTS) implementation
 
 #[derive(Clone, Copy)]
-struct MCTSNode<Position: GamePosition> {
+struct MctsNode<Position: GamePosition> {
     position: Position,
 }
 
-impl<Position: GamePosition> MCTSNode<Position> {
+impl<Position: GamePosition> MctsNode<Position> {
     pub fn from_position(position: Position) -> Self {
         Self { position }
     }
 }
 
 #[derive(Clone, Copy)]
-struct MCTSEdge<Move: GameMove> {
+struct MctsEdge<Move: GameMove> {
     m: Move,
 
     /// The initial score calculated for this node.
@@ -39,7 +39,7 @@ struct MCTSEdge<Move: GameMove> {
     score_w: f32,
 }
 
-impl<Move: GameMove> MCTSEdge<Move> {
+impl<Move: GameMove> MctsEdge<Move> {
     pub fn new(m: Move, init_score: f32) -> Self {
         Self {
             m,
@@ -52,8 +52,8 @@ impl<Move: GameMove> MCTSEdge<Move> {
 
 pub type MctsSearchDurationCallback = Box<dyn Callback<Duration> + Sync + Send>;
 
-pub struct MCTSPlayer<Game: IGame> {
-    search_tree: DiGraph<MCTSNode<Game::Position>, MCTSEdge<Game::Move>>,
+pub struct MctsPlayer<Game: IGame> {
+    search_tree: DiGraph<MctsNode<Game::Position>, MctsEdge<Game::Move>>,
     root: Option<NodeIndex>,
 
     sim_num: u32,
@@ -66,7 +66,7 @@ pub struct MCTSPlayer<Game: IGame> {
     search_duration_callback: Option<MctsSearchDurationCallback>,
 }
 
-impl<Game: IGame> MCTSPlayer<Game> {
+impl<Game: IGame> MctsPlayer<Game> {
     pub fn new(sim_num: u32, value_func: Arc<dyn ValueFunction<Game>>) -> Self {
         Self::new_custom(sim_num, std::f32::consts::SQRT_2, 0.0, 0.0, value_func)
     }
@@ -201,7 +201,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
         }
     }
 
-    fn calc_selection_heuristic(&self, edge: &MCTSEdge<Game::Move>, parent_simcount: u32) -> f32 {
+    fn calc_selection_heuristic(&self, edge: &MctsEdge<Game::Move>, parent_simcount: u32) -> f32 {
         let exploit = if edge.simulations_n == 0 {
             0.0
         } else {
@@ -233,9 +233,9 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
         for (m, p) in per_move_init_score {
             let leaf_pos = parent_pos.get_moved_position(m);
-            let leaf_id = self.search_tree.add_node(MCTSNode::from_position(leaf_pos));
+            let leaf_id = self.search_tree.add_node(MctsNode::from_position(leaf_pos));
             self.search_tree
-                .add_edge(parent_id, leaf_id, MCTSEdge::new(m, p));
+                .add_edge(parent_id, leaf_id, MctsEdge::new(m, p));
         }
     }
 
@@ -337,7 +337,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
 
         if self.root.is_none() {
             // Init search tree with one root node
-            let root = MCTSNode::from_position(*position);
+            let root = MctsNode::from_position(*position);
             self.root = Some(self.search_tree.add_node(root));
         }
         assert!(position == &self.search_tree[self.root.unwrap()].position);
@@ -448,7 +448,7 @@ impl<Game: IGame> MCTSPlayer<Game> {
     }
 }
 
-impl<Game: IGame> GamePlayer<Game> for MCTSPlayer<Game> {
+impl<Game: IGame> GamePlayer<Game> for MctsPlayer<Game> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
         let moves = self.calc_moves_probabilities(position);
         self.choose_move_from_probabilities(&moves)
