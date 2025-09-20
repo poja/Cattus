@@ -467,6 +467,7 @@ impl IGame for ChessGame {
     type Bitboard = ChessBitboard;
     const BOARD_SIZE: usize = 8;
     const MOVES_NUM: usize = 1880;
+    const REPETITION_LIMIT: Option<usize> = Some(3);
 
     fn new() -> Self {
         Self::new_from_pos(Self::Position::new())
@@ -504,7 +505,7 @@ impl IGame for ChessGame {
 
         let repeat = self.seen_positions.entry(self.pos).or_insert(0);
         *repeat += 1;
-        if *repeat >= Self::get_repetition_limit().unwrap() {
+        if *repeat as usize >= Self::REPETITION_LIMIT.unwrap() {
             self.repetition_detected = true;
         }
     }
@@ -523,10 +524,6 @@ impl IGame for ChessGame {
             self.play_single_turn(next_move);
         }
         (self.pos, self.get_winner())
-    }
-
-    fn get_repetition_limit() -> Option<u32> {
-        Some(3)
     }
 }
 

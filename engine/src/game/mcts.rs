@@ -96,7 +96,7 @@ impl<Game: IGame> MctsPlayer<Game> {
     }
 
     fn detect_repetition(&self, trajectory: &[EdgeIndex]) -> bool {
-        let repetition_limit = Game::get_repetition_limit();
+        let repetition_limit = Game::REPETITION_LIMIT;
         if repetition_limit.is_none() || trajectory.is_empty() {
             return false;
         }

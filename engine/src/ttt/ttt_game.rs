@@ -292,6 +292,7 @@ impl IGame for TttGame {
     type Bitboard = TttBitboard;
     const BOARD_SIZE: usize = 3;
     const MOVES_NUM: usize = Self::BOARD_SIZE * Self::BOARD_SIZE;
+    const REPETITION_LIMIT: Option<usize> = None;
 
     fn new() -> Self {
         Self {
@@ -335,9 +336,5 @@ impl IGame for TttGame {
             self.play_single_turn(next_move)
         }
         (self.pos, self.get_winner())
-    }
-
-    fn get_repetition_limit() -> Option<u32> {
-        None
     }
 }

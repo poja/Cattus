@@ -388,6 +388,7 @@ impl<const BOARD_SIZE: usize> IGame for HexGame<BOARD_SIZE> {
     type Bitboard = HexBitboard<BOARD_SIZE>;
     const BOARD_SIZE: usize = BOARD_SIZE;
     const MOVES_NUM: usize = BOARD_SIZE * BOARD_SIZE;
+    const REPETITION_LIMIT: Option<usize> = None;
 
     fn new() -> Self {
         Self {
@@ -431,9 +432,5 @@ impl<const BOARD_SIZE: usize> IGame for HexGame<BOARD_SIZE> {
             self.play_single_turn(next_move)
         }
         (self.pos, self.get_winner())
-    }
-
-    fn get_repetition_limit() -> Option<u32> {
-        None
     }
 }
