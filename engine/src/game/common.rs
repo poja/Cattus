@@ -3,8 +3,6 @@ use rand::prelude::*;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
-use crate::game::self_play::DataEntry;
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum GameColor {
     Player1,
@@ -56,8 +54,6 @@ pub trait IGame: Sized {
         player2: &mut dyn GamePlayer<Self>,
     ) -> (Self::Position, Option<GameColor>);
     fn get_repetition_limit() -> Option<u32>;
-
-    fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>>;
 }
 
 pub trait GamePosition: Clone + Copy + Eq + Hash + Send + Sync {

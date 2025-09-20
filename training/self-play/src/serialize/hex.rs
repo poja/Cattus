@@ -1,9 +1,10 @@
 use std::path::Path;
 
-use crate::game::common::{GameColor, GamePosition};
-use crate::game::self_play::{DataEntry, DataSerializer, SerializerBase};
-use crate::hex::hex_game::HexGame;
-use crate::hex::net::common::{self};
+use crate::self_play::{DataEntry, SerializerBase};
+use crate::serialize::DataSerializer;
+use cattus::game::common::{GameColor, GamePosition};
+use cattus::hex::hex_game::HexGame;
+use cattus::hex::net::common::{self};
 use itertools::Itertools;
 
 pub struct HexSerializer;

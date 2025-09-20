@@ -7,7 +7,6 @@ use std::str::FromStr;
 
 use crate::game::common::GameBitboard;
 use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
-use crate::game::self_play::DataEntry;
 
 fn err_to_str(err: chess::Error) -> String {
     match err {
@@ -59,7 +58,7 @@ impl ChessMove {
                     return Err(format!(
                         "Unknown promotion char: '{}' in lan str '{}'",
                         c, move_str
-                    ))
+                    ));
                 }
             })
         } else {
@@ -91,6 +90,11 @@ impl ChessMove {
         } else {
             self.m.get_source().to_index() * 64 + self.m.get_dest().to_index()
         }
+    }
+}
+impl AsRef<chess::ChessMove> for ChessMove {
+    fn as_ref(&self) -> &chess::ChessMove {
+        &self.m
     }
 }
 impl GameMove for ChessMove {
@@ -168,8 +172,8 @@ impl GameBitboard for ChessBitboard {
 
 #[derive(Copy, Clone)]
 pub struct ChessPosition {
-    board: chess::Board,
-    fifty_rule_count: u8,
+    pub board: chess::Board,
+    pub fifty_rule_count: u8,
 }
 
 impl ChessPosition {
@@ -523,107 +527,6 @@ impl IGame for ChessGame {
 
     fn get_repetition_limit() -> Option<u32> {
         Some(3)
-    }
-
-    fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>> {
-        let transform =
-            |e: &DataEntry<Self>, transform_sq: &dyn Fn(chess::Square) -> chess::Square| {
-                let b = &e.pos.board;
-                let pieces = b
-                    .combined()
-                    .into_iter()
-                    .map(|square| {
-                        (
-                            transform_sq(square),
-                            b.piece_on(square).unwrap(),
-                            b.color_on(square).unwrap(),
-                        )
-                    })
-                    .collect_vec();
-
-                let board = chess::Board::try_from(chess::BoardBuilder::setup(
-                    pieces.iter(),
-                    b.side_to_move(),
-                    b.castle_rights(chess::Color::White),
-                    b.castle_rights(chess::Color::Black),
-                    b.en_passant().map(|square| transform_sq(square).get_file()),
-                ))
-                .expect("unable to transform board");
-                let pos = ChessPosition {
-                    board,
-                    fifty_rule_count: e.pos.fifty_rule_count,
-                };
-
-                let probs = e
-                    .probs
-                    .iter()
-                    .map(|(m, p)| {
-                        (
-                            ChessMove::new(chess::ChessMove::new(
-                                transform_sq(m.m.get_source()),
-                                transform_sq(m.m.get_dest()),
-                                m.m.get_promotion(),
-                            )),
-                            *p,
-                        )
-                    })
-                    .collect_vec();
-
-                let winner = e.winner;
-                DataEntry { pos, probs, winner }
-            };
-
-        let rows_mirror = |e: &DataEntry<Self>| {
-            transform(e, &|sq| {
-                chess::Square::make_square(
-                    chess::Rank::from_index(ChessGame::BOARD_SIZE - 1 - sq.get_rank().to_index()),
-                    sq.get_file(),
-                )
-            })
-        };
-        let columns_mirror = |e: &DataEntry<Self>| {
-            transform(e, &|sq| {
-                chess::Square::make_square(
-                    sq.get_rank(),
-                    chess::File::from_index(ChessGame::BOARD_SIZE - 1 - sq.get_file().to_index()),
-                )
-            })
-        };
-        let diagonal_mirror = |e: &DataEntry<Self>| {
-            transform(e, &|sq| {
-                chess::Square::make_square(
-                    chess::Rank::from_index(sq.get_file().to_index()),
-                    chess::File::from_index(sq.get_rank().to_index()),
-                )
-            })
-        };
-
-        let b = &entry.pos.board;
-        let has_castle_rights = b.castle_rights(chess::Color::White)
-            != chess::CastleRights::NoRights
-            || b.castle_rights(chess::Color::Black) != chess::CastleRights::NoRights;
-        let has_pawns = b.pieces(chess::Piece::Pawn).0 != 0;
-
-        /*
-         * Use all combination of the basic transforms:
-         * original
-         * rows mirror
-         * columns mirror
-         * diagonal mirror
-         * rows + columns = rotate 180
-         * rows + diagonal = rotate 90
-         * columns + diagonal = rotate 90 (other direction)
-         * row + columns + diagonal = other diagonal mirror
-         */
-        let mut entries = vec![entry];
-        if !has_castle_rights {
-            entries.extend(entries.iter().map(columns_mirror).collect_vec());
-        }
-        if !has_castle_rights && !has_pawns {
-            entries.extend(entries.iter().map(rows_mirror).collect_vec());
-            entries.extend(entries.iter().map(diagonal_mirror).collect_vec());
-        }
-        entries
     }
 }
 

@@ -10,6 +10,7 @@ ndarray = "0.16"
 itertools = "0.14"
 clap = { version = "4.5", features = ["derive"] }
 json = "0.12.*"
+log = "0.4"
 
 
 [features]

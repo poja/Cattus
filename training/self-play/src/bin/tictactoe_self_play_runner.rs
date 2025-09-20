@@ -1,10 +1,10 @@
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::mcts::ValueFunction;
-use cattus::game::self_play_cmd::{INNetworkBuilder, run_main};
-use cattus::ttt::net::serializer::TttSerializer;
 use cattus::ttt::net::two_headed_net::TwoHeadedNet;
 use cattus::ttt::ttt_game::TttGame;
 use cattus::util::Device;
+use cattus_self_play::self_play_cmd::{INNetworkBuilder, run_main};
+use cattus_self_play::serialize::ttt::TttSerializer;
 use std::path::Path;
 use std::sync::Arc;
 

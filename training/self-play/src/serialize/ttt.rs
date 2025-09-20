@@ -2,10 +2,11 @@ use std::path::Path;
 
 use itertools::Itertools;
 
-use crate::game::common::{GameColor, GamePosition};
-use crate::game::self_play::{DataEntry, DataSerializer, SerializerBase};
-use crate::ttt::net::common;
-use crate::ttt::ttt_game::TttGame;
+use crate::self_play::{DataEntry, SerializerBase};
+use crate::serialize::DataSerializer;
+use cattus::game::common::{GameColor, GamePosition};
+use cattus::ttt::net::common;
+use cattus::ttt::ttt_game::TttGame;
 
 pub struct TttSerializer;
 impl DataSerializer<TttGame> for TttSerializer {

@@ -1,3 +1,7 @@
+use cattus::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
+use cattus::game::common::{GameBitboard, IGame};
+use cattus::hex::hex_game::{HexBitboard, HexGame, HexMove, HexPosition};
+use cattus::ttt::ttt_game::{TttBitboard, TttGame, TttMove, TttPosition};
 use itertools::Itertools;
 use std::fs;
 use std::ops::Deref;
@@ -6,10 +10,12 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
-use crate::game::mcts::MctsPlayer;
-use crate::game::net;
-use crate::util::Builder;
+use cattus::game::common::{GameColor, GameMove, GamePosition};
+use cattus::game::mcts::MctsPlayer;
+use cattus::game::net;
+use cattus::util::Builder;
+
+use crate::serialize::DataSerializer;
 
 pub struct DataEntry<Game: IGame> {
     pub pos: Game::Position,
@@ -25,10 +31,6 @@ impl<Game: IGame> Clone for DataEntry<Game> {
             winner: self.winner,
         }
     }
-}
-
-pub trait DataSerializer<Game: IGame>: Sync + Send {
-    fn serialize_data_entry(&self, entry: DataEntry<Game>, filename: &Path) -> std::io::Result<()>;
 }
 
 pub struct SerializerBase;
@@ -79,7 +81,7 @@ pub struct SelfPlayRunner<Game: IGame> {
     thread_num: usize,
 }
 
-impl<Game: IGame + 'static> SelfPlayRunner<Game> {
+impl<Game: GameExt + 'static> SelfPlayRunner<Game> {
     pub fn new(
         player1_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
         player2_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
@@ -162,7 +164,7 @@ struct SelfPlayWorker<Game: IGame> {
     games_num: usize,
 }
 
-impl<Game: IGame> SelfPlayWorker<Game> {
+impl<Game: GameExt> SelfPlayWorker<Game> {
     #[allow(clippy::too_many_arguments)]
     fn new(
         player1_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
@@ -344,5 +346,230 @@ impl TemperatureScheduler {
             }
         }
         self.last_temperature
+    }
+}
+
+pub trait GameExt: IGame {
+    fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>>;
+}
+impl GameExt for TttGame {
+    fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>> {
+        let transform = |e: &DataEntry<Self>, transform_sq: &dyn Fn(usize) -> usize| {
+            let (board_x, board_o) = [e.pos.board_x, e.pos.board_o]
+                .iter()
+                .map(|b| {
+                    let mut bt = TttBitboard::new();
+                    for idx in 0..TttGame::BOARD_SIZE * TttGame::BOARD_SIZE {
+                        bt.set(transform_sq(idx), b.get(idx));
+                    }
+                    bt
+                })
+                .collect_tuple()
+                .unwrap();
+            let pos = TttPosition::from_bitboards(board_x, board_o, e.pos.get_turn());
+
+            let probs = e
+                .probs
+                .iter()
+                .map(|(m, p)| (TttMove::from_idx(transform_sq(m.to_idx())), *p))
+                .collect_vec();
+
+            let winner = e.winner;
+            DataEntry { pos, probs, winner }
+        };
+
+        let rows_mirror = |e: &DataEntry<Self>| {
+            transform(e, &|idx| {
+                let (r, c) = (idx / TttGame::BOARD_SIZE, idx % TttGame::BOARD_SIZE);
+                let rt = TttGame::BOARD_SIZE - 1 - r;
+                let ct = c;
+                rt * TttGame::BOARD_SIZE + ct
+            })
+        };
+        let columns_mirror = |e: &DataEntry<Self>| {
+            transform(e, &|idx| {
+                let (r, c) = (idx / TttGame::BOARD_SIZE, idx % TttGame::BOARD_SIZE);
+                let rt = r;
+                let ct = TttGame::BOARD_SIZE - 1 - c;
+                rt * TttGame::BOARD_SIZE + ct
+            })
+        };
+        let diagonal_mirror = |e: &DataEntry<Self>| {
+            transform(e, &|idx| {
+                let (r, c) = (idx / TttGame::BOARD_SIZE, idx % TttGame::BOARD_SIZE);
+                let rt = c;
+                let ct = r;
+                rt * TttGame::BOARD_SIZE + ct
+            })
+        };
+
+        /*
+         * Use all combination of the basic transforms:
+         * original
+         * rows mirror
+         * columns mirror
+         * diagonal mirror
+         * rows + columns = rotate 180
+         * rows + diagonal = rotate 90
+         * columns + diagonal = rotate 90 (other direction)
+         * row + columns + diagonal = other diagonal mirror
+         */
+        let mut entries = vec![entry];
+        entries.extend(entries.iter().map(rows_mirror).collect_vec());
+        entries.extend(entries.iter().map(columns_mirror).collect_vec());
+        entries.extend(entries.iter().map(diagonal_mirror).collect_vec());
+        entries
+    }
+}
+
+impl<const BOARD_SIZE: usize> GameExt for HexGame<BOARD_SIZE> {
+    fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>> {
+        let transform = |e: &DataEntry<Self>, transform_sq: &dyn Fn(usize) -> usize| {
+            let (board_red, board_blue) = [e.pos.board_red, e.pos.board_blue]
+                .iter()
+                .map(|b| {
+                    let mut bt = HexBitboard::new();
+                    for idx in 0..BOARD_SIZE * BOARD_SIZE {
+                        bt.set(transform_sq(idx), b.get(idx));
+                    }
+                    bt
+                })
+                .collect_tuple()
+                .unwrap();
+            let pos = HexPosition::new_from_board(board_red, board_blue, e.pos.get_turn());
+
+            let probs = e
+                .probs
+                .iter()
+                .map(|(m, p)| (HexMove::from_idx(transform_sq(m.to_idx())), *p))
+                .collect_vec();
+
+            let winner = e.winner;
+            DataEntry { pos, probs, winner }
+        };
+
+        let rotate_180 = |e: &DataEntry<Self>| {
+            transform(e, &|idx| {
+                let (r, c) = (idx / BOARD_SIZE, idx % BOARD_SIZE);
+                let rt = BOARD_SIZE - 1 - r;
+                let ct = BOARD_SIZE - 1 - c;
+                rt * BOARD_SIZE + ct
+            })
+        };
+
+        let mut entries = vec![entry];
+        entries.extend(entries.iter().map(rotate_180).collect_vec());
+        entries
+    }
+}
+
+impl GameExt for ChessGame {
+    fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>> {
+        let transform = |e: &DataEntry<Self>,
+                         transform_sq: &dyn Fn(
+            cattus::chess::chess::Square,
+        ) -> cattus::chess::chess::Square| {
+            let b = &e.pos.board;
+            let pieces = b
+                .combined()
+                .into_iter()
+                .map(|square| {
+                    (
+                        transform_sq(square),
+                        b.piece_on(square).unwrap(),
+                        b.color_on(square).unwrap(),
+                    )
+                })
+                .collect_vec();
+
+            let board =
+                cattus::chess::chess::Board::try_from(cattus::chess::chess::BoardBuilder::setup(
+                    pieces.iter(),
+                    b.side_to_move(),
+                    b.castle_rights(cattus::chess::chess::Color::White),
+                    b.castle_rights(cattus::chess::chess::Color::Black),
+                    b.en_passant().map(|square| transform_sq(square).get_file()),
+                ))
+                .expect("unable to transform board");
+            let pos = ChessPosition {
+                board,
+                fifty_rule_count: e.pos.fifty_rule_count,
+            };
+
+            let probs = e
+                .probs
+                .iter()
+                .map(|(m, p)| {
+                    (
+                        ChessMove::new(cattus::chess::chess::ChessMove::new(
+                            transform_sq(m.as_ref().get_source()),
+                            transform_sq(m.as_ref().get_dest()),
+                            m.as_ref().get_promotion(),
+                        )),
+                        *p,
+                    )
+                })
+                .collect_vec();
+
+            let winner = e.winner;
+            DataEntry { pos, probs, winner }
+        };
+
+        let rows_mirror = |e: &DataEntry<Self>| {
+            transform(e, &|sq| {
+                cattus::chess::chess::Square::make_square(
+                    cattus::chess::chess::Rank::from_index(
+                        ChessGame::BOARD_SIZE - 1 - sq.get_rank().to_index(),
+                    ),
+                    sq.get_file(),
+                )
+            })
+        };
+        let columns_mirror = |e: &DataEntry<Self>| {
+            transform(e, &|sq| {
+                cattus::chess::chess::Square::make_square(
+                    sq.get_rank(),
+                    cattus::chess::chess::File::from_index(
+                        ChessGame::BOARD_SIZE - 1 - sq.get_file().to_index(),
+                    ),
+                )
+            })
+        };
+        let diagonal_mirror = |e: &DataEntry<Self>| {
+            transform(e, &|sq| {
+                cattus::chess::chess::Square::make_square(
+                    cattus::chess::chess::Rank::from_index(sq.get_file().to_index()),
+                    cattus::chess::chess::File::from_index(sq.get_rank().to_index()),
+                )
+            })
+        };
+
+        let b = &entry.pos.board;
+        let has_castle_rights = b.castle_rights(cattus::chess::chess::Color::White)
+            != cattus::chess::chess::CastleRights::NoRights
+            || b.castle_rights(cattus::chess::chess::Color::Black)
+                != cattus::chess::chess::CastleRights::NoRights;
+        let has_pawns = b.pieces(cattus::chess::chess::Piece::Pawn).0 != 0;
+
+        /*
+         * Use all combination of the basic transforms:
+         * original
+         * rows mirror
+         * columns mirror
+         * diagonal mirror
+         * rows + columns = rotate 180
+         * rows + diagonal = rotate 90
+         * columns + diagonal = rotate 90 (other direction)
+         * row + columns + diagonal = other diagonal mirror
+         */
+        let mut entries = vec![entry];
+        if !has_castle_rights {
+            entries.extend(entries.iter().map(columns_mirror).collect_vec());
+        }
+        if !has_castle_rights && !has_pawns {
+            entries.extend(entries.iter().map(rows_mirror).collect_vec());
+            entries.extend(entries.iter().map(diagonal_mirror).collect_vec());
+        }
+        entries
     }
 }

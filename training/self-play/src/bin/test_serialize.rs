@@ -1,13 +1,14 @@
 use std::path::{Path, PathBuf};
 
 use cattus::chess::chess_game::ChessPosition;
-use cattus::chess::net::serializer::ChessSerializer;
 use cattus::game::common::{GameColor, GamePosition, IGame};
-use cattus::game::self_play::{DataEntry, DataSerializer};
 use cattus::hex::hex_game::{HexGame, HexPosition};
-use cattus::hex::net::serializer::HexSerializer;
-use cattus::ttt::net::serializer::TttSerializer;
 use cattus::ttt::ttt_game::TttPosition;
+use cattus_self_play::self_play::DataEntry;
+use cattus_self_play::serialize::DataSerializer;
+use cattus_self_play::serialize::chess::ChessSerializer;
+use cattus_self_play::serialize::hex::HexSerializer;
+use cattus_self_play::serialize::ttt::TttSerializer;
 use clap::Parser;
 use itertools::Itertools;
 

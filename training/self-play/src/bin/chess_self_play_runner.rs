@@ -1,10 +1,10 @@
 use cattus::chess::chess_game::ChessGame;
 use cattus::chess::net::net_onnx_two_headed::TwoHeadedNet;
-use cattus::chess::net::serializer::ChessSerializer;
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::mcts::ValueFunction;
-use cattus::game::self_play_cmd::{INNetworkBuilder, run_main};
 use cattus::util::Device;
+use cattus_self_play::self_play_cmd::{INNetworkBuilder, run_main};
+use cattus_self_play::serialize::chess::ChessSerializer;
 use std::path::Path;
 use std::sync::Arc;
 

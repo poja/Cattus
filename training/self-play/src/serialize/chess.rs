@@ -2,11 +2,12 @@ use itertools::Itertools;
 use std::fs;
 use std::path::Path;
 
-use crate::chess::chess_game::ChessGame;
-use crate::chess::net::common;
-use crate::game::common::GameMove;
-use crate::game::common::{GameColor, GamePosition};
-use crate::game::self_play::{DataEntry, DataSerializer};
+use crate::self_play::DataEntry;
+use crate::serialize::DataSerializer;
+use cattus::chess::chess_game::ChessGame;
+use cattus::chess::net::common;
+use cattus::game::common::GameMove;
+use cattus::game::common::{GameColor, GamePosition};
 
 pub struct ChessSerializer;
 impl DataSerializer<ChessGame> for ChessSerializer {

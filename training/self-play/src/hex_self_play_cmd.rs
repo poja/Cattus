@@ -1,10 +1,10 @@
-use crate::game::cache::ValueFuncCache;
-use crate::game::mcts::ValueFunction;
-use crate::game::self_play_cmd::{self, INNetworkBuilder};
-use crate::hex::hex_game::HexGame;
-use crate::hex::net::serializer::HexSerializer;
-use crate::hex::net::two_headed_net::TwoHeadedNet;
-use crate::util::Device;
+use crate::self_play_cmd::{self, INNetworkBuilder};
+use crate::serialize::hex::HexSerializer;
+use cattus::game::cache::ValueFuncCache;
+use cattus::game::mcts::ValueFunction;
+use cattus::hex::hex_game::HexGame;
+use cattus::hex::net::two_headed_net::TwoHeadedNet;
+use cattus::util::Device;
 use std::path::Path;
 use std::sync::Arc;
 
