@@ -41,6 +41,7 @@ pub trait IGame: Sized {
     type Bitboard: GameBitboard<Game = Self>;
     const BOARD_SIZE: usize;
     const MOVES_NUM: usize;
+    const REPETITION_LIMIT: Option<usize>;
 
     fn new() -> Self;
     fn new_from_pos(pos: Self::Position) -> Self;
@@ -53,7 +54,6 @@ pub trait IGame: Sized {
         player1: &mut dyn GamePlayer<Self>,
         player2: &mut dyn GamePlayer<Self>,
     ) -> (Self::Position, Option<GameColor>);
-    fn get_repetition_limit() -> Option<u32>;
 }
 
 pub trait GamePosition: Clone + Copy + Eq + Hash + Send + Sync {
