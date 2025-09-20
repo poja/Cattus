@@ -1,6 +1,6 @@
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::IGame;
-use crate::game::mcts::{MCTSPlayer, ValueFunction};
+use crate::game::mcts::{MctsPlayer, ValueFunction};
 use crate::game::self_play::{DataSerializer, SelfPlayRunner};
 use crate::game::utils::Callback;
 use crate::util::{self, Builder, Device};
@@ -136,9 +136,9 @@ impl<Game: IGame> PlayerBuilder<Game> {
     }
 }
 
-impl<Game: IGame> Builder<MCTSPlayer<Game>> for PlayerBuilder<Game> {
-    fn build(&self) -> MCTSPlayer<Game> {
-        let mut player = MCTSPlayer::new_custom(
+impl<Game: IGame> Builder<MctsPlayer<Game>> for PlayerBuilder<Game> {
+    fn build(&self) -> MctsPlayer<Game> {
+        let mut player = MctsPlayer::new_custom(
             self.sim_num,
             self.explore_factor,
             self.prior_noise_alpha,

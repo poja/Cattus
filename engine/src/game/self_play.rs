@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
-use crate::game::mcts::MCTSPlayer;
+use crate::game::mcts::MctsPlayer;
 use crate::game::net;
 use crate::util::Builder;
 
@@ -72,8 +72,8 @@ pub struct GamesResults {
 }
 
 pub struct SelfPlayRunner<Game: IGame> {
-    player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
-    player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+    player1_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
+    player2_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
     temperature_policy: String,
     serializer: Arc<dyn DataSerializer<Game>>,
     thread_num: usize,
@@ -81,8 +81,8 @@ pub struct SelfPlayRunner<Game: IGame> {
 
 impl<Game: IGame + 'static> SelfPlayRunner<Game> {
     pub fn new(
-        player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
-        player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+        player1_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
+        player2_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
         temperature_policy: String,
         serializer: Arc<dyn DataSerializer<Game>>,
         thread_num: u32,
@@ -151,8 +151,8 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
 }
 
 struct SelfPlayWorker<Game: IGame> {
-    player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
-    player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+    player1_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
+    player2_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
     temperature_scheduler: TemperatureScheduler,
     serializer: Arc<dyn DataSerializer<Game>>,
     output_dir1: PathBuf,
@@ -165,8 +165,8 @@ struct SelfPlayWorker<Game: IGame> {
 impl<Game: IGame> SelfPlayWorker<Game> {
     #[allow(clippy::too_many_arguments)]
     fn new(
-        player1_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
-        player2_builder: Arc<dyn Builder<MCTSPlayer<Game>>>,
+        player1_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
+        player2_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
         temperature_policy: &str,
         serializer: Arc<dyn DataSerializer<Game>>,
         output_dir1: PathBuf,

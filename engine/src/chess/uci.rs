@@ -1,6 +1,6 @@
 use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
 use crate::game::common::{GamePlayer, GamePosition};
-use crate::game::mcts::MCTSPlayer;
+use crate::game::mcts::MctsPlayer;
 use crate::util::Builder;
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -41,15 +41,15 @@ impl GoParams {
 }
 
 struct Engine {
-    player_builder: Box<dyn Builder<MCTSPlayer<ChessGame>>>,
+    player_builder: Box<dyn Builder<MctsPlayer<ChessGame>>>,
     options: HashMap<String, String>,
-    player: Option<MCTSPlayer<ChessGame>>,
+    player: Option<MctsPlayer<ChessGame>>,
     position: Option<ChessPosition>,
     best_move: Option<ChessMove>,
 }
 
 impl Engine {
-    pub fn new(player_builder: Box<dyn Builder<MCTSPlayer<ChessGame>>>) -> Self {
+    pub fn new(player_builder: Box<dyn Builder<MctsPlayer<ChessGame>>>) -> Self {
         Self {
             player_builder,
             options: HashMap::new(),
@@ -140,7 +140,7 @@ pub struct UCI {
 }
 
 impl UCI {
-    pub fn new(player_builder: Box<dyn Builder<MCTSPlayer<ChessGame>>>) -> Self {
+    pub fn new(player_builder: Box<dyn Builder<MctsPlayer<ChessGame>>>) -> Self {
         Self {
             engine: Engine::new(player_builder),
         }

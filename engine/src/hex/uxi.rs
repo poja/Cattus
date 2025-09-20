@@ -217,11 +217,11 @@ impl GamePlayer<HexGameStandard> for HexPlayerUXI {
     }
 }
 
-pub struct UXIEngine {
+pub struct UxiEngine {
     player: Box<dyn GamePlayer<HexGameStandard>>,
 }
 
-impl UXIEngine {
+impl UxiEngine {
     pub fn new(player: Box<dyn GamePlayer<HexGameStandard>>) -> Self {
         Self { player }
     }
@@ -232,7 +232,7 @@ impl UXIEngine {
             let mut line = String::new();
             io::stdin()
                 .read_line(&mut line)
-                .expect("[UXIEngine] failed to read input");
+                .expect("[UxiEngine] failed to read input");
             let args: Vec<_> = line.split_whitespace().collect();
 
             if args.is_empty() {
@@ -241,14 +241,14 @@ impl UXIEngine {
             match args[0] {
                 "next_move" => {
                     if args.len() != 3 {
-                        eprintln!("[UXIEngine] Expected position and color for next_move command.");
+                        eprintln!("[UxiEngine] Expected position and color for next_move command.");
                         continue;
                     }
                     let pos_str = args[1];
                     let color_str = args[2];
                     match uxi_to_position(pos_str, color_str) {
                         None => {
-                            eprintln!("[UXIEngine] Failed to parse position.");
+                            eprintln!("[UxiEngine] Failed to parse position.");
                             continue;
                         }
                         Some(pos) => {
@@ -263,7 +263,7 @@ impl UXIEngine {
                     break;
                 }
                 unknown_cmd => {
-                    eprintln!("[UXIEngine] Unknown command: {}", unknown_cmd);
+                    eprintln!("[UxiEngine] Unknown command: {}", unknown_cmd);
                 }
             }
         }
