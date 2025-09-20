@@ -24,7 +24,7 @@ from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPar
 from torch.utils.data import DataLoader
 
 from cattus_train.chess import Chess
-from cattus_train.config import Config
+from cattus_train.config import Config, ExecutorchConfig, OnnxOrtConfig, OnnxTractConfig, TorchPyConfig
 from cattus_train.data_set import DataSet
 from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
@@ -357,11 +357,11 @@ class TrainProcess:
             self_play_input_shape = (self._cfg.self_play.batch_size,) + self_play_input_shape[1:]
             self_play_sample_input = torch.randn(self_play_input_shape)
 
-            match self._cfg.inference.engine:
-                case "torch-py":  # torch.jit
+            match self._cfg.inference:
+                case TorchPyConfig():  # torch.jit
                     traced_model = torch.jit.trace(model, self_play_sample_input)
                     torch.jit.save(traced_model, model_path.with_suffix(".jit"))
-                case "executorch" | "executorch-xnnpack":  # executorch
+                case ExecutorchConfig():  # executorch
                     with warnings.catch_warnings():
                         exported_model = torch.export.export(model, (self_play_sample_input,))
                         edge_program = executorch.exir.to_edge(exported_model)
@@ -381,8 +381,13 @@ class TrainProcess:
                         #     partitioner=[XnnpackPartitioner()]
                         # ).to_executorch()
 
-                        if self._cfg.inference.engine == "executorch-xnnpack":
-                            edge_program = edge_program.to_backend(XnnpackPartitioner())
+                        match self._cfg.inference.backend:
+                            case "none":
+                                pass
+                            case "xnnpack":
+                                edge_program = edge_program.to_backend(XnnpackPartitioner())
+                            case _:
+                                raise ValueError(f"Unsupported executorch backend: {self._cfg.inference.backend}")
 
                         et_program = edge_program.to_executorch()
 
@@ -414,26 +419,30 @@ class TrainProcess:
         logging.info("Building Self-play executable...")
         profile = "dev" if self._cfg.debug else "release"
         env = os.environ.copy()
-        match self._cfg.inference.engine:
-            case "torch-py":
+        match self._cfg.inference:
+            case TorchPyConfig():
                 features = ["torch-python"]
-            case "executorch":
+            case ExecutorchConfig():
                 features = ["executorch"]
-            case "executorch-xnnpack":
-                features = ["executorch"]
-                env["CATTUS_XNNPACK"] = "1"
-            case "onnx-tract":
+                match self._cfg.inference.backend:
+                    case "none":
+                        pass
+                    case "xnnpack":
+                        env["CATTUS_XNNPACK"] = "1"
+                    case _:
+                        raise ValueError(f"Unsupported executorch backend: {self._cfg.inference.backend}")
+            case OnnxTractConfig():
                 features = ["onnx-tract"]
-            case "onnx-ort":
+            case OnnxOrtConfig():
                 features = ["onnx-ort"]
         subprocess.check_call(
             [
                 "cargo",
                 "build",
-                *["--profile", profile],
-                *["--features", ",".join(features)],
+                f"--profile={profile}",
+                f"--features={','.join(features)}",
                 "-q",
-                *["--bin", self._self_play_exec_name],
+                f"--bin={self._self_play_exec_name}",
             ],
             cwd=SELF_PLAY_CRATE_DIR,
             env=env,
