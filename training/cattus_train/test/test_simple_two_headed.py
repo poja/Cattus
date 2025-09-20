@@ -1,22 +1,14 @@
 import logging
-import os
-import subprocess
-import sys
 import tempfile
-from pathlib import Path
 
-TESTS_DIR = Path(os.path.realpath(__file__)).parent
-TRAIN_MAIN_BIN = TESTS_DIR.parent.parent / "bin" / "main.py"
-CATTUS_TOP = TESTS_DIR.parent.parent.parent
+import yaml
+
+import cattus_train
 
 
 def _test_simple_two_headed(game_name):
     with tempfile.TemporaryDirectory() as tmp_dir:
-        config_file = Path(tmp_dir) / "config.yaml"
-
-        with open(config_file, "w") as f:
-            f.write(
-                f"""%YAML 1.2
+        config = f"""%YAML 1.2
 ---
 game: "{game_name}"
 iterations: 3
@@ -54,16 +46,9 @@ model_compare:
     warning_losing_threshold: 0.55
     threads: 1
 """
-            )
 
         logging.info("Running self play and generating new models...")
-        python = sys.executable
-        subprocess.check_call(
-            " ".join([python, str(TRAIN_MAIN_BIN), "--config", str(config_file)]),
-            env=dict(os.environ, PYTHONPATH=CATTUS_TOP),
-            stderr=subprocess.STDOUT,
-            shell=True,
-        )
+        cattus_train.train(cattus_train.Config(**yaml.safe_load(config)))
 
 
 def test_ttt_two_headed():

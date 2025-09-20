@@ -1,24 +1,17 @@
 import logging
-import os
-import subprocess
 import tempfile
 from pathlib import Path
 
-REMOVE_TMP_DIR_ON_FINISH = True
+import yaml
 
-TESTS_DIR = Path(os.path.realpath(__file__)).parent
-TRAIN_MAIN_BIN = TESTS_DIR.parent.parent / "bin" / "main.py"
+import cattus_train
 
 
 def test_ttt_training():
     logging.basicConfig(level=logging.DEBUG, format="[TicTactToe Training Test]: %(message)s")
 
     with tempfile.TemporaryDirectory() as tmp_dir:
-        config_file = Path(tmp_dir) / "config.yaml"
-
-        with open(config_file, "w") as f:
-            f.write(
-                f"""%YAML 1.2
+        config = f"""%YAML 1.2
 ---
 game: "tictactoe"
 iterations: 3
@@ -61,13 +54,9 @@ model_compare:
     warning_losing_threshold: 0.55
     threads: 8
 """
-            )
 
         logging.info("Running self play and generating new models...")
-        subprocess.check_call(
-            ["python", TRAIN_MAIN_BIN, "--config", config_file, "--run-id", "test"],
-            stderr=subprocess.STDOUT,
-        )
+        cattus_train.train(cattus_train.Config(**yaml.safe_load(config)))
 
         logging.info("Checking quality of training...")
         metrics = _get_metrics(tmp_dir)
