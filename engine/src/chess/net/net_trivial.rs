@@ -1,6 +1,6 @@
 use crate::chess::chess_game::{ChessGame, ChessPosition};
 use crate::game::common::{GamePosition, IGame};
-use crate::game::mcts::{NetStatistics, ValueFunction};
+use crate::game::mcts::ValueFunction;
 use crate::game::net;
 
 /* Copied from https://github.com/LeelaChessZero/lc0/blob/master/src/neural/network_trivial.cc */
@@ -58,10 +58,6 @@ impl ValueFunction<ChessGame> for TrivialNet {
         let moves_probs = net::calc_moves_probs::<ChessGame>(position.get_legal_moves(), &POLICY);
 
         net::flip_score_if_needed((moves_probs, val), is_flipped)
-    }
-
-    fn get_statistics(&self) -> NetStatistics {
-        NetStatistics::empty()
     }
 }
 

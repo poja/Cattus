@@ -1,6 +1,6 @@
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::IGame;
-use crate::game::mcts::{NetStatistics, ValueFunction};
+use crate::game::mcts::ValueFunction;
 use crate::game::net::TwoHeadedNetBase;
 use crate::ttt::net::common;
 use crate::ttt::ttt_game::{TttGame, TttPosition};
@@ -34,9 +34,5 @@ impl TwoHeadedNet {
 impl ValueFunction<TttGame> for TwoHeadedNet {
     fn evaluate(&self, position: &TttPosition) -> (Vec<(<TttGame as IGame>::Move, f32)>, f32) {
         self.base.evaluate(position, common::position_to_planes)
-    }
-
-    fn get_statistics(&self) -> NetStatistics {
-        self.base.get_statistics()
     }
 }

@@ -120,12 +120,13 @@ fn outputs_to_json(mut outputs: Vec<ArrayD<f32>>, filename: &Path) -> std::io::R
         .collect_vec();
     assert_eq!(vals.shape()[1], 1);
     let vals = vals.iter().cloned().collect_vec();
-    fs::write(
-        filename,
-        json::object! {
-            probs: probs,
-            vals: vals,
-        }
-        .dump(),
-    )
+
+    #[derive(serde::Serialize)]
+    struct JsonOutputs {
+        probs: Vec<Vec<f32>>,
+        vals: Vec<f32>,
+    }
+    let writer = fs::File::create_new(filename)?;
+    serde_json::to_writer(writer, &JsonOutputs { probs, vals })?;
+    Ok(())
 }

@@ -1,7 +1,6 @@
 import json
 import logging
 import math
-import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -16,7 +15,7 @@ from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
-TESTS_DIR = Path(os.path.realpath(__file__)).parent
+TESTS_DIR = Path(__file__).parent.resolve()
 SELF_PLAY_TOP = TESTS_DIR.parent.parent / "self-play"
 
 ASSERT_PYTHON_OUTPUT_EQ_REPEAT = 8

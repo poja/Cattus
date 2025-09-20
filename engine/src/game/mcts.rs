@@ -6,10 +6,10 @@ use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame, PlayerRand};
-use crate::game::utils::Callback;
+use crate::util::metrics::RunningAverage;
 
 /// Monte Carlo Tree Search (MCTS) implementation
 
@@ -50,8 +50,6 @@ impl<Move: GameMove> MctsEdge<Move> {
     }
 }
 
-pub type MctsSearchDurationCallback = Box<dyn Callback<Duration> + Sync + Send>;
-
 pub struct MctsPlayer<Game: IGame> {
     search_tree: DiGraph<MctsNode<Game::Position>, MctsEdge<Game::Move>>,
     root: Option<NodeIndex>,
@@ -63,7 +61,7 @@ pub struct MctsPlayer<Game: IGame> {
     prior_noise_epsilon: f32,
     value_func: Arc<dyn ValueFunction<Game>>,
 
-    search_duration_callback: Option<MctsSearchDurationCallback>,
+    search_duration_metric: RunningAverage,
 }
 
 impl<Game: IGame> MctsPlayer<Game> {
@@ -82,6 +80,16 @@ impl<Game: IGame> MctsPlayer<Game> {
         assert!(explore_factor >= 0.0);
         assert!(prior_noise_alpha >= 0.0);
         assert!((0.0..=1.0).contains(&prior_noise_epsilon));
+
+        let search_duration_metric_name = "mcts.search_duration";
+        metrics::describe_gauge!(
+            search_duration_metric_name,
+            metrics::Unit::Seconds,
+            "Duration of MCTS search"
+        );
+        let search_duration_metric =
+            RunningAverage::new(0.99, metrics::gauge!(search_duration_metric_name));
+
         Self {
             search_tree: DiGraph::new(),
             root: None,
@@ -91,7 +99,7 @@ impl<Game: IGame> MctsPlayer<Game> {
             prior_noise_epsilon,
             temperature: 1.0,
             value_func,
-            search_duration_callback: None,
+            search_duration_metric,
         }
     }
 
@@ -365,9 +373,8 @@ impl<Game: IGame> MctsPlayer<Game> {
             .map(|(m, simcount)| (m, simcount as f32 / simcount_total as f32))
             .collect_vec();
 
-        if let Some(callback) = &self.search_duration_callback {
-            callback.call(search_start_time.elapsed());
-        }
+        self.search_duration_metric
+            .set(search_start_time.elapsed().as_secs_f64());
 
         res
     }
@@ -442,31 +449,12 @@ impl<Game: IGame> MctsPlayer<Game> {
             assert!(m.init_score.is_finite());
         }
     }
-
-    pub fn set_search_duration_callback(&mut self, callback: Option<MctsSearchDurationCallback>) {
-        self.search_duration_callback = callback
-    }
 }
 
 impl<Game: IGame> GamePlayer<Game> for MctsPlayer<Game> {
     fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
         let moves = self.calc_moves_probabilities(position);
         self.choose_move_from_probabilities(&moves)
-    }
-}
-
-pub struct NetStatistics {
-    pub activation_count: Option<usize>,
-    pub run_duration_average: Option<Duration>,
-    pub batch_size_average: Option<f32>,
-}
-impl NetStatistics {
-    pub fn empty() -> Self {
-        Self {
-            activation_count: None,
-            run_duration_average: None,
-            batch_size_average: None,
-        }
     }
 }
 
@@ -479,8 +467,6 @@ pub trait ValueFunction<Game: IGame>: Sync + Send {
     /// The scalar is the current position value in range [-1,1]. 1 if player1 is winning and -1 if player2 is winning
     /// The per-move probabilities should have a sum of 1, greater value is a better move
     fn evaluate(&self, position: &Game::Position) -> (Vec<(Game::Move, f32)>, f32);
-
-    fn get_statistics(&self) -> NetStatistics;
 }
 
 pub struct ValueFunctionRand;
@@ -515,9 +501,5 @@ impl<Game: IGame> ValueFunction<Game> for ValueFunctionRand {
         let moves_probs = moves.iter().map(|m| (*m, move_prob)).collect_vec();
 
         (moves_probs, val)
-    }
-
-    fn get_statistics(&self) -> NetStatistics {
-        NetStatistics::empty()
     }
 }

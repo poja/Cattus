@@ -130,6 +130,8 @@ class TrainProcess:
 
         games_dir = self._cfg.games_dir / self._run_id
         summary_file = games_dir / "selfplay_summary.json"
+        if summary_file.exists():
+            summary_file.unlink()
         data_entries_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
 
         self_play_start_time = time.time()
@@ -160,12 +162,13 @@ class TrainProcess:
             summary = json.load(f)
         self._metrics.update(
             {
-                "net_activations_count": summary["net_activations_count"],
-                "net_run_duration_average_us": summary["net_run_duration_average_us"],
-                "batch_size_average": summary["batch_size_average"],
-                "search_count": summary["search_count"],
-                "search_duration_average_ms": summary["search_duration_average_ms"],
-                "cache_hit_ratio": summary["cache_hit_ratio"],
+                "net_activations_count": summary["metrics"]["model.activation_count"],
+                "net_run_duration_average_us": summary["metrics"]["model.run_duration"],
+                # "batch_size_average": summary["metrics"]["batch_size_average"],
+                # "search_count": summary["metrics"]["search_count"],
+                "search_duration": summary["metrics"]["mcts.search_duration"],
+                "cache_hit_ratio": summary["metrics"]["cache.hits"]
+                / (summary["metrics"]["cache.hits"] + summary["metrics"]["cache.misses"]),
             }
         )
 
@@ -306,7 +309,7 @@ class TrainProcess:
                     for filename in os.listdir(trained_games_dir):
                         shutil.move(trained_games_dir / filename, best_games_dir)
                 elif len(latest_models) == 1 and losing > self._cfg.model_compare.warning_losing_threshold:
-                    logging.warn("New model is worse than previous one, losing ratio: %f", losing)
+                    logging.warning("New model is worse than previous one, losing ratio: %f", losing)
         return best_model
 
     def _compare_model_impl(self, model1_path: Path, model2_path: Path, model1_games_dir: Path, model2_games_dir: Path):
@@ -451,7 +454,7 @@ class TrainProcess:
             SELF_PLAY_CRATE_DIR / "target" / ("debug" if self._cfg.debug else "release") / self._self_play_exec_name
         )
 
-    def _write_metrics(self, filename):
+    def _write_metrics(self, filename: Path):
         per_model_columns = [
             # "value_loss",
             # "policy_loss",
@@ -476,7 +479,7 @@ class TrainProcess:
         values = [str(self._metrics.get(metric, "")) for metric in columns]
 
         # write columns
-        if not os.path.exists(filename):
+        if not filename.exists():
             with open(filename, "w") as metrics_file:
                 metrics_file.write(",".join(columns) + "\n")
 

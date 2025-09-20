@@ -1,6 +1,5 @@
 use crate::game::common::IGame;
 use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::RwLock;
 
 struct PositionCache<Game: IGame> {
@@ -12,8 +11,8 @@ struct PositionCache<Game: IGame> {
 pub struct ValueFuncCache<Game: IGame> {
     lock: RwLock<PositionCache<Game>>,
     max_size: usize,
-    hits: AtomicUsize,
-    misses: AtomicUsize,
+    hits: metrics::Counter,
+    misses: metrics::Counter,
 }
 
 impl<Game: IGame> ValueFuncCache<Game> {
@@ -25,8 +24,8 @@ impl<Game: IGame> ValueFuncCache<Game> {
                 deque: VecDeque::new(),
             }),
             max_size,
-            hits: AtomicUsize::new(0),
-            misses: AtomicUsize::new(0),
+            hits: metrics::counter!("cache.hits"),
+            misses: metrics::counter!("cache.misses"),
         }
     }
 
@@ -39,7 +38,7 @@ impl<Game: IGame> ValueFuncCache<Game> {
         {
             let cache = self.lock.read().unwrap();
             if let Some(cached_val) = cache.map.get(position) {
-                self.hits.fetch_add(1, Ordering::Relaxed);
+                self.hits.increment(1);
                 return cached_val.clone();
             }
         }
@@ -52,7 +51,7 @@ impl<Game: IGame> ValueFuncCache<Game> {
             let mut cache = self.lock.write().unwrap();
             // Check again for the result in the cache, maybe it was added between the read and write locks acquires
             if let Some(cached_val) = cache.map.get(position) {
-                self.hits.fetch_add(1, Ordering::Relaxed);
+                self.hits.increment(1);
                 let cached_val = cached_val.clone();
                 /* We would like to assert (computed_val == cached_val), but this is highly unreliable due to */
                 /* floating points calculation errors. */
@@ -71,16 +70,8 @@ impl<Game: IGame> ValueFuncCache<Game> {
             // Insert newly computed element to cache
             cache.map.insert(*position, computed_val.clone());
             cache.deque.push_back(*position);
-            self.misses.fetch_add(1, Ordering::Relaxed);
+            self.misses.increment(1);
             computed_val
         }
-    }
-
-    pub fn get_hits_counter(&self) -> usize {
-        self.hits.load(Ordering::SeqCst)
-    }
-
-    pub fn get_misses_counter(&self) -> usize {
-        self.misses.load(Ordering::SeqCst)
     }
 }

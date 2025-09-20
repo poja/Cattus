@@ -1,11 +1,10 @@
-import os
 import subprocess
 from pathlib import Path
 
 import chess
 import chess.engine
 
-TESTS_DIR = Path(os.path.realpath(__file__)).parent
+TESTS_DIR = Path(__file__).parent.resolve()
 CATTUS_ENGINE_TOP = Path(TESTS_DIR).parent.parent.parent / "engine"
 
 
