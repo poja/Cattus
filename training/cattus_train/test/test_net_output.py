@@ -3,7 +3,6 @@ import logging
 import math
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -46,26 +45,18 @@ def _test_net_output(game_name: str, game: Game, positions):
             model = create_model(game, model_path)
 
             # Encode position into tensor for Python model activation
-            subprocess.run(
+            subprocess.check_call(
                 [
                     "cargo",
                     "run",
-                    "--profile",
-                    "dev",
+                    *["--profile", "dev"],
                     "-q",
-                    "--bin",
-                    "test_encode",
+                    *["--bin", "test_encode"],
                     "--",
-                    "--game",
-                    game_name,
-                    "--position",
-                    position,
-                    "--outfile",
-                    encode_path,
+                    *["--game", game_name],
+                    *["--position", position],
+                    *["--outfile", encode_path],
                 ],
-                stderr=sys.stderr,
-                stdout=sys.stdout,
-                check=True,
                 cwd=SELF_PLAY_TOP,
             )
             with open(encode_path, "r") as encode_file:
@@ -87,32 +78,21 @@ def _test_net_output(game_name: str, game: Game, positions):
                 assert is_outputs_equals(py_output, out_other)
 
             # Run model from Rust and assert all outputs are equal
-            subprocess.run(
+            subprocess.check_call(
                 [
                     "cargo",
                     "run",
-                    "--profile",
-                    "dev",
+                    "--profile=dev",
                     "-q",
-                    "--bin",
-                    "test_net_output",
+                    "--bin=test_net_output",
                     "--",
-                    "--game",
-                    game_name,
-                    "--position",
-                    position,
-                    "--model-path",
-                    model_path,
-                    "--outfile",
-                    output_file,
-                    "--repeat",
-                    str(ASSERT_RUST_OUTPUT_EQ_REPEAT),
-                    "--batch-size",
-                    "1",
+                    f"--game={game_name}",
+                    f"--position{position}",
+                    f"--model-path={model_path}",
+                    f"--outfile={output_file}",
+                    f"--repeat={ASSERT_RUST_OUTPUT_EQ_REPEAT}",
+                    "--batch-size=1",
                 ],
-                stderr=sys.stderr,
-                stdout=sys.stdout,
-                check=True,
                 cwd=SELF_PLAY_TOP,
             )
             with open(output_file, "r") as output_file:

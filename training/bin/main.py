@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from cattus_train.train_process import Config, TrainProcess
+from cattus_train import Config, train
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 
@@ -20,9 +20,9 @@ def main():
     logging.getLogger("tensorflow").setLevel(logging.WARN)
 
     parser = argparse.ArgumentParser(description="Trainer")
-    parser.add_argument("--config", type=str, required=True, help="configuration file")
+    parser.add_argument("--config", type=Path, required=True, help="configuration file")
     parser.add_argument("--run-id", type=str, help="Name of this run, default is current time")
-    parser.add_argument("--logfile", type=str, default=None, help="All logs will be printed to file")
+    parser.add_argument("--logfile", type=Path, default=None, help="All logs will be printed to file")
     args = parser.parse_args()
 
     if args.logfile is not None:
@@ -33,8 +33,7 @@ def main():
     with open(args.config, "r") as config_file:
         config = yaml.safe_load(config_file)
 
-    tp = TrainProcess(Config(**config))
-    tp.run_training_loop(run_id=args.run_id)
+    train(Config(**config), run_id=args.run_id)
 
 
 if __name__ == "__main__":

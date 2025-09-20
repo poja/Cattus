@@ -132,7 +132,7 @@ class TrainProcess:
         data_entries_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
 
         self_play_start_time = time.time()
-        subprocess.run(
+        subprocess.check_call(
             prepare_cmd(
                 self._self_play_exec_path,
                 *["--model1-path", model_path],
@@ -151,10 +151,6 @@ class TrainProcess:
                 *["--device", self._cfg.device],
                 *["--cache-size", self._cfg.mcts.cache_size],
             ),
-            stderr=sys.stderr,
-            stdout=sys.stdout,
-            shell=True,
-            check=True,
             cwd=SELF_PLAY_CRATE_DIR,
         )
         self._metrics["self_play_duration"] = time.time() - self_play_start_time
@@ -316,7 +312,7 @@ class TrainProcess:
         with tempfile.TemporaryDirectory() as tmp_dir:
             compare_res_file = Path(tmp_dir) / "compare_result.json"
 
-            subprocess.run(
+            subprocess.check_call(
                 prepare_cmd(
                     self._self_play_exec_path,
                     *["--model1-path", model1_path],
@@ -334,10 +330,6 @@ class TrainProcess:
                     *["--threads", self._cfg.model_compare.threads],
                     *["--device", self._cfg.device],
                 ),
-                stderr=sys.stderr,
-                stdout=sys.stdout,
-                shell=True,
-                check=True,
                 cwd=SELF_PLAY_CRATE_DIR,
             )
             with open(compare_res_file, "r") as res_file:
@@ -398,7 +390,7 @@ class TrainProcess:
     def _compile_selfplay_exe(self):
         logging.info("Building Self-play executable...")
         profile = "dev" if self._cfg.debug else "release"
-        subprocess.run(
+        subprocess.check_call(
             prepare_cmd(
                 "cargo",
                 "build",
@@ -406,10 +398,6 @@ class TrainProcess:
                 "-q",
                 *["--bin", self._self_play_exec_name],
             ),
-            stderr=sys.stderr,
-            stdout=sys.stdout,
-            shell=True,
-            check=True,
             cwd=SELF_PLAY_CRATE_DIR,
         )
         self._self_play_exec_path = (
