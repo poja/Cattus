@@ -18,7 +18,6 @@ ndarray = "0.16"
 chess = "3.2.*"
 pleco = "0.5.*"
 num-traits = "0.2"
-cfg-if = "1.0"
 
 # Optional dependencies for model inference
 pyo3 = { version = "0.26.0", features = ["auto-initialize"], optional = true }
@@ -33,7 +32,7 @@ executorch = { git = "https://github.com/barakugav/executorch-rs.git", rev = "b5
 executorch-sys = { git = "https://github.com/barakugav/executorch-rs.git", rev = "b5d7bb2d178131cf3891fea47f47f490d80a8cf5", default-features = false, optional = true }
 
 [features]
-default = ["executorch", "onnx-tract"]
+default = []
 torch-python = ["pyo3", "numpy"]
 onnx-tract = ["tract-onnx"]
 onnx-ort = ["ort"]

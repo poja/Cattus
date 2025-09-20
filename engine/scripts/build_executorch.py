@@ -15,6 +15,16 @@ EXECUTORCH_DIR = CRATE_DIR / "third-party" / "executorch"
 def main():
     parser = argparse.ArgumentParser("Build executorch from source")
     parser.add_argument(
+        "--xnnpack",
+        action="store_true",
+        help="Enable XNNPACK support",
+    )
+    parser.add_argument(
+        "--mps",
+        action="store_true",
+        help="Enable MPS (Metal Performance Shaders) support",
+    )
+    parser.add_argument(
         "--clean",
         action="store_true",
         help="Remove the existing executorch directory before cloning",
@@ -47,10 +57,13 @@ def main():
                 [
                     bin_dir / "python",
                     __file__,
+                    *(["--xnnpack"] if args.xnnpack else []),
+                    *(["--mps"] if args.mps else []),
                     *(["--clean"] if args.clean else []),
                     "--no-new-venv",
                 ],
             )
+            return
 
     if args.clean:
         if EXECUTORCH_DIR.exists():
@@ -72,7 +85,10 @@ def main():
             "cpu",
         ]
     )
-    build_executorch()
+    build_executorch(
+        xnnpack=args.xnnpack,
+        mps=args.mps,
+    )
 
 
 def clone_executorch():
@@ -116,27 +132,29 @@ def clone_executorch():
     )
 
 
-def build_executorch():
+def build_executorch(xnnpack: bool, mps: bool):
     build_dir = EXECUTORCH_DIR / "build"
     if not build_dir.exists():
         build_dir.mkdir()
+    option = {True: "ON", False: "OFF"}
     subprocess.check_call(
         [
             "cmake",
+            "-DCMAKE_BUILD_TYPE=Release",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             "-DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF",
             "-DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF",
             "-DEXECUTORCH_ENABLE_PROGRAM_VERIFICATION=ON",
-            "-DEXECUTORCH_ENABLE_LOGGING=OFF",
+            "-DEXECUTORCH_ENABLE_LOGGING=ON",
             "-DEXECUTORCH_BUILD_PORTABLE_OPS=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_MODULE=ON",
             "-DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON",
-            "-DEXECUTORCH_BUILD_MPS=OFF",
-            "-DEXECUTORCH_BUILD_XNNPACK=OFF",
+            "-DEXECUTORCH_BUILD_MPS=" + option[mps],
+            "-DEXECUTORCH_BUILD_XNNPACK=" + option[xnnpack],
             "-DEXECUTORCH_BUILD_KERNELS_QUANTIZED=OFF",
-            "-DEXECUTORCH_BUILD_KERNELS_OPTIMIZED=OFF",
+            "-DEXECUTORCH_BUILD_KERNELS_OPTIMIZED=ON",
             "-DEXECUTORCH_BUILD_KERNELS_CUSTOM=OFF",
             "-DEXECUTORCH_BUILD_DEVTOOLS=OFF",
             "-DEXECUTORCH_ENABLE_EVENT_TRACER=OFF",

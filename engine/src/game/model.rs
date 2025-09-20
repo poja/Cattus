@@ -43,6 +43,7 @@ impl Model {
     pub fn new(path: impl AsRef<Path>) -> Self {
         let path = path.as_ref();
         let impl_type = IMPL_TYPE.lock().unwrap().expect("impl_type not set");
+        #[allow(unused)]
         let model = match impl_type {
             #[cfg(feature = "torch-python")]
             ImplType::TorchPy => {
@@ -117,8 +118,15 @@ class Model:
                 feature = "onnx-tract",
                 feature = "onnx-ort"
             )))]
-            unsupported_type => panic!("Unsupported impl_type: {:?}", unsupported_type),
+            unsupported_type => {
+                let _ = path;
+                panic!(
+                    "The requested model implementation is not supported in this build: {:?}",
+                    unsupported_type
+                );
+            }
         };
+        #[allow(unreachable_code)]
         Self { model }
     }
 
@@ -198,6 +206,16 @@ class Model:
                             .into_owned()
                     })
                     .collect::<Vec<_>>()
+            }
+            #[cfg(not(any(
+                feature = "torch-python",
+                feature = "executorch",
+                feature = "onnx-tract",
+                feature = "onnx-ort"
+            )))]
+            _ => {
+                let _ = inputs;
+                unreachable!()
             }
         }
     }

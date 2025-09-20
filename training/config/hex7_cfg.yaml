@@ -49,3 +49,6 @@ model_compare:
     switching_winning_threshold: 0.55
     warning_losing_threshold: 0.55
     threads: 16
+
+inference:
+    engine: "executorch-xnnpack"

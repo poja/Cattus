@@ -190,7 +190,7 @@ pub fn run_main<Game: IGame + 'static>(
     network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {
-    util::init_globals();
+    util::init_globals(None);
     let args = SelfPlayArgs::parse();
     let device = match args.device.to_uppercase().as_str() {
         "CPU" => Device::Cpu,

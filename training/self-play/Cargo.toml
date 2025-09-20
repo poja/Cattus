@@ -10,3 +10,11 @@ ndarray = "0.16"
 itertools = "0.14"
 clap = { version = "4.5", features = ["derive"] }
 json = "0.12.*"
+
+
+[features]
+default = []
+torch-python = ["cattus/torch-python"]
+onnx-tract = ["cattus/onnx-tract"]
+onnx-ort = ["cattus/onnx-ort"]
+executorch = ["cattus/executorch"]

@@ -1,4 +1,5 @@
 import os
+import subprocess
 from pathlib import Path
 
 import chess
@@ -9,8 +10,15 @@ CATTUS_ENGINE_TOP = Path(TESTS_DIR).parent.parent.parent / "engine"
 
 
 def test_works_with_python_library_chess():
+    subprocess.check_call(
+        ["cargo", "build", "--features", "executorch", "--bin", "cattus", "-q", "--profile", "release"],
+        cwd=CATTUS_ENGINE_TOP,
+    )
+    cattus_exe = CATTUS_ENGINE_TOP / "target" / "release" / "cattus"
+    assert cattus_exe.exists()
+
     engine = chess.engine.SimpleEngine.popen_uci(
-        "cargo run --bin cattus -- --sim-num 100".split(" "),
+        [str(cattus_exe), "--sim-num=100"],
         cwd=CATTUS_ENGINE_TOP,
     )
 

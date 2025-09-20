@@ -1,4 +1,5 @@
 import logging
+import os
 import tempfile
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import cattus_train
 def test_ttt_training():
     logging.basicConfig(level=logging.DEBUG, format="[TicTactToe Training Test]: %(message)s")
 
+    inference_engine = os.getenv("CATTUS_TEST_INFERENCE_ENGINE", "executorch")
     with tempfile.TemporaryDirectory() as tmp_dir:
         config = f"""%YAML 1.2
 ---
@@ -53,10 +55,12 @@ model_compare:
     switching_winning_threshold: 0.55
     warning_losing_threshold: 0.55
     threads: 8
+inference:
+    engine: {inference_engine}
 """
 
         logging.info("Running self play and generating new models...")
-        cattus_train.train(cattus_train.Config(**yaml.safe_load(config)))
+        cattus_train.train(cattus_train.Config(**yaml.safe_load(config)), run_id="test")
 
         logging.info("Checking quality of training...")
         metrics = _get_metrics(tmp_dir)
