@@ -4,3 +4,6 @@ pub mod net;
 pub mod uci;
 
 mod chess_test;
+
+// re-export
+pub use chess;

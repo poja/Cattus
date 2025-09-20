@@ -1,17 +1,18 @@
-use crate::game::cache::ValueFuncCache;
-use crate::game::common::IGame;
-use crate::game::mcts::{MctsPlayer, ValueFunction};
-use crate::game::self_play::{DataSerializer, SelfPlayRunner};
-use crate::game::utils::Callback;
-use crate::util::{self, Builder, Device};
+use cattus::game::cache::ValueFuncCache;
+use cattus::game::common::IGame;
+use cattus::game::mcts::{MctsPlayer, ValueFunction};
+use cattus::game::utils::Callback;
+use cattus::util::{self, Builder, Device};
 use clap::Parser;
 use itertools::Itertools;
 use std::fs;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
+
+use crate::self_play::{GameExt, SelfPlayRunner};
+use crate::serialize::DataSerializer;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -186,7 +187,7 @@ impl<Game: IGame> CacheBuilder<Game> {
     }
 }
 
-pub fn run_main<Game: IGame + 'static>(
+pub fn run_main<Game: GameExt + 'static>(
     network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {

@@ -1,9 +1,7 @@
-use itertools::Itertools;
 use std::cmp::Ordering;
 use std::fmt::{self, Display};
 
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
-use crate::game::self_play::DataEntry;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct HexMove<const BOARD_SIZE: usize> {
@@ -118,9 +116,9 @@ pub struct HexPosition<const BOARD_SIZE: usize> {
     /// The board is a rhombus, slanted right. So, board[0][BOARD_SIZE - 1] is the "top right end",
     /// also called the "top end" of the board, and board[BOARD_SIZE - 1][0] is the "bottom end".
     /// Red tries to move left-right and blue tries to move top-bottom.
-    board_red: HexBitboard<BOARD_SIZE>,
-    board_blue: HexBitboard<BOARD_SIZE>,
-    turn: GameColor,
+    pub board_red: HexBitboard<BOARD_SIZE>,
+    pub board_blue: HexBitboard<BOARD_SIZE>,
+    pub turn: GameColor,
 
     /* bitmap of all the tiles one can reach from the left side of the board stepping only on tiles with red pieces */
     left_red_reach: HexBitboard<BOARD_SIZE>,
@@ -437,44 +435,5 @@ impl<const BOARD_SIZE: usize> IGame for HexGame<BOARD_SIZE> {
 
     fn get_repetition_limit() -> Option<u32> {
         None
-    }
-
-    fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>> {
-        let transform = |e: &DataEntry<Self>, transform_sq: &dyn Fn(usize) -> usize| {
-            let (board_red, board_blue) = [e.pos.board_red, e.pos.board_blue]
-                .iter()
-                .map(|b| {
-                    let mut bt = HexBitboard::new();
-                    for idx in 0..BOARD_SIZE * BOARD_SIZE {
-                        bt.set(transform_sq(idx), b.get(idx));
-                    }
-                    bt
-                })
-                .collect_tuple()
-                .unwrap();
-            let pos = HexPosition::new_from_board(board_red, board_blue, e.pos.get_turn());
-
-            let probs = e
-                .probs
-                .iter()
-                .map(|(m, p)| (HexMove::from_idx(transform_sq(m.to_idx())), *p))
-                .collect_vec();
-
-            let winner = e.winner;
-            DataEntry { pos, probs, winner }
-        };
-
-        let rotate_180 = |e: &DataEntry<Self>| {
-            transform(e, &|idx| {
-                let (r, c) = (idx / BOARD_SIZE, idx % BOARD_SIZE);
-                let rt = BOARD_SIZE - 1 - r;
-                let ct = BOARD_SIZE - 1 - c;
-                rt * BOARD_SIZE + ct
-            })
-        };
-
-        let mut entries = vec![entry];
-        entries.extend(entries.iter().map(rotate_180).collect_vec());
-        entries
     }
 }
