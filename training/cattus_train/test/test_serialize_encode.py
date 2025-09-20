@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -101,7 +100,7 @@ def _test_serialize_encode(game_name: str, game: Game, positions):
             serialize_file = tmp_dir / "serialize_res.json"
             encode_file = tmp_dir / "encode_res.json"
 
-            subprocess.run(
+            subprocess.check_call(
                 [
                     "cargo",
                     "run",
@@ -114,12 +113,9 @@ def _test_serialize_encode(game_name: str, game: Game, positions):
                     f"--position={position}",
                     f"--outfile={encode_file}",
                 ],
-                stderr=sys.stderr,
-                stdout=sys.stdout,
-                check=True,
                 cwd=SELF_PLAY_TOP,
             )
-            subprocess.run(
+            subprocess.check_call(
                 [
                     "cargo",
                     "run",
@@ -132,9 +128,6 @@ def _test_serialize_encode(game_name: str, game: Game, positions):
                     f"--position={position}",
                     f"--outfile={serialize_file}",
                 ],
-                stderr=sys.stderr,
-                stdout=sys.stdout,
-                check=True,
                 cwd=SELF_PLAY_TOP,
             )
 

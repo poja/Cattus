@@ -42,8 +42,27 @@ class TrainingConfig:
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
-class InferenceConfig:
-    engine: Literal["torch-py", "executorch", "executorch-xnnpack", "onnx-tract", "onnx-ort"]
+class ExecutorchConfig:
+    engine: Literal["executorch"]
+    backend: Literal["none", "xnnpack"] = "none"
+
+
+@dataclass(config={"extra": "forbid"}, kw_only=True)
+class TorchPyConfig:
+    engine: Literal["torch-py"]
+
+
+@dataclass(config={"extra": "forbid"}, kw_only=True)
+class OnnxTractConfig:
+    engine: Literal["onnx-tract"]
+
+
+@dataclass(config={"extra": "forbid"}, kw_only=True)
+class OnnxOrtConfig:
+    engine: Literal["onnx-ort"]
+
+
+InferenceConfig = ExecutorchConfig | TorchPyConfig | OnnxTractConfig | OnnxOrtConfig
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
@@ -70,5 +89,5 @@ class Config:
     iterations: int
     mcts: MctsConfig
     training: TrainingConfig
-    inference: InferenceConfig
+    inference: InferenceConfig = Field(discriminator="engine", default=None)
     debug: bool

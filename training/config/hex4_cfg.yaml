@@ -49,4 +49,5 @@ model_compare:
     threads: 8
 
 inference:
-    engine: "executorch-xnnpack"
+    engine: executorch
+    backend: xnnpack
