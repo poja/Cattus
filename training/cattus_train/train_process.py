@@ -7,34 +7,28 @@ import re
 import shutil
 import subprocess
 import tempfile
-import threading
 import time
-import warnings
 from dataclasses import asdict
 from datetime import datetime
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
-import executorch.exir
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
 from torch.utils.data import DataLoader
 
 from cattus_train.chess import Chess
-from cattus_train.config import Config, ExecutorchConfig, OnnxOrtConfig, OnnxTractConfig, TorchPyConfig
+from cattus_train.config import Config
 from cattus_train.data_set import DataSet
 from cattus_train.hex import Hex
+from cattus_train.self_play import compile_selfplay_exe, export_model_for_selfplay
 from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
 CATTUS_TOP = Path(__file__).parent.parent.parent.resolve()
 SELF_PLAY_CRATE_DIR = CATTUS_TOP / "training" / "self-play"
-
-# For some reason, onnx.export is not thread-safe, so we need to lock it
-ONNX_EXPORT_LOCK = threading.RLock()
 
 
 class TrainProcess:
@@ -60,7 +54,6 @@ class TrainProcess:
             self._game = Chess()
         else:
             raise ValueError("Unknown game argument in config file.")
-        self._self_play_exec_name: str = f"{cfg.game}_self_play_runner"
         self._self_play_exec_path: Path = None
 
         self._net_type: str = cfg.model.type
@@ -85,7 +78,6 @@ class TrainProcess:
                 cfg.device = "mps"
             else:
                 cfg.device = "cpu"
-        assert cfg.device in ("cpu", "cuda", "mps")
 
         self._lr_scheduler = LearningRateScheduler(cfg.training.learning_rate)
 
@@ -107,7 +99,8 @@ class TrainProcess:
         logging.info("base model:\t%s", self._base_model_path)
         logging.info("metrics file:\t%s", metrics_filename)
 
-        self._compile_selfplay_exe()
+        logging.info("Building Self-play executable...")
+        self._self_play_exec_path = compile_selfplay_exe(self._cfg.game, self._cfg.inference, self._cfg.debug)
 
         for iter_num in range(self._cfg.iterations):
             logging.info(f"Training iteration {iter_num}")
@@ -349,66 +342,14 @@ class TrainProcess:
         model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(random.randint(0, 1 << 16))
         model_path = self._cfg.models_dir / f"model_{model_time}"
 
-        # Save model as state dict
+        # Save model as state dict for training
         torch.save(model.state_dict(), model_path.with_suffix(".pt"))
 
         #### Export model for self play
-        model.eval()
-        with torch.no_grad():
-            # Export using a batch size different from training
-            self_play_input_shape = self._game.model_input_shape(self._net_type)
-            self_play_input_shape = (self._cfg.self_play.batch_size,) + self_play_input_shape[1:]
-            self_play_sample_input = torch.randn(self_play_input_shape)
-
-            match self._cfg.inference:
-                case TorchPyConfig():  # torch.jit
-                    traced_model = torch.jit.trace(model, self_play_sample_input)
-                    torch.jit.save(traced_model, model_path.with_suffix(".jit"))
-                case ExecutorchConfig():  # executorch
-                    with warnings.catch_warnings():
-                        exported_model = torch.export.export(model, (self_play_sample_input,))
-                        edge_program = executorch.exir.to_edge(exported_model)
-
-                        # use_fp16 = True
-                        # compile_specs = [CompileSpec("use_fp16", bytes([use_fp16]))]
-                        # use_partitioner = True
-                        # if use_partitioner:
-                        #     et_model = et_model.to_backend(MPSPartitioner(compile_specs=compile_specs))
-                        # else:
-                        #     et_model = to_backend(MPSBackend.__name__, et_model.exported_program(), compile_specs)
-                        #     et_model = export_to_edge(et_model, (self_play_sample_input,))
-                        # et_program = et_model.to_executorch(config=ExecutorchBackendConfig(extract_delegate_segments=False))
-                        # et_program = to_edge_transform_and_lower(
-                        #     et_model,
-                        #     # partitioner=[MPSPartitioner(compile_specs=[CompileSpec("use_fp16", bytes([True]))])],
-                        #     partitioner=[XnnpackPartitioner()]
-                        # ).to_executorch()
-
-                        match self._cfg.inference.backend:
-                            case "none":
-                                pass
-                            case "xnnpack":
-                                edge_program = edge_program.to_backend(XnnpackPartitioner())
-                            case _:
-                                raise ValueError(f"Unsupported executorch backend: {self._cfg.inference.backend}")
-
-                        et_program = edge_program.to_executorch()
-
-                        with open(model_path.with_suffix(".pte"), "wb") as f:
-                            et_program.write_to_file(f)
-                case "onnx-tract" | "onnx-ort":  # onnx
-                    with ONNX_EXPORT_LOCK:
-                        torch.onnx.export(
-                            model,
-                            self_play_sample_input,
-                            model_path.with_suffix(".onnx"),
-                            verbose=False,
-                            input_names=["planes"],
-                            output_names=["policy", "value"],
-                        )
-                    pass
-                case _:
-                    raise ValueError(f"Unsupported inference engine: {self._cfg.inference.engine}")
+        # Export using a batch size different from training
+        self_play_input_shape = self._game.model_input_shape(self._net_type)
+        self_play_input_shape = (self._cfg.self_play.batch_size,) + self_play_input_shape[1:]
+        export_model_for_selfplay(model, model_path, self._cfg.inference, self_play_input_shape)
 
         return model_path
 
@@ -417,42 +358,6 @@ class TrainProcess:
         state_dict = torch.load(model_path.with_suffix(".pt"), map_location="cpu")
         model.load_state_dict(state_dict)
         return model
-
-    def _compile_selfplay_exe(self):
-        logging.info("Building Self-play executable...")
-        profile = "dev" if self._cfg.debug else "release"
-        env = os.environ.copy()
-        match self._cfg.inference:
-            case TorchPyConfig():
-                features = ["torch-python"]
-            case ExecutorchConfig():
-                features = ["executorch"]
-                match self._cfg.inference.backend:
-                    case "none":
-                        pass
-                    case "xnnpack":
-                        env["CATTUS_XNNPACK"] = "1"
-                    case _:
-                        raise ValueError(f"Unsupported executorch backend: {self._cfg.inference.backend}")
-            case OnnxTractConfig():
-                features = ["onnx-tract"]
-            case OnnxOrtConfig():
-                features = ["onnx-ort"]
-        subprocess.check_call(
-            [
-                "cargo",
-                "build",
-                f"--profile={profile}",
-                f"--features={','.join(features)}",
-                "-q",
-                f"--bin={self._self_play_exec_name}",
-            ],
-            cwd=SELF_PLAY_CRATE_DIR,
-            env=env,
-        )
-        self._self_play_exec_path = (
-            SELF_PLAY_CRATE_DIR / "target" / ("debug" if self._cfg.debug else "release") / self._self_play_exec_name
-        )
 
     def _write_metrics(self, filename: Path):
         per_model_columns = [

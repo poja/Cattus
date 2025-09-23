@@ -43,23 +43,23 @@ class TrainingConfig:
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
 class ExecutorchConfig:
-    engine: Literal["executorch"]
+    engine: Literal["executorch"] = "executorch"
     backend: Literal["none", "xnnpack"] = "none"
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
 class TorchPyConfig:
-    engine: Literal["torch-py"]
+    engine: Literal["torch-py"] = "torch-py"
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
 class OnnxTractConfig:
-    engine: Literal["onnx-tract"]
+    engine: Literal["onnx-tract"] = "onnx-tract"
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
 class OnnxOrtConfig:
-    engine: Literal["onnx-ort"]
+    engine: Literal["onnx-ort"] = "onnx-ort"
 
 
 InferenceConfig = ExecutorchConfig | TorchPyConfig | OnnxTractConfig | OnnxOrtConfig
