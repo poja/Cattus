@@ -141,6 +141,8 @@ def build_executorch(xnnpack: bool, mps: bool):
         [
             "cmake",
             "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_CXX_FLAGS=-O3",
+            "-DCMAKE_C_FLAGS=-O3",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             "-DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF",
             "-DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF",
