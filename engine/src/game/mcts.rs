@@ -134,6 +134,7 @@ impl<Game: IGame> MctsPlayer<Game> {
     }
 
     fn develop_tree(&mut self) {
+        assert!(self.sim_num > 1);
         for _ in 0..self.sim_num {
             /* Select a leaf node */
             let path_to_selection = self.select();

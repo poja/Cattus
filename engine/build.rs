@@ -14,10 +14,24 @@ fn main() {
 
         link_searchs.push("/kernels/portable/");
         static_libs.push("portable_kernels");
-        static_libs.push("portable_ops_lib");
+        // static_libs.push("portable_ops_lib");
+
+        link_searchs.push("/configurations/");
+        static_libs.push("optimized_native_cpu_ops_lib");
 
         link_searchs.push("/kernels/optimized/");
         static_libs.push("optimized_kernels");
+        static_libs.push("eigen_blas");
+        static_libs.push("cpublas");
+
+        link_searchs.push("/extension/threadpool/");
+        static_libs.push("extension_threadpool");
+
+        link_searchs.push("/backends/xnnpack/third-party/cpuinfo/");
+        static_libs.push("cpuinfo");
+
+        link_searchs.push("/backends/xnnpack/third-party/pthreadpool/");
+        static_libs.push("pthreadpool");
 
         if rerun_env("CATTUS_MPS").as_deref() == Some("1") {
             if true {
@@ -37,16 +51,9 @@ fn main() {
         if rerun_env("CATTUS_XNNPACK").as_deref() == Some("1") {
             link_searchs.push("/backends/xnnpack/");
             link_searchs.push("/backends/xnnpack/third-party/XNNPACK/");
-            link_searchs.push("/backends/xnnpack/third-party/cpuinfo/");
-            link_searchs.push("/backends/xnnpack/third-party/pthreadpool/");
             static_libs.push("xnnpack_backend");
             static_libs.push("XNNPACK");
             static_libs.push("xnnpack-microkernels-prod");
-            static_libs.push("cpuinfo");
-            static_libs.push("pthreadpool");
-
-            link_searchs.push("/extension/threadpool/");
-            static_libs.push("extension_threadpool");
 
             if cfg!(target_arch = "arm") || cfg!(target_arch = "aarch64") {
                 link_searchs.push("/kleidiai/");
