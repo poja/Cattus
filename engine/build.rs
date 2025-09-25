@@ -34,18 +34,22 @@ fn main() {
         static_libs.push("pthreadpool");
 
         if rerun_env("CATTUS_MPS").as_deref() == Some("1") {
-            if true {
-                panic!("Not supported");
-            }
             link_searchs.push("/backends/apple/mps/");
             static_libs.push("mpsdelegate");
+
+            // println!(
+            //     "cargo::rustc-link-search=native=/Library/Developer/CommandLineTools/usr/lib/clang/16/lib/darwin/"
+            // );
+            // println!("cargo::rustc-link-lib=static=clang_rt.osx");
+
             println!("cargo::rustc-link-lib=dylib=objc");
-            println!("cargo:rustc-link-lib=framework=Metal");
-            println!("cargo:rustc-link-lib=framework=MetalPerformanceShaders");
-            println!("cargo:rustc-link-lib=framework=MetalPerformanceShadersGraph");
-            println!("cargo:rustc-link-lib=framework=Foundation");
-            println!("cargo:rustc-link-lib=framework=CoreGraphics");
-            println!("cargo:rustc-link-lib=dylib=System");
+            println!("cargo::rustc-link-lib=framework=Metal");
+            println!("cargo::rustc-link-lib=framework=MetalPerformanceShaders");
+            println!("cargo::rustc-link-lib=framework=MetalPerformanceShadersGraph");
+            println!("cargo::rustc-link-arg=Accelerate");
+            println!("cargo::rustc-link-lib=framework=Foundation");
+            println!("cargo::rustc-link-lib=framework=CoreGraphics");
+            // println!("cargo:rustc-link-lib=dylib=System");
         }
 
         if rerun_env("CATTUS_XNNPACK").as_deref() == Some("1") {

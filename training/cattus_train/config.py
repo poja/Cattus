@@ -44,7 +44,7 @@ class TrainingConfig:
 @dataclass(config={"extra": "forbid"}, kw_only=True)
 class ExecutorchConfig:
     engine: Literal["executorch"] = "executorch"
-    backend: Literal["none", "xnnpack"] = "none"
+    backend: Literal["none", "xnnpack", "mps"] = "none"
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
