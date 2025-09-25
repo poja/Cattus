@@ -65,10 +65,6 @@ def main():
             )
             return
 
-    if args.clean:
-        if EXECUTORCH_DIR.exists():
-            shutil.rmtree(EXECUTORCH_DIR)
-
     clone_executorch()
 
     subprocess.check_call(
@@ -88,6 +84,7 @@ def main():
     build_executorch(
         xnnpack=args.xnnpack,
         mps=args.mps,
+        clean=args.clean,
     )
 
 
@@ -132,37 +129,46 @@ def clone_executorch():
     )
 
 
-def build_executorch(xnnpack: bool, mps: bool):
+def build_executorch(xnnpack: bool, mps: bool, clean: bool):
     build_dir = EXECUTORCH_DIR / "build"
+    if clean and build_dir.exists():
+        shutil.rmtree(build_dir)
     if not build_dir.exists():
         build_dir.mkdir()
+
     option = {True: "ON", False: "OFF"}
+    cmake_flags = [
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DCMAKE_CXX_FLAGS=-O3",
+        "-DCMAKE_C_FLAGS=-O3",
+        f"-DPYTHON_EXECUTABLE={sys.executable}",
+        "-DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF",
+        "-DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF",
+        "-DEXECUTORCH_ENABLE_PROGRAM_VERIFICATION=ON",
+        "-DEXECUTORCH_ENABLE_LOGGING=ON",
+        "-DEXECUTORCH_BUILD_PORTABLE_OPS=ON",
+        "-DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON",
+        "-DEXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON",
+        "-DEXECUTORCH_BUILD_EXTENSION_MODULE=ON",
+        "-DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON",
+        "-DEXECUTORCH_BUILD_MPS=" + option[mps],
+        "-DEXECUTORCH_BUILD_XNNPACK=" + option[xnnpack],
+        "-DEXECUTORCH_BUILD_KERNELS_QUANTIZED=OFF",
+        "-DEXECUTORCH_BUILD_KERNELS_OPTIMIZED=ON",
+        "-DEXECUTORCH_BUILD_KERNELS_CUSTOM=OFF",
+        "-DEXECUTORCH_BUILD_DEVTOOLS=OFF",
+        "-DEXECUTORCH_ENABLE_EVENT_TRACER=OFF",
+        *(["-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0"] if mps else []),
+        # "-DCMAKE_C_COMPILER=/Library/Developer/CommandLineTools/usr/bin/gcc",
+        # "-DCMAKE_CXX_COMPILER=/Library/Developer/CommandLineTools/usr/bin/g++",
+    ]
     subprocess.check_call(
-        [
-            "cmake",
-            "-DCMAKE_BUILD_TYPE=Release",
-            "-DCMAKE_CXX_FLAGS=-O3",
-            "-DCMAKE_C_FLAGS=-O3",
-            f"-DPYTHON_EXECUTABLE={sys.executable}",
-            "-DEXECUTORCH_BUILD_EXECUTOR_RUNNER=OFF",
-            "-DEXECUTORCH_BUILD_EXTENSION_RUNNER_UTIL=OFF",
-            "-DEXECUTORCH_ENABLE_PROGRAM_VERIFICATION=ON",
-            "-DEXECUTORCH_ENABLE_LOGGING=ON",
-            "-DEXECUTORCH_BUILD_PORTABLE_OPS=ON",
-            "-DEXECUTORCH_BUILD_EXTENSION_DATA_LOADER=ON",
-            "-DEXECUTORCH_BUILD_EXTENSION_FLAT_TENSOR=ON",
-            "-DEXECUTORCH_BUILD_EXTENSION_MODULE=ON",
-            "-DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON",
-            "-DEXECUTORCH_BUILD_MPS=" + option[mps],
-            "-DEXECUTORCH_BUILD_XNNPACK=" + option[xnnpack],
-            "-DEXECUTORCH_BUILD_KERNELS_QUANTIZED=OFF",
-            "-DEXECUTORCH_BUILD_KERNELS_OPTIMIZED=ON",
-            "-DEXECUTORCH_BUILD_KERNELS_CUSTOM=OFF",
-            "-DEXECUTORCH_BUILD_DEVTOOLS=OFF",
-            "-DEXECUTORCH_ENABLE_EVENT_TRACER=OFF",
-            "..",
-        ],
+        ["cmake", *cmake_flags, ".."],
         cwd=build_dir,
+        env={
+            **os.environ,
+            **({"MACOSX_DEPLOYMENT_TARGET": "12.0"} if mps else {}),
+        },
     )
 
     subprocess.check_call(

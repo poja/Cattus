@@ -49,6 +49,7 @@ def main():
     inference_configs = [
         ExecutorchConfig(backend="none"),
         ExecutorchConfig(backend="xnnpack"),
+        # ExecutorchConfig(backend="mps"),
         TorchPyConfig(),
         OnnxTractConfig(),
         OnnxOrtConfig(),

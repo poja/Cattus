@@ -31,6 +31,8 @@ def compile_selfplay_exe(game: str, cfg: InferenceConfig, debug: bool = False) -
                     pass
                 case "xnnpack":
                     env["CATTUS_XNNPACK"] = "1"
+                case "mps":
+                    env["CATTUS_MPS"] = "1"
                 case _:
                     raise ValueError(f"Unsupported executorch backend: {cfg.backend}")
         case OnnxTractConfig():
@@ -89,29 +91,37 @@ def _export_model_for_selfplay_impl(
                 exported_model = torch.export.export(model, (sample_input,))
                 edge_program = executorch.exir.to_edge(exported_model)
 
-                # use_fp16 = True
-                # compile_specs = [CompileSpec("use_fp16", bytes([use_fp16]))]
-                # use_partitioner = True
-                # if use_partitioner:
-                #     et_model = et_model.to_backend(MPSPartitioner(compile_specs=compile_specs))
-                # else:
-                #     et_model = to_backend(MPSBackend.__name__, et_model.exported_program(), compile_specs)
-                #     et_model = export_to_edge(et_model, (self_play_sample_input,))
-                # et_program = et_model.to_executorch(config=ExecutorchBackendConfig(extract_delegate_segments=False))
-                # et_program = to_edge_transform_and_lower(
-                #     et_model,
-                #     # partitioner=[MPSPartitioner(compile_specs=[CompileSpec("use_fp16", bytes([True]))])],
-                #     partitioner=[XnnpackPartitioner()]
-                # ).to_executorch()
-
                 match cfg.backend:
                     case "none":
                         pass
                     case "xnnpack":
                         edge_program = edge_program.to_backend(XnnpackPartitioner())
+                    case "mps":
+                        from executorch.backends.apple.mps.partition import MPSPartitioner
+                        # from executorch.backends.apple.mps import MPSBackend
+
+                        compile_specs = []
+                        # edge_program = edge_program.to_backend(MPSBackend())
+                        edge_program = edge_program.to_backend(MPSPartitioner(compile_specs=compile_specs))
+
+                        # use_fp16 = True
+                        # compile_specs = [CompileSpec("use_fp16", bytes([use_fp16]))]
+                        # use_partitioner = True
+                        # if use_partitioner:
+                        #     et_model = et_model.to_backend(MPSPartitioner(compile_specs=compile_specs))
+                        # else:
+                        #     et_model = to_backend(MPSBackend.__name__, et_model.exported_program(), compile_specs)
+                        #     et_model = export_to_edge(et_model, (self_play_sample_input,))
+                        # et_program = et_model.to_executorch(config=ExecutorchBackendConfig(extract_delegate_segments=False))
+                        # et_program = to_edge_transform_and_lower(
+                        #     et_model,
+                        #     # partitioner=[MPSPartitioner(compile_specs=[CompileSpec("use_fp16", bytes([True]))])],
+                        #     partitioner=[XnnpackPartitioner()]
+                        # ).to_executorch()
                     case _:
                         raise ValueError(f"Unsupported executorch backend: {cfg.backend}")
 
+                # print(f"Lowered graph:\n{edge_program.exported_program().graph}")
                 et_program = edge_program.to_executorch()
 
                 with open(model_path.with_suffix(".pte"), "wb") as f:
