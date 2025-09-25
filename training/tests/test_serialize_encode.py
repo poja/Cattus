@@ -13,7 +13,7 @@ from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
 TESTS_DIR = Path(__file__).parent.resolve()
-SELF_PLAY_TOP = TESTS_DIR.parent.parent / "self-play"
+SELF_PLAY_TOP = TESTS_DIR.parent / "self-play"
 
 logging.basicConfig(level=logging.DEBUG, format="[Serialize Encode Test]: %(message)s")
 

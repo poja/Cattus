@@ -5,7 +5,7 @@ import chess
 import chess.engine
 
 TESTS_DIR = Path(__file__).parent.resolve()
-CATTUS_ENGINE_TOP = Path(TESTS_DIR).parent.parent.parent / "engine"
+CATTUS_ENGINE_TOP = TESTS_DIR.parent.parent / "engine"
 
 
 def test_works_with_python_library_chess():
