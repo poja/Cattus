@@ -74,14 +74,14 @@ mps_available = torch.backends.mps.is_available()
     };
 
     let model_impl = model_impl.unwrap_or_else(|| {
-        if cfg!(feature = "executorch") {
-            model::ImplType::Executorch
-        } else if cfg!(feature = "torch-python") && mps_available {
-            model::ImplType::TorchPy
+        if cfg!(feature = "onnx-ort") {
+            model::ImplType::OnnxOrt
         } else if cfg!(feature = "onnx-tract") {
             model::ImplType::OnnxTract
-        } else if cfg!(feature = "onnx-ort") {
-            model::ImplType::OnnxOrt
+        } else if cfg!(feature = "torch-python") && mps_available {
+            model::ImplType::TorchPy
+        } else if cfg!(feature = "executorch") {
+            model::ImplType::Executorch
         } else if cfg!(feature = "torch-python") {
             model::ImplType::TorchPy
         } else {

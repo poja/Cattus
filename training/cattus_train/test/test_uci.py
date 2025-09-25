@@ -10,7 +10,7 @@ CATTUS_ENGINE_TOP = Path(TESTS_DIR).parent.parent.parent / "engine"
 
 def test_works_with_python_library_chess():
     subprocess.check_call(
-        ["cargo", "build", "--features", "executorch", "--bin", "cattus", "-q", "--profile", "release"],
+        ["cargo", "build", "--features=onnx-ort", "--bin=cattus", "-q", "--profile=release"],
         cwd=CATTUS_ENGINE_TOP,
     )
     cattus_exe = CATTUS_ENGINE_TOP / "target" / "release" / "cattus"
