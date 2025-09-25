@@ -49,5 +49,4 @@ model_compare:
     threads: 8
 
 inference:
-    engine: executorch
-    backend: xnnpack
+    engine: onnx-ort

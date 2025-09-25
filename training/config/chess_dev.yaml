@@ -145,7 +145,5 @@ model_compare:
 # Inference engine configuration
 inference:
     # Inference engine to use
-    engine: executorch
+    engine: onnx-ort
     # Following fields are engine specific
-
-    backend: xnnpack

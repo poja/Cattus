@@ -11,7 +11,7 @@ import cattus_train
 def test_ttt_training():
     logging.basicConfig(level=logging.DEBUG, format="[TicTactToe Training Test]: %(message)s")
 
-    inference_engine = os.getenv("CATTUS_TEST_INFERENCE_ENGINE", "executorch")
+    inference_engine = os.getenv("CATTUS_TEST_INFERENCE_ENGINE", "onnx-ort")
     with tempfile.TemporaryDirectory() as tmp_dir:
         config = f"""%YAML 1.2
 ---

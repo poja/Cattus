@@ -8,7 +8,7 @@ import cattus_train
 
 
 def _test_simple_two_headed(game_name):
-    inference_engine = os.getenv("CATTUS_TEST_INFERENCE_ENGINE", "executorch")
+    inference_engine = os.getenv("CATTUS_TEST_INFERENCE_ENGINE", "onnx-ort")
     with tempfile.TemporaryDirectory() as tmp_dir:
         config = f"""%YAML 1.2
 ---
