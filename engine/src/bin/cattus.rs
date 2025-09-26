@@ -1,4 +1,4 @@
-use cattus::chess::net::net_stockfish::StockfishNet;
+use cattus::chess::net::stockfish::StockfishNet;
 use cattus::chess::uci::UCI;
 use cattus::game::mcts::MctsParams;
 use clap::Parser;

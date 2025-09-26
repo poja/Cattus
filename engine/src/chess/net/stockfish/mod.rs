@@ -1,3 +1,6 @@
+mod util;
+use util::*;
+
 use itertools::Itertools;
 use pleco::core::masks::*;
 use pleco::core::mono_traits::*;
@@ -8,7 +11,6 @@ use pleco::{BitBoard, Board, File, PieceType, Player, Rank, SQ};
 use std::mem::MaybeUninit;
 
 use crate::chess::chess_game::{ChessGame, ChessPosition};
-use crate::chess::net::net_stockfish_utils::*;
 use crate::game::common::{GamePosition, IGame};
 use crate::game::mcts::ValueFunction;
 use crate::game::net;
@@ -1082,4 +1084,30 @@ impl<'a, 'b> EvaluationInner<'a> {
 
 fn king_proximity(king_sq: SQ, sq: SQ) -> i32 {
     distance_of_sqs(king_sq, sq).min(5) as i32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::StockfishNet;
+    use crate::chess::chess_game::ChessPosition;
+    use crate::game::mcts::ValueFunction;
+
+    #[test]
+    fn basic_evaluate() {
+        let net = StockfishNet {};
+
+        let pos1 =
+            ChessPosition::from_str("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        let pos2 =
+            ChessPosition::from_str("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1");
+        let pos3 =
+            ChessPosition::from_str("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
+        let pos4 =
+            ChessPosition::from_str("r1bqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
+
+        assert!(net.evaluate(&pos1).1 == -net.evaluate(&pos3).1);
+        assert!(net.evaluate(&pos2).1 == -net.evaluate(&pos4).1);
+        assert!(net.evaluate(&pos1).1 > net.evaluate(&pos2).1);
+        assert!(-net.evaluate(&pos3).1 > -net.evaluate(&pos4).1);
+    }
 }
