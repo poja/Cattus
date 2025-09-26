@@ -31,17 +31,11 @@ pub fn init_globals(model_impl: Option<model::ImplType>) {
         .init();
 
     if cfg!(feature = "torch-python") {
-        let venv_path = Path::new(&env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .join(".venv");
+        let venv_path = Path::new(&env!("CARGO_MANIFEST_DIR")).parent().unwrap().join(".venv");
         let py_packages_path = if cfg!(target_os = "windows") {
             venv_path.join("Lib").join("site-packages")
         } else {
-            venv_path
-                .join("lib")
-                .join("python3.12")
-                .join("site-packages")
+            venv_path.join("lib").join("python3.12").join("site-packages")
         };
         unsafe { env::set_var("PYTHONPATH", py_packages_path.to_str().unwrap()) };
     }

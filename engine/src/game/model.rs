@@ -64,8 +64,7 @@ class Model:
             outputs = [output.detach().cpu().numpy() for output in outputs]
         return outputs
                         "#;
-                    let module =
-                        PyModule::from_code(py, code, c"py/model.py", c"model").unwrapy(py);
+                    let module = PyModule::from_code(py, code, c"py/model.py", c"model").unwrapy(py);
 
                     let py_class = module.getattr("Model").unwrap();
                     py_class.call1((path,)).unwrapy(py).into()
@@ -76,9 +75,7 @@ class Model:
             ImplType::Executorch => {
                 let mut model = executorch::module::Module::from_file_path(path);
                 model
-                    .load(Some(
-                        executorch::program::ProgramVerification::InternalConsistency,
-                    ))
+                    .load(Some(executorch::program::ProgramVerification::InternalConsistency))
                     .unwrap();
                 model.load_method("forward", None, None).unwrap();
                 ModelImpl::Executorch(model)
@@ -103,10 +100,7 @@ class Model:
                     .commit_from_file(path)
                     .unwrap();
                 let output_names = model.outputs.iter().map(|o| o.name.clone()).collect();
-                ModelImpl::Ort {
-                    model,
-                    output_names,
-                }
+                ModelImpl::Ort { model, output_names }
             }
             #[cfg(not(all(
                 feature = "torch-python",
@@ -151,10 +145,7 @@ class Model:
                     .into_iter()
                     .map(|input| executorch::tensor::TensorPtr::from_array(input).unwrap())
                     .collect::<Vec<_>>();
-                let inputs = inputs
-                    .iter()
-                    .map(executorch::evalue::EValue::from)
-                    .collect::<Vec<_>>();
+                let inputs = inputs.iter().map(executorch::evalue::EValue::from).collect::<Vec<_>>();
                 let outputs = model.forward(&inputs).unwrap();
                 outputs
                     .into_iter()
@@ -163,13 +154,7 @@ class Model:
             }
             #[cfg(feature = "onnx-tract")]
             ModelImpl::Tract(model) => {
-                let inputs = TVec::from_vec(
-                    inputs
-                        .into_iter()
-                        .map(Tensor::from)
-                        .map(TValue::from)
-                        .collect(),
-                );
+                let inputs = TVec::from_vec(inputs.into_iter().map(Tensor::from).map(TValue::from).collect());
                 let outputs = model.run(inputs).unwrap();
                 outputs
                     .into_iter()
@@ -177,17 +162,10 @@ class Model:
                     .collect()
             }
             #[cfg(feature = "onnx-ort")]
-            ModelImpl::Ort {
-                model,
-                output_names,
-            } => {
+            ModelImpl::Ort { model, output_names } => {
                 let inputs = inputs
                     .into_iter()
-                    .map(|input| {
-                        ort::session::SessionInputValue::from(
-                            ort::value::Value::from_array(input).unwrap(),
-                        )
-                    })
+                    .map(|input| ort::session::SessionInputValue::from(ort::value::Value::from_array(input).unwrap()))
                     .collect::<Vec<_>>();
                 let inputs: &[ort::session::SessionInputValue] = &inputs;
                 let mut outputs = model.run(inputs).unwrap();

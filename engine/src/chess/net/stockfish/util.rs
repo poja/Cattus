@@ -6,11 +6,7 @@ use pleco::core::mono_traits::*;
 use pleco::core::score::*;
 use pleco::core::*;
 use pleco::helper::prelude::*;
-use pleco::BitBoard;
-use pleco::File;
-use pleco::Rank;
-use pleco::SQ;
-use pleco::{Board, PieceType, Player};
+use pleco::{BitBoard, Board, File, PieceType, Player, Rank, SQ};
 use std::mem::transmute;
 
 // pub const PHASE_END_GAME: u16 = 0;
@@ -58,8 +54,7 @@ impl MaterialEntry {
         let npm_b: Value = board.non_pawn_material(Player::Black);
         let npm: Value = END_GAME_LIMIT.max(MID_GAME_LIMIT.min(npm_w + npm_b));
 
-        let phase = (((npm - END_GAME_LIMIT) * PHASE_MID_GAME as i32)
-            / (MID_GAME_LIMIT - END_GAME_LIMIT)) as u16;
+        let phase = (((npm - END_GAME_LIMIT) * PHASE_MID_GAME as i32) / (MID_GAME_LIMIT - END_GAME_LIMIT)) as u16;
 
         let w_pawn_count: u8 = board.count_piece(Player::White, PieceType::P);
         let w_knight_count: u8 = board.count_piece(Player::White, PieceType::N);
@@ -123,14 +118,9 @@ impl MaterialEntry {
             ],
         ];
 
-        let value =
-            (imbalance::<WhiteType>(&piece_counts) - imbalance::<BlackType>(&piece_counts)) / 16;
+        let value = (imbalance::<WhiteType>(&piece_counts) - imbalance::<BlackType>(&piece_counts)) / 16;
 
-        Self {
-            value: value,
-            factor: factor,
-            phase: phase,
-        }
+        Self { value, factor, phase }
     }
 
     #[inline(always)]
@@ -317,14 +307,13 @@ impl PawnEntry {
 
         entry.score[Player::White as usize] = entry.evaluate::<WhiteType>(board);
         entry.score[Player::Black as usize] = entry.evaluate::<BlackType>(board);
-        entry.open_files = (entry.semiopen_files[Player::White as usize]
-            & entry.semiopen_files[Player::Black as usize])
+        entry.open_files = (entry.semiopen_files[Player::White as usize] & entry.semiopen_files[Player::Black as usize])
             .count_ones() as u8;
 
         let all_passed: BitBoard =
             entry.passed_pawns[Player::White as usize] | entry.passed_pawns[Player::Black as usize];
-        let exclusive_open_files = entry.semiopen_files[Player::White as usize]
-            ^ entry.semiopen_files[Player::Black as usize];
+        let exclusive_open_files =
+            entry.semiopen_files[Player::White as usize] ^ entry.semiopen_files[Player::Black as usize];
 
         entry.asymmetry = (all_passed | BitBoard(exclusive_open_files as u64)).count_bits() as i16;
 
@@ -461,23 +450,21 @@ impl PawnEntry {
             } else {
                 P::player().relative_rank_of_sq(b.frontmost_sq(P::opp_player()))
             };
-            let d: File =
-                unsafe { (transmute::<u8, File>(file)).min(!transmute::<u8, File>(file)) };
+            let d: File = unsafe { (transmute::<u8, File>(file)).min(!transmute::<u8, File>(file)) };
 
             // TODO: Simplify
             let r = if file == ksq.file() as u8 { 1 } else { 0 };
 
-            let storm_danger_idx: usize = if file == ksq.file() as u8
-                && P::player().relative_rank_of_sq(ksq) as u8 + 1 == rk_them as u8
-            {
-                0 // Blocked By King
-            } else if rk_us == Rank::R1 {
-                1 // Unopossed
-            } else if rk_them as u8 == rk_us as u8 + 1 {
-                2 // Blocked by Pawn
-            } else {
-                3 // Unblocked
-            };
+            let storm_danger_idx: usize =
+                if file == ksq.file() as u8 && P::player().relative_rank_of_sq(ksq) as u8 + 1 == rk_them as u8 {
+                    0 // Blocked By King
+                } else if rk_us == Rank::R1 {
+                    1 // Unopossed
+                } else if rk_them as u8 == rk_us as u8 + 1 {
+                    2 // Blocked by Pawn
+                } else {
+                    3 // Unblocked
+                };
 
             safety -= SHELTER_WEAKNESS[r as usize][d as usize][rk_us as usize];
             safety -= STORM_DANGER[storm_danger_idx][d as usize][rk_them as usize];
@@ -508,8 +495,7 @@ impl PawnEntry {
         self.weak_unopposed[P::player() as usize] = 0;
         self.semiopen_files[P::player() as usize] = 0xFF;
         self.king_squares[P::player() as usize] = SQ::NO_SQ;
-        self.pawn_attacks[P::player() as usize] =
-            P::shift_up_left(our_pawns) | P::shift_up_right(our_pawns);
+        self.pawn_attacks[P::player() as usize] = P::shift_up_left(our_pawns) | P::shift_up_right(our_pawns);
 
         let pawns_on_dark: u8 = (our_pawns & BitBoard::DARK_SQUARES).count_bits();
         self.pawns_on_squares[P::player() as usize][Player::Black as usize] = pawns_on_dark;
@@ -517,10 +503,7 @@ impl PawnEntry {
             board.count_piece(P::player(), PieceType::P) - pawns_on_dark;
 
         while let Some(s) = p1.pop_some_lsb() {
-            assert_eq!(
-                board.piece_at_sq(s),
-                Piece::make_lossy(P::player(), PieceType::P)
-            );
+            assert_eq!(board.piece_at_sq(s), Piece::make_lossy(P::player(), PieceType::P));
 
             let f: File = s.file();
 
@@ -538,10 +521,7 @@ impl PawnEntry {
 
             // A pawn is backward when it is behind all pawns of the same color on the
             // adjacent files and cannot be safely advanced.
-            if neighbours.is_empty()
-                || lever.is_not_empty()
-                || P::player().relative_rank_of_sq(s) >= Rank::R5
-            {
+            if neighbours.is_empty() || lever.is_not_empty() || P::player().relative_rank_of_sq(s) >= Rank::R5 {
                 backward = false;
             } else {
                 // Find the backmost rank with neighbours or stoppers
@@ -552,11 +532,7 @@ impl PawnEntry {
                 // stopper on adjacent file which controls the way to that rank.
                 backward = ((b | P::shift_up(b & adjacent_file(f))) & stoppers).is_not_empty();
 
-                assert!(
-                    !(backward
-                        && (forward_rank_bb(P::opp_player(), P::up(s).rank()) & neighbours)
-                            .is_not_empty())
-                );
+                assert!(!(backward && (forward_rank_bb(P::opp_player(), P::up(s).rank()) & neighbours).is_not_empty()));
             }
 
             // Passed pawns will be properly scored in evaluation because we need
@@ -569,8 +545,7 @@ impl PawnEntry {
                 && phalanx.count_bits() >= lever_push.count_bits()
             {
                 self.passed_pawns[P::player() as usize] |= s.to_bb();
-            } else if stoppers == P::up(s).to_bb() && P::player().relative_rank_of_sq(s) >= Rank::R5
-            {
+            } else if stoppers == P::up(s).to_bb() && P::player().relative_rank_of_sq(s) >= Rank::R5 {
                 b = P::shift_up(supported) & !their_pawns;
                 while let Some(b_sq) = b.pop_some_lsb() {
                     if !(their_pawns & pawn_attacks_from(b_sq, P::player())).more_than_one() {
@@ -581,8 +556,7 @@ impl PawnEntry {
 
             if supported.is_not_empty() | supported.is_not_empty() {
                 score += unsafe {
-                    CONNECTED[opposed as usize][phalanx.is_not_empty() as usize]
-                        [supported.count_bits() as usize]
+                    CONNECTED[opposed as usize][phalanx.is_not_empty() as usize][supported.count_bits() as usize]
                         [P::player().relative_rank_of_sq(s) as usize]
                 };
             } else if neighbours.is_empty() {

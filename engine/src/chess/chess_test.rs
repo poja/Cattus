@@ -5,18 +5,14 @@ mod tests {
     use std::collections::HashSet;
 
     use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
-    use crate::game::common::GameMove;
-    use crate::game::common::GamePlayer;
-    use crate::game::common::IGame;
-    use crate::game::common::{GameColor, GamePosition, PlayerRand};
+    use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame, PlayerRand};
 
     #[test]
     fn simple_game_and_mate() {
         let mut pos = ChessPosition::new();
 
         let moves = vec![
-            "e4", "e5", "d4", "exd4", "Qxd4", "Nc6", "Qa4", "a6", "Bg5", "h6", "Bc4", "Rb8", "Qb3",
-            "Ra8", "Bxf7",
+            "e4", "e5", "d4", "exd4", "Qxd4", "Nc6", "Qa4", "a6", "Bg5", "h6", "Bc4", "Rb8", "Qb3", "Ra8", "Bxf7",
         ];
         for move_str in moves {
             assert!(!pos.is_over());
@@ -121,9 +117,7 @@ mod tests {
                     assert!(pos.get_winner() == pos_t.get_winner().map(|w| w.opposite()));
                 }
 
-                let next_move =
-                    <_ as GamePlayer<ChessGame>>::next_move(&mut player, game.pos_history())
-                        .unwrap();
+                let next_move = <_ as GamePlayer<ChessGame>>::next_move(&mut player, game.pos_history()).unwrap();
                 game.play_single_turn(next_move);
             }
         }

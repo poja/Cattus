@@ -353,9 +353,7 @@ impl<const BOARD_SIZE: usize> IGame for HexGame<BOARD_SIZE> {
     }
 
     fn new_from_pos(pos: Self::Position) -> Self {
-        Self {
-            pos_history: vec![pos],
-        }
+        Self { pos_history: vec![pos] }
     }
 
     fn pos_history(&self) -> &[Self::Position] {

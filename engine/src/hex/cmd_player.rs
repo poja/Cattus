@@ -11,9 +11,7 @@ impl<const BOARD_SIZE: usize> GamePlayer<HexGame<BOARD_SIZE>> for HexPlayerCmd {
     ) -> Option<<HexGame<BOARD_SIZE> as IGame>::Move> {
         let read_usize = || -> Option<usize> {
             let mut line = String::new();
-            io::stdin()
-                .read_line(&mut line)
-                .expect("failed to read input");
+            io::stdin().read_line(&mut line).expect("failed to read input");
             match line.trim().parse::<usize>() {
                 Err(e) => {
                     println!("invalid number: {}", e);

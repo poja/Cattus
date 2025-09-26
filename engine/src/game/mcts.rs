@@ -110,8 +110,7 @@ impl<Game: IGame> MctsPlayer<Game> {
             metrics::Unit::Seconds,
             "Duration of MCTS search"
         );
-        let search_duration_metric =
-            RunningAverage::new(0.99, metrics::gauge!(search_duration_metric_name));
+        let search_duration_metric = RunningAverage::new(0.99, metrics::gauge!(search_duration_metric_name));
 
         Self {
             search_tree: DiGraph::new(),
@@ -233,34 +232,26 @@ impl<Game: IGame> MctsPlayer<Game> {
             edge.score_w / edge.simulations_n as f32
         };
 
-        let explore = self.explore_factor
-            * edge.init_score
-            * ((parent_simcount as f32).sqrt() / (1 + edge.simulations_n) as f32);
+        let explore =
+            self.explore_factor * edge.init_score * ((parent_simcount as f32).sqrt() / (1 + edge.simulations_n) as f32);
 
         exploit + explore
     }
 
-    fn create_children(
-        &mut self,
-        parent_id: NodeIndex,
-        per_move_init_score: Vec<(Game::Move, f32)>,
-    ) {
+    fn create_children(&mut self, parent_id: NodeIndex, per_move_init_score: Vec<(Game::Move, f32)>) {
         let parent_pos = self.search_tree[parent_id].position;
         assert!(!parent_pos.is_over());
 
         debug_assert!({
-            let moves_actual: HashSet<Game::Move> =
-                HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| *m));
-            let moves_expected: HashSet<Game::Move> =
-                HashSet::from_iter(parent_pos.get_legal_moves().iter().cloned());
+            let moves_actual: HashSet<Game::Move> = HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| *m));
+            let moves_expected: HashSet<Game::Move> = HashSet::from_iter(parent_pos.get_legal_moves().iter().cloned());
             moves_actual == moves_expected
         });
 
         for (m, p) in per_move_init_score {
             let leaf_pos = parent_pos.get_moved_position(m);
             let leaf_id = self.search_tree.add_node(MctsNode::from_position(leaf_pos));
-            self.search_tree
-                .add_edge(parent_id, leaf_id, MctsEdge::new(m, p));
+            self.search_tree.add_edge(parent_id, leaf_id, MctsEdge::new(m, p));
         }
     }
 
@@ -283,11 +274,7 @@ impl<Game: IGame> MctsPlayer<Game> {
         }
     }
 
-    fn find_node_with_position(
-        &self,
-        position: &Game::Position,
-        depth_limit: u32,
-    ) -> Option<NodeIndex> {
+    fn find_node_with_position(&self, position: &Game::Position, depth_limit: u32) -> Option<NodeIndex> {
         let mut layer = vec![self.root.unwrap()];
 
         for _ in 0..depth_limit {
@@ -339,10 +326,7 @@ impl<Game: IGame> MctsPlayer<Game> {
         }
     }
 
-    pub fn calc_moves_probabilities(
-        &mut self,
-        pos_history: &[Game::Position],
-    ) -> Vec<(Game::Move, f32)> {
+    pub fn calc_moves_probabilities(&mut self, pos_history: &[Game::Position]) -> Vec<(Game::Move, f32)> {
         let search_start_time = Instant::now();
         let position = pos_history.last().unwrap();
 
@@ -382,10 +366,7 @@ impl<Game: IGame> MctsPlayer<Game> {
             .collect_vec();
 
         // normalize sim counts to create a valid distribution -> (move, simcount / simcount_total)
-        let simcount_total: u32 = moves_and_simcounts
-            .iter()
-            .map(|&(_, simcount)| simcount)
-            .sum();
+        let simcount_total: u32 = moves_and_simcounts.iter().map(|&(_, simcount)| simcount).sum();
         let res = moves_and_simcounts
             .into_iter()
             .map(|(m, simcount)| (m, simcount as f32 / simcount_total as f32))
@@ -406,9 +387,7 @@ impl<Game: IGame> MctsPlayer<Game> {
             return None;
         }
 
-        let temperature = self
-            .temperature
-            .get_temperature(pos_history.len() as u32 / 2);
+        let temperature = self.temperature.get_temperature(pos_history.len() as u32 / 2);
         if temperature == 0.0 {
             let (m, _p) = moves_probs
                 .iter()
@@ -438,20 +417,14 @@ impl<Game: IGame> MctsPlayer<Game> {
 
         assert!((0.0..=1.0).contains(&self.prior_noise_epsilon));
 
-        let moves = self
-            .search_tree
-            .edges(node_id)
-            .map(|e| e.id())
-            .collect_vec();
+        let moves = self.search_tree.edges(node_id).map(|e| e.id()).collect_vec();
         if moves.len() < 2 {
             return;
         }
 
         /* The Dirichlet implementation seems to return NaNs and INFs sometimes. */
         /* Keep drawing random noises until valid values are achieved */
-        let dist =
-            crate::util::dirichlet::Dirichlet::new(&vec![self.prior_noise_alpha; moves.len()])
-                .unwrap();
+        let dist = crate::util::dirichlet::Dirichlet::new(&vec![self.prior_noise_alpha; moves.len()]).unwrap();
         let noise_vec = loop {
             let noise_vec = dist.sample(&mut rand::rng());
             if noise_vec.iter().all(|n| n.is_finite()) {
@@ -461,8 +434,7 @@ impl<Game: IGame> MctsPlayer<Game> {
 
         for (edge_id, noise) in moves.into_iter().zip(noise_vec.into_iter()) {
             let m = self.search_tree.edge_weight_mut(edge_id).unwrap();
-            m.init_score =
-                (1.0 - self.prior_noise_epsilon) * m.init_score + self.prior_noise_epsilon * noise;
+            m.init_score = (1.0 - self.prior_noise_epsilon) * m.init_score + self.prior_noise_epsilon * noise;
             assert!(m.init_score.is_finite());
         }
     }
@@ -516,8 +488,9 @@ pub trait ValueFunction<Game: IGame>: Sync + Send {
     /// position - The position to evaluate
     ///
     /// Returns a tuple of a scalar value score of the position and per-move scores/probabilities.
-    /// The scalar is the current position value in range [-1,1]. 1 if player1 is winning and -1 if player2 is winning
-    /// The per-move probabilities should have a sum of 1, greater value is a better move
+    /// The scalar is the current position value in range [-1,1]. 1 if player1 is winning and -1 if
+    /// player2 is winning The per-move probabilities should have a sum of 1, greater value is a
+    /// better move
     fn evaluate(&self, position: &Game::Position) -> (Vec<(Game::Move, f32)>, f32);
 }
 

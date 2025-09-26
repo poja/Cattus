@@ -5,9 +5,8 @@ fn main() {
 
     if cfg!(feature = "executorch") {
         println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
-        let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").expect(
-            "EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs",
-        );
+        let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR")
+            .expect("EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
         let mut static_libs = Vec::new();
         let mut link_searchs = Vec::new();
         link_searchs.push("");

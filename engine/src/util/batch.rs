@@ -1,4 +1,3 @@
-
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -47,12 +46,7 @@ impl<I, O> Batcher<I, O> {
         }
     }
 
-    pub fn apply(
-        &self,
-        input: I,
-        deadline: Duration,
-        apply_impl: impl FnOnce(Vec<I>) -> Vec<O>,
-    ) -> O {
+    pub fn apply(&self, input: I, deadline: Duration, apply_impl: impl FnOnce(Vec<I>) -> Vec<O>) -> O {
         if self.batch_size <= 1 {
             let outputs = apply_impl(vec![input]);
             let [output] = outputs.try_into().map_err(|_| unreachable!()).unwrap();

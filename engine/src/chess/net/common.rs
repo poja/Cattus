@@ -43,9 +43,7 @@ pub fn position_to_planes(pos: &ChessPosition) -> Vec<ChessBitboard> {
     planes.push(ChessBitboard::new_with_all(black_cr.has_queenside()));
 
     /* A plane of en passant */
-    planes.push(ChessBitboard::from_raw(
-        b.en_passant().map_or(0, |s| 1 << s.to_index()),
-    ));
+    planes.push(ChessBitboard::from_raw(b.en_passant().map_or(0, |s| 1 << s.to_index())));
 
     /* A plane with all ones to help NN find board edges */
     planes.push(ChessBitboard::new_with_all(true));

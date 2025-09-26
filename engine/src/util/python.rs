@@ -6,7 +6,6 @@ pub(crate) trait Unwrapy<T> {
 
 impl<T> Unwrapy<T> for PyResult<T> {
     fn unwrapy(self, py: Python) -> T {
-        self.inspect_err(|err| err.print_and_set_sys_last_vars(py))
-            .unwrap()
+        self.inspect_err(|err| err.print_and_set_sys_last_vars(py)).unwrap()
     }
 }

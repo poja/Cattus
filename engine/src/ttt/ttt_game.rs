@@ -225,8 +225,7 @@ impl GamePosition for TttPosition {
     }
 
     fn is_over(&self) -> bool {
-        self.winner.is_some()
-            || ((self.board_x.get_raw() | self.board_o.get_raw()) == ((1 << 9) - 1))
+        self.winner.is_some() || ((self.board_x.get_raw() | self.board_o.get_raw()) == ((1 << 9) - 1))
     }
 
     fn get_winner(&self) -> Option<GameColor> {
@@ -260,9 +259,7 @@ impl IGame for TttGame {
     }
 
     fn new_from_pos(pos: Self::Position) -> Self {
-        Self {
-            pos_history: vec![pos],
-        }
+        Self { pos_history: vec![pos] }
     }
 
     fn pos_history(&self) -> &[Self::Position] {
@@ -279,7 +276,6 @@ impl IGame for TttGame {
     }
 
     fn play_single_turn(&mut self, next_move: Self::Move) {
-        self.pos_history
-            .push(self.position().make_move_new(next_move));
+        self.pos_history.push(self.position().make_move_new(next_move));
     }
 }
