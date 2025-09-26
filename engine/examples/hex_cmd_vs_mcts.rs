@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::common::{GameColor, GamePosition, IGame};
-use cattus::game::mcts::{MctsParams, MctsPlayer};
+use cattus::game::mcts::{MctsParams, MctsPlayer, TemperaturePolicy};
 use cattus::hex::cmd_player::HexPlayerCmd;
 use cattus::hex::hex_game::HexGame;
 use cattus::hex::net::two_headed_net::TwoHeadedNet;
@@ -46,6 +46,7 @@ fn run_main<const BOARD_SIZE: usize>(args: Args) {
     let mut player2 = MctsPlayer::new(MctsParams {
         sim_num: args.sim_num,
         explore_factor: args.explore_factor,
+        temperature: TemperaturePolicy::constant(1.0),
         prior_noise_alpha: args.prior_noise_alpha,
         prior_noise_epsilon: args.prior_noise_epsilon,
         value_func,
