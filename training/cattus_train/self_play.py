@@ -39,6 +39,8 @@ def compile_selfplay_exe(game: str, cfg: InferenceConfig, debug: bool = False) -
             features = ["onnx-tract"]
         case OnnxOrtConfig():
             features = ["onnx-ort"]
+        case _:
+            raise ValueError(f"Unsupported inference engine: {cfg}")
     self_play_exec_name = f"{game}_self_play_runner"
     profile = "dev" if debug else "release"
     subprocess.check_call(
@@ -58,7 +60,7 @@ def compile_selfplay_exe(game: str, cfg: InferenceConfig, debug: bool = False) -
     return SELF_PLAY_CRATE_TOP / "target" / build_dir / self_play_exec_name
 
 
-def export_model_for_selfplay(
+def export_model(
     model: nn.Module,
     model_path: Path,
     cfg: InferenceConfig,
@@ -68,23 +70,23 @@ def export_model_for_selfplay(
     if was_training:
         model.eval()
     with torch.no_grad():
-        _export_model_for_selfplay_impl(model, model_path, cfg, input_shape)
+        _export_model_impl(model, model_path, cfg, input_shape)
     if was_training:
         model.train()
 
 
-def _export_model_for_selfplay_impl(
+def _export_model_impl(
     model: nn.Module,
     model_path: Path,
     cfg: InferenceConfig,
     input_shape: tuple[int, ...],
-) -> Path:
+):
     sample_input = torch.randn(input_shape)
 
     match cfg:
         case TorchPyConfig():  # torch.jit
             traced_model = torch.jit.trace(model, sample_input)
-            torch.jit.save(traced_model, model_path.with_suffix(".jit"))
+            torch.jit.save(traced_model, model_path)
 
         case ExecutorchConfig():  # executorch
             with warnings.catch_warnings():
@@ -124,7 +126,7 @@ def _export_model_for_selfplay_impl(
                 # print(f"Lowered graph:\n{edge_program.exported_program().graph}")
                 et_program = edge_program.to_executorch()
 
-                with open(model_path.with_suffix(".pte"), "wb") as f:
+                with open(model_path, "wb") as f:
                     et_program.write_to_file(f)
 
         case OnnxOrtConfig() | OnnxTractConfig():  # onnx
@@ -132,10 +134,22 @@ def _export_model_for_selfplay_impl(
                 torch.onnx.export(
                     model,
                     sample_input,
-                    model_path.with_suffix(".onnx"),
+                    model_path,
                     verbose=False,
                     input_names=["planes"],
                     output_names=["policy", "value"],
                 )
         case _:
-            raise ValueError(f"Unsupported inference engine: {cfg.inference}")
+            raise ValueError(f"Unsupported inference engine: {cfg}")
+
+
+def exported_model_suffix(cfg: InferenceConfig) -> str:
+    match cfg:
+        case TorchPyConfig():
+            return "jit"
+        case ExecutorchConfig():
+            return "pte"
+        case OnnxOrtConfig() | OnnxTractConfig():
+            return "onnx"
+        case _:
+            raise ValueError(f"Unsupported inference engine: {cfg}")

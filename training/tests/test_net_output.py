@@ -124,19 +124,9 @@ def create_model(game: Game, path: Path) -> nn.Module:
 
         et_program = to_edge_transform_and_lower(
             torch.export.export(model, (sample_input,)),
-            # partitioner=[XnnpackPartitioner()] # TODO
         ).to_executorch()
-        with open(path.with_suffix(".pte"), "wb") as f:
+        with open(path, "wb") as f:
             f.write(et_program.buffer)
-
-        torch.onnx.export(
-            model,
-            torch.randn(input_shape),
-            path.with_suffix(".onnx"),
-            verbose=False,
-            input_names=["planes"],
-            output_names=["policy", "value"],
-        )
 
     return model
 

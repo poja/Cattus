@@ -13,8 +13,7 @@ def test_ttt_training():
 
     inference_engine = os.getenv("CATTUS_TEST_INFERENCE_ENGINE", "onnx-ort")
     with tempfile.TemporaryDirectory() as tmp_dir:
-        config = f"""%YAML 1.2
----
+        config = f"""
 game: "tictactoe"
 iterations: 3
 device: auto
@@ -27,19 +26,30 @@ model:
     residual_filter_num: 8
     value_head_conv_output_channels_num: 8
     policy_head_conv_output_channels_num: 8
-mcts:
-    sim_num: 600
-    explore_factor: 1.41421
-    prior_noise_alpha: 0.0
-    prior_noise_epsilon: 0.2
-    cache_size: 1000000
-self_play:
-    temperature_policy:
-        - [5,   1.0]
-        - [     0.0]
+engine:
+    mcts:
+        sim_num: 600
+        explore_factor: 1.41421
+        temperature_policy:
+            - [       0.0]
+        prior_noise_alpha: 0.0
+        prior_noise_epsilon: 0.2
+        cache_size: 1000000
+    inference:
+        engine: {inference_engine}
     batch_size: 4
-    games_num: 100
     threads: 8
+self_play:
+    engine_overrides:
+        mcts:
+            temperature_policy:
+                - [5,   1.0]
+                - [     0.0]
+    games_num: 100
+    model_compare:
+        games_num: 0
+        switching_winning_threshold: 0.55
+        warning_losing_threshold: 0.55
 training:
     latest_data_entries: 3000
     iteration_data_entries: 3000
@@ -48,15 +58,6 @@ training:
         - [       0.001]
     # l2reg: 0.00005
     use_train_data_across_runs: false
-model_compare:
-    temperature_policy:
-        - [       0.0]
-    games_num: 0
-    switching_winning_threshold: 0.55
-    warning_losing_threshold: 0.55
-    threads: 8
-inference:
-    engine: {inference_engine}
 """
 
         logging.info("Running self play and generating new models...")

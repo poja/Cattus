@@ -16,7 +16,7 @@ from cattus_train.config import (
     OnnxTractConfig,
     TorchPyConfig,
 )
-from cattus_train.self_play import compile_selfplay_exe, export_model_for_selfplay
+from cattus_train.self_play import compile_selfplay_exe
 
 CATTUS_TOP = Path(__file__).parent.parent.parent.resolve()
 SELF_PLAY_CRATE_TOP = CATTUS_TOP / "training" / "self-play"
@@ -41,10 +41,10 @@ def main():
             cfg.device = "mps"
         else:
             cfg.device = "cpu"
-    cfg.mcts.sim_num = 4
-    cfg.self_play.batch_size = 1
+    cfg.engine.mcts.sim_num = 4
+    cfg.engine.threads = 1
+    cfg.engine.batch_size = 1
     cfg.self_play.games_num = 2
-    cfg.self_play.threads = 1
 
     inference_configs = [
         ExecutorchConfig(backend="none"),
@@ -61,7 +61,8 @@ def main():
             print("\n# Benchmarking inference config:", inference_config)
 
             current_cfg = copy.deepcopy(cfg)
-            current_cfg.inference = inference_config
+            current_cfg.engine.inference = inference_config
+            current_cfg.self_play.engine_overrides.pop("inference", None)
 
             model_path = Path(tempdir) / "model"
             export_model(current_cfg, model_path)
@@ -88,6 +89,7 @@ def bench_selfplay(executable: Path, model_path: Path, cfg: Config) -> float:
         tempdir = Path(tempdir_)
         summary_file = tempdir / "summary.json"
         data_entries_dir = tempdir / "data_entries"
+        engine_cfg = cfg.self_play_engine_cfg()
         subprocess.check_call(
             [
                 executable,
@@ -97,15 +99,15 @@ def bench_selfplay(executable: Path, model_path: Path, cfg: Config) -> float:
                 f"--out-dir1={data_entries_dir}",
                 f"--out-dir2={data_entries_dir}",
                 f"--summary-file={summary_file}",
-                f"--sim-num={cfg.mcts.sim_num}",
-                f"--batch-size={cfg.self_play.batch_size}",
-                f"--explore-factor={cfg.mcts.explore_factor}",
-                f"--temperature-policy={temperature_policy_to_str(cfg.self_play.temperature_policy)}",
-                f"--prior-noise-alpha={cfg.mcts.prior_noise_alpha}",
-                f"--prior-noise-epsilon={cfg.mcts.prior_noise_epsilon}",
-                f"--threads={cfg.self_play.threads}",
+                f"--sim-num={engine_cfg.mcts.sim_num}",
+                f"--batch-size={engine_cfg.batch_size}",
+                f"--explore-factor={engine_cfg.mcts.explore_factor}",
+                f"--temperature-policy={temperature_policy_to_str(engine_cfg.mcts.temperature_policy)}",
+                f"--prior-noise-alpha={engine_cfg.mcts.prior_noise_alpha}",
+                f"--prior-noise-epsilon={engine_cfg.mcts.prior_noise_epsilon}",
+                f"--threads={engine_cfg.threads}",
                 f"--device={cfg.device}",
-                f"--cache-size={cfg.mcts.cache_size}",
+                f"--cache-size={engine_cfg.mcts.cache_size}",
             ],
             cwd=SELF_PLAY_CRATE_TOP,
         )
@@ -116,11 +118,14 @@ def bench_selfplay(executable: Path, model_path: Path, cfg: Config) -> float:
 
 
 def export_model(cfg: Config, path: Path):
+    from cattus_train.self_play import export_model as export_model_impl
+
     model = GAME.create_model(cfg.model.type, cfg.model.__dict__.copy())
 
+    engine_cfg = cfg.self_play_engine_cfg()
     self_play_input_shape = GAME.model_input_shape(cfg.model.type)
-    self_play_input_shape = (cfg.self_play.batch_size,) + self_play_input_shape[1:]
-    export_model_for_selfplay(model, path, cfg.inference, self_play_input_shape)
+    self_play_input_shape = (engine_cfg.batch_size,) + self_play_input_shape[1:]
+    export_model_impl(model, path, engine_cfg.inference, self_play_input_shape)
 
 
 if __name__ == "__main__":

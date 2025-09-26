@@ -1,5 +1,3 @@
-%YAML 1.2
----
 game: "hex7"
 iterations: 75
 model_num: 8
@@ -15,20 +13,31 @@ model:
     value_head_conv_output_channels_num: 16
     policy_head_conv_output_channels_num: 16
 
-mcts:
-    sim_num: 600
-    explore_factor: 1.41421
-    prior_noise_alpha: 0.03
-    prior_noise_epsilon: 0.25
-    cache_size: 1000000
+engine:
+    mcts:
+        sim_num: 600
+        explore_factor: 1.41421
+        temperature_policy:
+            - [0.0]
+        prior_noise_alpha: 0.03
+        prior_noise_epsilon: 0.25
+        cache_size: 1000000
+    inference:
+        engine: onnx-ort
+    batch_size: 8
+    threads: 16
 
 self_play:
-    temperature_policy:
-        - [12, 1.0]
-        - [0.0]
-    batch_size: 8
+    engine_overrides:
+        mcts:
+            temperature_policy:
+                - [12, 1.0]
+                - [0.0]
     games_num: 200
-    threads: 16
+    model_compare:
+        games_num: 32
+        switching_winning_threshold: 0.55
+        warning_losing_threshold: 0.55
 
 training:
     latest_data_entries: 36864
@@ -40,15 +49,3 @@ training:
         - [0.0001]
     # l2reg: 0.0001
     use_train_data_across_runs: true
-    threads: 16
-
-model_compare:
-    temperature_policy:
-        - [0.0]
-    games_num: 32
-    switching_winning_threshold: 0.55
-    warning_losing_threshold: 0.55
-    threads: 16
-
-inference:
-    engine: onnx-ort

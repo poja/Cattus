@@ -68,17 +68,13 @@ class Model:
                         PyModule::from_code(py, code, c"py/model.py", c"model").unwrapy(py);
 
                     let py_class = module.getattr("Model").unwrap();
-                    py_class
-                        .call1((path.with_extension("jit"),))
-                        .unwrapy(py)
-                        .into()
+                    py_class.call1((path,)).unwrapy(py).into()
                 });
                 ModelImpl::Py(model)
             }
             #[cfg(feature = "executorch")]
             ImplType::Executorch => {
-                let mut model =
-                    executorch::module::Module::from_file_path(path.with_extension("pte"));
+                let mut model = executorch::module::Module::from_file_path(path);
                 model
                     .load(Some(
                         executorch::program::ProgramVerification::InternalConsistency,
@@ -90,7 +86,7 @@ class Model:
             #[cfg(feature = "onnx-tract")]
             ImplType::OnnxTract => {
                 let model = tract_onnx::onnx()
-                    .model_for_path(path.with_extension("onnx"))
+                    .model_for_path(path)
                     .unwrap()
                     .into_optimized()
                     .unwrap()
@@ -104,7 +100,7 @@ class Model:
                     .unwrap()
                     .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
                     .unwrap()
-                    .commit_from_file(path.with_extension("onnx"))
+                    .commit_from_file(path)
                     .unwrap();
                 let output_names = model.outputs.iter().map(|o| o.name.clone()).collect();
                 ModelImpl::Ort {

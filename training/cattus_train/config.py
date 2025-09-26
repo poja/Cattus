@@ -1,5 +1,6 @@
+import dataclasses
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic.dataclasses import Field, dataclass
 
@@ -14,31 +15,10 @@ class ModelConfig:
 class MctsConfig:
     sim_num: int
     explore_factor: float
+    temperature_policy: list[list[int | float]]
     prior_noise_alpha: float
     prior_noise_epsilon: float
     cache_size: int = 0
-
-
-@dataclass(config={"extra": "forbid"}, kw_only=True)
-class SelfPlayConfig:
-    games_num: int
-    batch_size: int
-    temperature_policy: list[list[int | float]]
-    threads: int
-
-
-@dataclass(config={"extra": "forbid"}, kw_only=True)
-class TrainingConfig:
-    batch_size: int
-    learning_rate: list[list[float]]
-    use_train_data_across_runs: bool = False
-    threads: Optional[int] = 1
-    latest_data_entries: int
-    iteration_data_entries: int
-
-    def __post_init__(self):
-        if self.latest_data_entries < self.iteration_data_entries:
-            raise ValueError("latest_data_entries must be >= iteration_data_entries")
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
@@ -66,12 +46,53 @@ InferenceConfig = ExecutorchConfig | TorchPyConfig | OnnxTractConfig | OnnxOrtCo
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
+class EngineConfig:
+    mcts: MctsConfig
+    inference: InferenceConfig = Field(discriminator="engine", default=None)
+    batch_size: int
+    threads: int
+
+    def copy_with_overrides(self, overrides: dict[str, Any]) -> "EngineConfig":
+        data = dataclasses.asdict(self)
+
+        def override(d: dict[str, Any], o: dict[str, Any]):
+            for k, v in o.items():
+                if isinstance(v, dict) and isinstance(d.get(k), dict):
+                    override(d[k], v)
+                else:
+                    d[k] = v
+
+        override(data, overrides)
+        return EngineConfig(**data)
+
+
+@dataclass(config={"extra": "forbid"}, kw_only=True)
 class ModelCompareConfig:
     games_num: int
-    temperature_policy: list[list[int | float]]
-    threads: int
+    engine_overrides: dict[str, Any] = Field(default_factory=dict)
     switching_winning_threshold: float = Field(ge=0.5, le=1.0)
     warning_losing_threshold: float = Field(ge=0.5, le=1.0)
+
+
+@dataclass(config={"extra": "forbid"}, kw_only=True)
+class SelfPlayConfig:
+    games_num: int
+    engine_overrides: dict[str, Any] = Field(default_factory=dict)
+    model_compare: ModelCompareConfig
+
+
+@dataclass(config={"extra": "forbid"}, kw_only=True)
+class TrainingConfig:
+    batch_size: int
+    learning_rate: list[list[float]]
+    use_train_data_across_runs: bool = False
+    threads: Optional[int] = 1
+    latest_data_entries: int
+    iteration_data_entries: int
+
+    def __post_init__(self):
+        if self.latest_data_entries < self.iteration_data_entries:
+            raise ValueError("latest_data_entries must be >= iteration_data_entries")
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
@@ -82,12 +103,16 @@ class Config:
     metrics_dir: Optional[Path] = None
     game: str
     model: ModelConfig
+    engine: EngineConfig
     self_play: SelfPlayConfig
-    model_compare: ModelCompareConfig
     model_num: int = 1
     device: Literal["cpu", "cuda", "mps", "auto"] = "auto"
     iterations: int
-    mcts: MctsConfig
     training: TrainingConfig
-    inference: InferenceConfig = Field(discriminator="engine", default=None)
     debug: bool
+
+    def self_play_engine_cfg(self) -> EngineConfig:
+        return self.engine.copy_with_overrides(self.self_play.engine_overrides)
+
+    def model_compare_engine_cfg(self) -> EngineConfig:
+        return self.engine.copy_with_overrides(self.self_play.model_compare.engine_overrides)

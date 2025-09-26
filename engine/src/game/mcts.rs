@@ -502,12 +502,11 @@ impl TemperaturePolicy {
     }
 
     pub fn get_temperature(&self, move_num: u32) -> f32 {
-        for (threshold, temperature) in &self.temperatures {
-            if move_num < *threshold {
-                return *temperature;
-            }
-        }
-        self.last_temperature
+        self.temperatures
+            .iter()
+            .find(|(threshold, _t)| move_num < *threshold)
+            .map(|(_n, t)| *t)
+            .unwrap_or(self.last_temperature)
     }
 }
 
