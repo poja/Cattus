@@ -80,7 +80,7 @@ pub struct SelfPlayRunner<Game: IGame> {
     thread_num: usize,
 }
 
-impl<Game: GameExt + 'static> SelfPlayRunner<Game> {
+impl<Game: SelfPlayGame + 'static> SelfPlayRunner<Game> {
     pub fn new(
         player1_params: MctsParams<Game>,
         player2_params: MctsParams<Game>,
@@ -163,7 +163,7 @@ struct SelfPlayWorker<Game: IGame> {
     games_num: usize,
 }
 
-impl<Game: GameExt> SelfPlayWorker<Game> {
+impl<Game: SelfPlayGame> SelfPlayWorker<Game> {
     #[allow(clippy::too_many_arguments)]
     fn new(
         player1_params: MctsParams<Game>,
@@ -348,10 +348,10 @@ impl TemperatureScheduler {
     }
 }
 
-pub trait GameExt: IGame {
+pub trait SelfPlayGame: IGame {
     fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>>;
 }
-impl GameExt for TttGame {
+impl SelfPlayGame for TttGame {
     fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>> {
         let transform = |e: &DataEntry<Self>, transform_sq: &dyn Fn(usize) -> usize| {
             let (board_x, board_o) = [e.pos.board_x, e.pos.board_o]
@@ -421,7 +421,7 @@ impl GameExt for TttGame {
     }
 }
 
-impl<const BOARD_SIZE: usize> GameExt for HexGame<BOARD_SIZE> {
+impl<const BOARD_SIZE: usize> SelfPlayGame for HexGame<BOARD_SIZE> {
     fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>> {
         let transform = |e: &DataEntry<Self>, transform_sq: &dyn Fn(usize) -> usize| {
             let (board_red, board_blue) = [e.pos.board_red, e.pos.board_blue]
@@ -462,7 +462,7 @@ impl<const BOARD_SIZE: usize> GameExt for HexGame<BOARD_SIZE> {
     }
 }
 
-impl GameExt for ChessGame {
+impl SelfPlayGame for ChessGame {
     fn produce_transformed_data_entries(entry: DataEntry<Self>) -> Vec<DataEntry<Self>> {
         let transform = |e: &DataEntry<Self>,
                          transform_sq: &dyn Fn(

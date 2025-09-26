@@ -49,11 +49,22 @@ pub trait IGame: Sized {
     fn is_over(&self) -> bool;
     fn get_winner(&self) -> Option<GameColor>;
     fn play_single_turn(&mut self, next_move: Self::Move);
+
     fn play_until_over(
         &mut self,
-        player1: &mut dyn GamePlayer<Self>,
-        player2: &mut dyn GamePlayer<Self>,
-    ) -> (Self::Position, Option<GameColor>);
+        player1: &mut impl GamePlayer<Self>,
+        player2: &mut impl GamePlayer<Self>,
+    ) -> (Self::Position, Option<GameColor>) {
+        while !self.is_over() {
+            let pos = self.get_position();
+            let next_move = match pos.get_turn() {
+                GameColor::Player1 => player1.next_move(pos).unwrap(),
+                GameColor::Player2 => player2.next_move(pos).unwrap(),
+            };
+            self.play_single_turn(next_move);
+        }
+        (*self.get_position(), self.get_winner())
+    }
 }
 
 pub trait GamePosition: Clone + Copy + Eq + Hash + Send + Sync {

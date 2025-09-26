@@ -47,8 +47,8 @@ fn comapre_engines(
 }
 
 fn compare_players(
-    player1: &mut dyn GamePlayer<HexGameStandard>,
-    player2: &mut dyn GamePlayer<HexGameStandard>,
+    player1: &mut impl GamePlayer<HexGameStandard>,
+    player2: &mut impl GamePlayer<HexGameStandard>,
     number_of_games: usize,
     player1_display_name: &str,
     player2_display_name: &str,

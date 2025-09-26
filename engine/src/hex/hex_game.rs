@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt::{self, Display};
 
-use crate::game::common::{GameBitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame};
+use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct HexMove<const BOARD_SIZE: usize> {
@@ -416,21 +416,5 @@ impl<const BOARD_SIZE: usize> IGame for HexGame<BOARD_SIZE> {
     fn play_single_turn(&mut self, next_move: Self::Move) {
         assert!(self.pos.is_valid_move(next_move));
         self.pos.make_move(next_move);
-    }
-
-    fn play_until_over(
-        &mut self,
-        player1: &mut dyn GamePlayer<Self>,
-        player2: &mut dyn GamePlayer<Self>,
-    ) -> (Self::Position, Option<GameColor>) {
-        while !self.is_over() {
-            let player: &mut dyn GamePlayer<Self> = match self.pos.get_turn() {
-                GameColor::Player1 => player1,
-                GameColor::Player2 => player2,
-            };
-            let next_move = player.next_move(&self.pos).unwrap();
-            self.play_single_turn(next_move)
-        }
-        (self.pos, self.get_winner())
     }
 }
