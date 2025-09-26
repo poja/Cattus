@@ -23,19 +23,25 @@ from cattus_train.chess import Chess
 from cattus_train.config import Config
 from cattus_train.data_set import DataSet
 from cattus_train.hex import Hex
-from cattus_train.self_play import compile_selfplay_exe, export_model_for_selfplay
+from cattus_train.self_play import compile_selfplay_exe, export_model, exported_model_suffix
 from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
 CATTUS_TOP = Path(__file__).parent.parent.parent.resolve()
-SELF_PLAY_CRATE_DIR = CATTUS_TOP / "training" / "self-play"
+CATTUS_TRAIN_TOP = CATTUS_TOP / "training"
+SELF_PLAY_CRATE_DIR = CATTUS_TRAIN_TOP / "self-play"
 
 
 class TrainProcess:
     def __init__(self, cfg: Config):
-        self._cfg: Config = cfg
+        cfg = copy.deepcopy(cfg)
+        self.cfg: Config = cfg
 
-        cfg.working_area = CATTUS_TOP / cfg.working_area
+        if cfg.working_area.parts[0] == "{CATTUS_TRAIN_TOP}":
+            cfg.working_area = CATTUS_TRAIN_TOP.joinpath(*cfg.working_area.parts[1:])
+        cfg.working_area = Path().joinpath(
+            *[p.replace("{GAME_NAME}", cfg.game) for p in cfg.working_area.resolve().parts]
+        )
         cfg.games_dir = cfg.games_dir or cfg.working_area / "games"
         cfg.models_dir = cfg.working_area / "models"
         cfg.metrics_dir = cfg.working_area / "metrics"
@@ -43,6 +49,9 @@ class TrainProcess:
         cfg.games_dir.mkdir(parents=True, exist_ok=True)
         cfg.models_dir.mkdir(parents=True, exist_ok=True)
         cfg.metrics_dir.mkdir(parents=True, exist_ok=True)
+
+        self._self_play_engine_cfg = cfg.self_play_engine_cfg()
+        self._model_compare_engine_cfg = cfg.model_compare_engine_cfg()
 
         self._game: Game
         if cfg.game == "tictactoe":
@@ -54,7 +63,10 @@ class TrainProcess:
             self._game = Chess()
         else:
             raise ValueError("Unknown game argument in config file.")
-        self._self_play_exec_path: Path = None
+        self.temp_dir_ = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_.name)
+        self._self_play_exec_path: Path = self.temp_dir / "bin" / "self_play"
+        self._model_compare_exec_path: Path = self.temp_dir / "bin" / "model_compare"
 
         self._net_type: str = cfg.model.type
         match cfg.model.base:
@@ -85,24 +97,34 @@ class TrainProcess:
         if run_id is None:
             run_id = datetime.now().strftime("%y%m%d_%H%M%S_%f")
         self._run_id = run_id
-        metrics_filename = self._cfg.metrics_dir / f"{self._run_id}.csv"
+        metrics_filename = self.cfg.metrics_dir / f"{self._run_id}.csv"
 
+        # raise ValueError(self._base_model_path)
         best_model = (self._load_model(self._base_model_path), self._base_model_path)
         latest_models = [best_model]
-        if self._cfg.model_num > 1:
-            for _ in range(self._cfg.model_num - 1):
+        if self.cfg.model_num > 1:
+            for _ in range(self.cfg.model_num - 1):
                 latest_models.append(copy.deepcopy(best_model))
 
         logging.info("Starting training process with config:")
-        logging.info(f"Configuration:\n{dic2str(asdict(self._cfg))}")
+        logging.info(f"Configuration:\n{dic2str(asdict(self.cfg))}")
         logging.info("run ID:\t%s", self._run_id)
         logging.info("base model:\t%s", self._base_model_path)
         logging.info("metrics file:\t%s", metrics_filename)
 
         logging.info("Building Self-play executable...")
-        self._self_play_exec_path = compile_selfplay_exe(self._cfg.game, self._cfg.inference, self._cfg.debug)
+        self._self_play_exec_path.parent.mkdir(parents=True, exist_ok=True)
+        self._model_compare_exec_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_self_play_exec_path = compile_selfplay_exe(
+            self.cfg.game, self._self_play_engine_cfg.inference, self.cfg.debug
+        )
+        shutil.copy(temp_self_play_exec_path, self._self_play_exec_path)
+        temp_model_compare_exec_path = compile_selfplay_exe(
+            self.cfg.game, self._model_compare_engine_cfg.inference, self.cfg.debug
+        )
+        shutil.copy(temp_model_compare_exec_path, self._model_compare_exec_path)
 
-        for iter_num in range(self._cfg.iterations):
+        for iter_num in range(self.cfg.iterations):
             logging.info(f"Training iteration {iter_num}")
             self._metrics = {}
 
@@ -118,34 +140,36 @@ class TrainProcess:
             # Write iteration metrics
             self._write_metrics(metrics_filename)
 
-    def _self_play(self, model_path: Path):
-        logging.info("Self playing using model: %s", model_path)
+    def _self_play(self, model_dir: Path):
+        logging.info("Self playing using model: %s", model_dir)
 
-        games_dir = self._cfg.games_dir / self._run_id
+        games_dir = self.cfg.games_dir / self._run_id
         summary_file = games_dir / "selfplay_summary.json"
         if summary_file.exists():
             summary_file.unlink()
         data_entries_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
 
         self_play_start_time = time.time()
+        engine_cfg = self._self_play_engine_cfg
+        model_path = model_dir / "self_play" / f"model.{exported_model_suffix(engine_cfg.inference)}"
         subprocess.check_call(
             [
                 self._self_play_exec_path,
                 f"--model1-path={model_path}",
                 f"--model2-path={model_path}",
-                f"--games-num={self._cfg.self_play.games_num}",
+                f"--games-num={self.cfg.self_play.games_num}",
                 f"--out-dir1={data_entries_dir}",
                 f"--out-dir2={data_entries_dir}",
                 f"--summary-file={summary_file}",
-                f"--sim-num={self._cfg.mcts.sim_num}",
-                f"--batch-size={self._cfg.self_play.batch_size}",
-                f"--explore-factor={self._cfg.mcts.explore_factor}",
-                f"--temperature-policy={temperature_policy_to_str(self._cfg.self_play.temperature_policy)}",
-                f"--prior-noise-alpha={self._cfg.mcts.prior_noise_alpha}",
-                f"--prior-noise-epsilon={self._cfg.mcts.prior_noise_epsilon}",
-                f"--threads={self._cfg.self_play.threads}",
-                f"--device={self._cfg.device}",
-                f"--cache-size={self._cfg.mcts.cache_size}",
+                f"--sim-num={engine_cfg.mcts.sim_num}",
+                f"--batch-size={engine_cfg.batch_size}",
+                f"--explore-factor={engine_cfg.mcts.explore_factor}",
+                f"--temperature-policy={temperature_policy_to_str(engine_cfg.mcts.temperature_policy)}",
+                f"--prior-noise-alpha={engine_cfg.mcts.prior_noise_alpha}",
+                f"--prior-noise-epsilon={engine_cfg.mcts.prior_noise_epsilon}",
+                f"--threads={engine_cfg.threads}",
+                f"--device={self.cfg.device}",
+                f"--cache-size={engine_cfg.mcts.cache_size}",
             ],
             cwd=SELF_PLAY_CRATE_DIR,
         )
@@ -167,7 +191,7 @@ class TrainProcess:
 
     def _train(self, models, iter_num) -> list[tuple[nn.Module, Path]]:
         train_data_dir = (
-            self._cfg.games_dir if self._cfg.training.use_train_data_across_runs else self._cfg.games_dir / self._run_id
+            self.cfg.games_dir if self.cfg.training.use_train_data_across_runs else self.cfg.games_dir / self._run_id
         )
 
         lr = self._lr_scheduler.get_lr(iter_num)
@@ -181,8 +205,8 @@ class TrainProcess:
 
         def train_models(model_list: list[tuple[int, nn.Module]]):
             for m_idx, model in model_list:
-                data_set = DataSet(self._game, train_data_dir, self._cfg.training, torch.device(self._cfg.device))
-                data_loader = DataLoader(data_set, batch_size=self._cfg.training.batch_size)
+                data_set = DataSet(self._game, train_data_dir, self.cfg.training, torch.device(self.cfg.device))
+                data_loader = DataLoader(data_set, batch_size=self.cfg.training.batch_size)
 
                 def mask_illegal_moves(output, target):
                     output = torch.where(target >= 0, output, -1e10)
@@ -201,7 +225,7 @@ class TrainProcess:
                     return policy_loss + value_loss
 
                 model.train()
-                model.to(self._cfg.device)
+                model.to(self.cfg.device)
                 optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
                 final_batch = None
                 training_start_time = time.time()
@@ -239,8 +263,8 @@ class TrainProcess:
                 trained_models[m_idx] = (model, self._save_model(model))
 
         models = [(idx, model) for idx, (model, _model_path) in enumerate(models)]
-        workers_num = min(self._cfg.training.threads, len(models))
-        workers_num = workers_num if self._cfg.device == "cpu" else 1
+        workers_num = min(self.cfg.training.threads, len(models))
+        workers_num = workers_num if self.cfg.device == "cpu" else 1
         if workers_num > 1:
             # Divide the training into jobs
             jobs_per_cpu = len(models) // workers_num
@@ -272,7 +296,7 @@ class TrainProcess:
         return trained_models
 
     def _compare_models(self, best_model, latest_models) -> tuple[nn.Module, Path]:
-        if self._cfg.model_compare.games_num == 0:
+        if self.cfg.self_play.model_compare.games_num == 0:
             assert len(latest_models) == 1, "Model comparison can be skipped only when one model is trained"
             logging.debug("Skipping model comparison, considering latest model as best")
             return latest_models[0]
@@ -282,7 +306,7 @@ class TrainProcess:
             # Compare the best model to the latest/trained model
             with tempfile.TemporaryDirectory() as tmp_dir:
                 # take the opportunity to generate more games to main games directory
-                games_dir = self._cfg.games_dir / self._run_id
+                games_dir = self.cfg.games_dir / self._run_id
                 best_games_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
                 trained_games_dir = Path(tmp_dir) / "games"
 
@@ -295,37 +319,39 @@ class TrainProcess:
                 self._metrics[f"trained_model_win_rate_{model_idx}"] = winning
                 logging.debug(f"Trained model winning rate: {winning}")
 
-                if winning > self._cfg.model_compare.switching_winning_threshold:
+                if winning > self.cfg.self_play.model_compare.switching_winning_threshold:
                     best_model = (latest_model, latest_model_path)
                     # In case the new model is the new best model, take the opportunity and use the new games generated
                     # by the comparison stage as training data in future training steps
                     for filename in os.listdir(trained_games_dir):
                         shutil.move(trained_games_dir / filename, best_games_dir)
-                elif len(latest_models) == 1 and losing > self._cfg.model_compare.warning_losing_threshold:
+                elif len(latest_models) == 1 and losing > self.cfg.self_play.model_compare.warning_losing_threshold:
                     logging.warning("New model is worse than previous one, losing ratio: %f", losing)
         return best_model
 
-    def _compare_model_impl(self, model1_path: Path, model2_path: Path, model1_games_dir: Path, model2_games_dir: Path):
+    def _compare_model_impl(self, model1_dir: Path, model2_dir: Path, model1_games_dir: Path, model2_games_dir: Path):
         with tempfile.TemporaryDirectory() as tmp_dir:
             compare_res_file = Path(tmp_dir) / "compare_result.json"
-
+            engine_cfg = self._model_compare_engine_cfg
+            model1_path = model1_dir / "model_compare" / f"model.{exported_model_suffix(engine_cfg.inference)}"
+            model2_path = model2_dir / "model_compare" / f"model.{exported_model_suffix(engine_cfg.inference)}"
             subprocess.check_call(
                 [
-                    self._self_play_exec_path,
+                    self._model_compare_exec_path,
                     f"--model1-path={model1_path}",
                     f"--model2-path={model2_path}",
-                    f"--games-num={self._cfg.model_compare.games_num}",
+                    f"--games-num={self.cfg.self_play.model_compare.games_num}",
                     f"--out-dir1={model1_games_dir}",
                     f"--out-dir2={model2_games_dir}",
                     f"--summary-file={compare_res_file}",
-                    f"--sim-num={self._cfg.mcts.sim_num}",
-                    f"--batch-size={self._cfg.self_play.batch_size}",
-                    f"--explore-factor={self._cfg.mcts.explore_factor}",
-                    f"--temperature-policy={temperature_policy_to_str(self._cfg.model_compare.temperature_policy)}",
-                    f"--prior-noise-alpha={self._cfg.mcts.prior_noise_alpha}",
-                    f"--prior-noise-epsilon={self._cfg.mcts.prior_noise_epsilon}",
-                    f"--threads={self._cfg.model_compare.threads}",
-                    f"--device={self._cfg.device}",
+                    f"--sim-num={engine_cfg.mcts.sim_num}",
+                    f"--batch-size={engine_cfg.batch_size}",
+                    f"--explore-factor={engine_cfg.mcts.explore_factor}",
+                    f"--temperature-policy={temperature_policy_to_str(engine_cfg.mcts.temperature_policy)}",
+                    f"--prior-noise-alpha={engine_cfg.mcts.prior_noise_alpha}",
+                    f"--prior-noise-epsilon={engine_cfg.mcts.prior_noise_epsilon}",
+                    f"--threads={engine_cfg.threads}",
+                    f"--device={self.cfg.device}",
                 ],
                 cwd=SELF_PLAY_CRATE_DIR,
             )
@@ -336,26 +362,46 @@ class TrainProcess:
             return w1 / total_games, w2 / total_games
 
     def _create_model(self) -> nn.Module:
-        return self._game.create_model(self._net_type, self._cfg.model.__dict__.copy())
+        return self._game.create_model(self._net_type, self.cfg.model.__dict__.copy())
 
     def _save_model(self, model: nn.Module) -> Path:
         model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(random.randint(0, 1 << 16))
-        model_path = self._cfg.models_dir / f"model_{model_time}"
+        model_dir = self.cfg.models_dir / f"model_{model_time}"
+        model_dir.mkdir(parents=True)
 
         # Save model as state dict for training
-        torch.save(model.state_dict(), model_path.with_suffix(".pt"))
+        torch.save(model.state_dict(), model_dir / "model.pt")
 
         #### Export model for self play
+        self_play_model_path = (
+            model_dir / "self_play" / f"model.{exported_model_suffix(self._self_play_engine_cfg.inference)}"
+        )
+        model_compare_model_path = (
+            model_dir / "model_compare" / f"model.{exported_model_suffix(self._model_compare_engine_cfg.inference)}"
+        )
+        self_play_model_path.parent.mkdir(parents=True)
+        model_compare_model_path.parent.mkdir(parents=True)
         # Export using a batch size different from training
         self_play_input_shape = self._game.model_input_shape(self._net_type)
-        self_play_input_shape = (self._cfg.self_play.batch_size,) + self_play_input_shape[1:]
-        export_model_for_selfplay(model, model_path, self._cfg.inference, self_play_input_shape)
+        self_play_input_shape = (self._self_play_engine_cfg.batch_size,) + self_play_input_shape[1:]
+        export_model(model, self_play_model_path, self._self_play_engine_cfg.inference, self_play_input_shape)
+        if self._self_play_engine_cfg.inference != self._model_compare_engine_cfg.inference:
+            model_compare_input_shape = self._game.model_input_shape(self._net_type)
+            model_compare_input_shape = (self._model_compare_engine_cfg.batch_size,) + model_compare_input_shape[1:]
+            export_model(
+                model, model_compare_model_path, self._model_compare_engine_cfg.inference, model_compare_input_shape
+            )
+        else:
+            if self_play_model_path.is_file():
+                shutil.copyfile(self_play_model_path, model_compare_model_path)
+            else:
+                shutil.copytree(self_play_model_path, model_compare_model_path)
 
-        return model_path
+        return model_dir
 
-    def _load_model(self, model_path: Path) -> nn.Module:
+    def _load_model(self, model_dir: Path) -> nn.Module:
         model = self._create_model()
-        state_dict = torch.load(model_path.with_suffix(".pt"), map_location="cpu")
+        state_dict = torch.load(model_dir / "model.pt", map_location="cpu")
         model.load_state_dict(state_dict)
         return model
 
@@ -368,7 +414,7 @@ class TrainProcess:
             "policy_accuracy",
             "trained_model_win_rate",
         ]
-        per_model_columns = [[f"{col}_{m_idx}" for col in per_model_columns] for m_idx in range(self._cfg.model_num)]
+        per_model_columns = [[f"{col}_{m_idx}" for col in per_model_columns] for m_idx in range(self.cfg.model_num)]
         columns = [
             "net_run_duration_average_us",
             "batch_size_average",

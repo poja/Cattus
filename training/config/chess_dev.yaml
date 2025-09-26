@@ -1,5 +1,3 @@
-%YAML 1.2
----
 # The game type
 # tictactoe, hex4, hex5, hex7, hex9, hex11, chess
 game: "chess"
@@ -49,41 +47,67 @@ model:
     # suggested value: 8-32
     policy_head_conv_output_channels_num: 8
 
-# Monte Carlo Tree Search alg params
-mcts:
-    # Number of simulation performed at each search
-    # suggested value: 600-1400
-    sim_num: 600
+engine:
+    # Monte Carlo Tree Search alg params
+    mcts:
+        # Number of simulation performed at each search
+        # suggested value: 600-1400
+        sim_num: 600
 
-    # Explore vs exploit factor
-    # suggested value: sqrt(2)
-    explore_factor: 1.41421
+        # Explore vs exploit factor
+        # suggested value: sqrt(2)
+        explore_factor: 1.41421
 
-    # Dirichlet noise added to root level prior edges scores
-    # suggested value: (0.03, 0.25)
-    prior_noise_alpha: 0.03
-    prior_noise_epsilon: 0.25
+        # Softmax temperature
+        temperature_policy:
+            - [0.0]
 
-    # Network output cache size
-    cache_size: 1000000
+        # Dirichlet noise added to root level prior edges scores
+        # suggested value: (0.03, 0.25)
+        prior_noise_alpha: 0.03
+        prior_noise_epsilon: 0.25
+
+        # Network output cache size
+        cache_size: 1000000
+
+    # Inference engine configuration
+    inference:
+        # Inference engine to use
+        engine: onnx-ort
+        # Following fields are engine specific
+
+    batch_size: 1
+
+    # Number of threads used by the engine
+    threads: 8
 
 # Self play parameters
 self_play:
-    # Softmax temperature
-    # suggested value: 1.0 for the first 30 moves, 0.0 for the reset of the game
-    temperature_policy:
-        - [30, 1.0]
-        - [0.0]
-
-    batch_size: 4
+    engine_overrides:
+        mcts:
+            # suggested value: 1.0 for the first 30 moves, 0.0 for the reset of the game
+            temperature_policy:
+                - [30, 1.0]
+                - [0.0]
 
     # Number of games played in each self play iteration
     # must be multiple of 2
     # suggested value: > 100
     games_num: 100
 
-    # Number of threads used during self play
-    threads: 8
+    # Model comparison used to determine which model will be used to generate training data using self play
+    model_compare:
+        # Number of games played to compare two models
+        # must be multiple of 2
+        # If zero, no comparison games will be played, and the trained model will always be considered as the new best model
+        # suggested value: > 30
+        games_num: 20
+
+        # Comparison winning ratio at which the best model is switched
+        switching_winning_threshold: 0.55
+
+        # Comparison losing ratio at which a warning will be printed
+        warning_losing_threshold: 0.55
 
 # Model training parameters
 training:
@@ -114,36 +138,3 @@ training:
     # If true, training data will be reused from multiple runs, always with preference to newer data
     # Suggested value: true
     use_train_data_across_runs: true
-
-    # Number of threads used during training
-    # Capped by the number of models maintained, as model can't be trained in parallel
-    # Relevant only if trained on CPU and not on GPU
-    threads: 8
-
-# Model comparison used to determine which model will be used to generate training data using self play
-model_compare:
-    # Softmax temperature used during model comparison
-    # Use 0 for best model performance and better comparison
-    temperature_policy:
-        - [0.0]
-
-    # Number of games played to compare two models
-    # must be multiple of 2
-    # If zero, no comparison games will be played, and the trained model will always be considered as the new best model
-    # suggested value: > 30
-    games_num: 20
-
-    # Comparison winning ratio at which the best model is switched
-    switching_winning_threshold: 0.55
-
-    # Comparison losing ratio at which a warning will be printed
-    warning_losing_threshold: 0.55
-
-    # Number of threads used to during model comparison
-    threads: 8
-
-# Inference engine configuration
-inference:
-    # Inference engine to use
-    engine: onnx-ort
-    # Following fields are engine specific

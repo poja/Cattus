@@ -1,5 +1,3 @@
-%YAML 1.2
----
 game: "hex5"
 iterations: 75
 device: auto
@@ -14,20 +12,32 @@ model:
     value_head_conv_output_channels_num: 16
     policy_head_conv_output_channels_num: 16
 
-mcts:
-    sim_num: 1400
-    explore_factor: 1.41421
-    prior_noise_alpha: 0.03
-    prior_noise_epsilon: 0.25
-    cache_size: 1000000
+engine:
+    mcts:
+        sim_num: 1400
+        explore_factor: 1.41421
+        temperature_policy:
+            - [0.0]
+        prior_noise_alpha: 0.03
+        prior_noise_epsilon: 0.25
+        cache_size: 1000000
+    inference:
+        engine: onnx-ort
+    batch_size: 4
+    threads: 8
 
 self_play:
-    temperature_policy:
-        - [10, 1.0]
-        - [0.0]
-    batch_size: 4
+    engine_overrides:
+        mcts:
+            temperature_policy:
+                - [10, 1.0]
+                - [0.0]
     games_num: 100
-    threads: 8
+
+    model_compare:
+        games_num: 0
+        switching_winning_threshold: 0.55
+        warning_losing_threshold: 0.55
 
 training:
     latest_data_entries: 36864
@@ -39,14 +49,3 @@ training:
         - [0.0001]
     # l2reg: 0.0001
     use_train_data_across_runs: true
-
-model_compare:
-    temperature_policy:
-        - [0.0]
-    games_num: 0
-    switching_winning_threshold: 0.55
-    warning_losing_threshold: 0.55
-    threads: 8
-
-inference:
-    engine: onnx-ort
