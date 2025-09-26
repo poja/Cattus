@@ -59,6 +59,12 @@ jobs:
       - name: Rust tests
         run: cargo test --all-features
         working-directory: engine
+      - name: Rust Clippy linter for examples
+        uses: auguwu/clippy-action@1.4.0
+        with:
+          working-directory: engine
+          check-args: --all-features --examples
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Self-play crate
       - name: Build Rust

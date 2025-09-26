@@ -1,6 +1,6 @@
 use cattus::chess::chess_game::ChessGame;
 use cattus::chess::cmd_player::ChessPlayerCmd;
-use cattus::chess::net::net_stockfish::StockfishNet;
+use cattus::chess::net::stockfish::StockfishNet;
 use cattus::game::common::{GameColor, GamePosition, IGame};
 use cattus::game::mcts::{MctsParams, MctsPlayer};
 use std::sync::Arc;
