@@ -43,8 +43,7 @@ impl ValueFunction<ChessGame> for TrivialNet {
         val -= dot_product(queens_b, QUEENS);
         let endgame = (queens_w == chess::EMPTY
             || (bishops_w == chess::EMPTY && (knights_w | bishops_w).popcnt() <= 1))
-            && (queens_b == chess::EMPTY
-                || (rooks_b == chess::EMPTY && (knights_b | bishops_b).popcnt() <= 1));
+            && (queens_b == chess::EMPTY || (rooks_b == chess::EMPTY && (knights_b | bishops_b).popcnt() <= 1));
         if endgame {
             val += dot_product(kings_w, KINGS_ENDGAME);
             val -= dot_product(kings_b, KINGS_ENDGAME);
@@ -60,10 +59,7 @@ impl ValueFunction<ChessGame> for TrivialNet {
     }
 }
 
-fn dot_product(
-    bitmap: chess::BitBoard,
-    weights: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE],
-) -> f32 {
+fn dot_product(bitmap: chess::BitBoard, weights: [f32; ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE]) -> f32 {
     let mut res = 0.0;
     for idx in bitmap {
         res += weights[idx.to_int() as usize];

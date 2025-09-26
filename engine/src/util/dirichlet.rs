@@ -61,13 +61,10 @@ where
     fn new(alpha: &[F]) -> Result<DirichletFromGamma<F>, DirichletFromGammaError> {
         let mut gamma_dists = Vec::new();
         for a in alpha {
-            let dist =
-                Gamma::new(*a, F::one()).map_err(|_| DirichletFromGammaError::GammmaNewFailed)?;
+            let dist = Gamma::new(*a, F::one()).map_err(|_| DirichletFromGammaError::GammmaNewFailed)?;
             gamma_dists.push(dist);
         }
-        Ok(DirichletFromGamma {
-            samplers: gamma_dists,
-        })
+        Ok(DirichletFromGamma { samplers: gamma_dists })
     }
 }
 
@@ -259,18 +256,12 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            Error::AlphaTooShort | Error::SizeTooSmall => {
-                "less than 2 dimensions in Dirichlet distribution"
-            }
+            Error::AlphaTooShort | Error::SizeTooSmall => "less than 2 dimensions in Dirichlet distribution",
             Error::AlphaTooSmall => "alpha is not positive in Dirichlet distribution",
             Error::AlphaSubnormal => "alpha contains a subnormal value in Dirichlet distribution",
             Error::AlphaInfinite => "alpha contains an infinite value in Dirichlet distribution",
-            Error::FailedToCreateGamma => {
-                "failed to create required Gamma distribution for Dirichlet distribution"
-            }
-            Error::FailedToCreateBeta => {
-                "failed to create required Beta distribution for Dirichlet distribution"
-            }
+            Error::FailedToCreateGamma => "failed to create required Gamma distribution for Dirichlet distribution",
+            Error::FailedToCreateBeta => "failed to create required Beta distribution for Dirichlet distribution",
         })
     }
 }

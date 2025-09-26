@@ -8,8 +8,9 @@ use std::string::String;
 use std::{io, process, thread, time};
 
 /**
- * UXI (Universal Hex Interface), similar to UCI (Universal Chess Interface) is a general interface for
- * Hex engine communication. All communication is done by standard input and output, each command has '\n' at the end.
+ * UXI (Universal Hex Interface), similar to UCI (Universal Chess Interface) is a general
+ * interface for Hex engine communication. All communication is done by standard input and
+ * output, each command has '\n' at the end.
  *
  * Input commands (from host to engine):
  *      next_move [pos] [color]
@@ -34,7 +35,7 @@ pub struct HexPlayerUXI {
 }
 
 impl HexPlayerUXI {
-    pub fn new(exe_filename: PathBuf /*, err_filename: PathBuf*/) -> Self {
+    pub fn new(exe_filename: PathBuf /* , err_filename: PathBuf */) -> Self {
         Self {
             exe_filename,
             // err_filename,
@@ -96,10 +97,7 @@ impl HexPlayerUXI {
         match response[0] {
             "ready" => true,
             _ => {
-                eprintln!(
-                    "[UXIPlayer] Unexpected command: {:?} (expected ready)",
-                    response
-                );
+                eprintln!("[UXIPlayer] Unexpected command: {:?} (expected ready)", response);
                 false
             }
         }
@@ -171,9 +169,7 @@ impl GamePlayer<HexGameStandard> for HexPlayerUXI {
         &mut self,
         pos_history: &[<HexGameStandard as IGame>::Position],
     ) -> Option<<HexGameStandard as IGame>::Move> {
-        let mut command = String::with_capacity(
-            10 + HexGameStandard::BOARD_SIZE * HexGameStandard::BOARD_SIZE + 3,
-        );
+        let mut command = String::with_capacity(10 + HexGameStandard::BOARD_SIZE * HexGameStandard::BOARD_SIZE + 3);
         command.push_str("next_move ");
         position_to_uxi(pos_history.last().unwrap(), &mut command);
         self.send_command(command);

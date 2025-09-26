@@ -1,5 +1,5 @@
 use cattus::chess::chess_game::ChessGame;
-use cattus::chess::cmd_player::{ChessPlayerCmd, cmd_print_chess_board};
+use cattus::chess::cmd_player::{cmd_print_chess_board, ChessPlayerCmd};
 use cattus::chess::net::stockfish::StockfishNet;
 use cattus::game::common::{GameColor, IGame};
 use cattus::game::mcts::{MctsParams, MctsPlayer};

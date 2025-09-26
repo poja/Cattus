@@ -5,8 +5,7 @@ mod tests {
     use std::cmp::Ordering;
     use std::collections::HashSet;
 
-    use crate::game::common::{GameBitboard, GamePlayer};
-    use crate::game::common::{GameColor, GameMove, GamePosition, IGame, PlayerRand};
+    use crate::game::common::{GameBitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame, PlayerRand};
     use crate::hex::hex_game::{HexBitboard, HexGameStandard, HexPosition};
 
     type HexStandardPosition = <HexGameStandard as IGame>::Position;
@@ -171,9 +170,7 @@ mod tests {
                     assert!(pos.get_winner() == pos_t.get_winner().map(|w| w.opposite()));
                 }
 
-                let next_move =
-                    <_ as GamePlayer<HexGameStandard>>::next_move(&mut player, game.pos_history())
-                        .unwrap();
+                let next_move = <_ as GamePlayer<HexGameStandard>>::next_move(&mut player, game.pos_history()).unwrap();
                 game.play_single_turn(next_move);
             }
         }

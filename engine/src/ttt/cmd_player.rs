@@ -7,9 +7,7 @@ impl GamePlayer<TttGame> for TttPlayerCmd {
     fn next_move(&mut self, pos_history: &[TttPosition]) -> Option<TttMove> {
         let read_usize = || -> Option<usize> {
             let mut line = String::new();
-            io::stdin()
-                .read_line(&mut line)
-                .expect("failed to read input");
+            io::stdin().read_line(&mut line).expect("failed to read input");
             match line.trim().parse::<usize>() {
                 Err(e) => {
                     println!("invalid number: {}", e);

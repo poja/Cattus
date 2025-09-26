@@ -74,14 +74,8 @@ impl UCI {
         let startpos = args.flag("startpos");
         let moves = args.values_iter("moves");
 
-        assert_ne!(
-            fen.is_some(),
-            startpos,
-            "position cmd requires either fen or startpos"
-        );
-        let mut pos = fen
-            .map(ChessPosition::from_fen)
-            .unwrap_or_else(ChessPosition::new);
+        assert_ne!(fen.is_some(), startpos, "position cmd requires either fen or startpos");
+        let mut pos = fen.map(ChessPosition::from_fen).unwrap_or_else(ChessPosition::new);
         let mut pos_history = vec![pos];
         for move_str in moves {
             let m = ChessMove::from_lan(move_str).unwrap();
@@ -126,10 +120,7 @@ impl UCI {
         }
         #[allow(unused)]
         let go_args = GoParams {
-            searchmoves: args
-                .values_iter("searchmoves")
-                .map(|s| s.to_string())
-                .collect_vec(),
+            searchmoves: args.values_iter("searchmoves").map(|s| s.to_string()).collect_vec(),
             ponder: args.flag("ponder"),
             wtime: args.value("wtime").and_then(|s| s.parse::<u64>().ok()),
             btime: args.value("btime").and_then(|s| s.parse::<u64>().ok()),
@@ -143,11 +134,7 @@ impl UCI {
         };
 
         let player = self.player.as_mut().unwrap();
-        self.best_move = Some(
-            player
-                .next_move(self.pos_history.as_ref().unwrap())
-                .unwrap(),
-        );
+        self.best_move = Some(player.next_move(self.pos_history.as_ref().unwrap()).unwrap());
         self.send_response(format!("bestmove {}", self.best_move.unwrap()));
     }
 
@@ -158,11 +145,7 @@ impl UCI {
     }
 
     fn parse_command(s: &str) -> (&str, Vec<&str>) {
-        let mut words = s
-            .split(' ')
-            .map(|s| s.trim())
-            .filter(|s| !s.is_empty())
-            .collect_vec();
+        let mut words = s.split(' ').map(|s| s.trim()).filter(|s| !s.is_empty()).collect_vec();
         assert!(!words.is_empty(), "empty command");
         let command = words.remove(0);
         (command, words)

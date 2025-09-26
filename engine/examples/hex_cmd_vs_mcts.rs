@@ -6,7 +6,7 @@ use std::sync::Arc;
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::common::{GameColor, IGame};
 use cattus::game::mcts::{MctsParams, MctsPlayer, TemperaturePolicy};
-use cattus::hex::cmd_player::{HexPlayerCmd, cmd_print_hex_board};
+use cattus::hex::cmd_player::{cmd_print_hex_board, HexPlayerCmd};
 use cattus::hex::hex_game::HexGame;
 use cattus::hex::net::two_headed_net::TwoHeadedNet;
 

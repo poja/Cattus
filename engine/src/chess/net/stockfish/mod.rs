@@ -25,10 +25,7 @@ impl ValueFunction<ChessGame> for StockfishNet {
 
         let moves = position.get_legal_moves();
         let move_count = moves.len() as f32;
-        let moves_probs = moves
-            .into_iter()
-            .map(|m| (m, 1.0 / move_count))
-            .collect_vec();
+        let moves_probs = moves.into_iter().map(|m| (m, 1.0 / move_count)).collect_vec();
 
         net::flip_score_if_needed((moves_probs, val), is_flipped)
     }
@@ -250,10 +247,7 @@ const THREAT_BY_KING: [Score; 2] = [Score(3, 62), Score(9, 138)];
 
 // Passed[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
 // We don't use a Score because we process the two components independently.
-const PASSED: [[Value; RANK_CNT]; 2] = [
-    [0, 5, 5, 31, 73, 166, 252, 0],
-    [0, 7, 14, 38, 73, 166, 252, 0],
-];
+const PASSED: [[Value; RANK_CNT]; 2] = [[0, 5, 5, 31, 73, 166, 252, 0], [0, 7, 14, 38, 73, 166, 252, 0]];
 
 // PassedFile[File] contains a bonus according to the file of a passed pawn
 const PASSED_FILE: [Score; FILE_CNT] = [
@@ -369,11 +363,7 @@ struct EvaluationInner<'a> {
 
 #[allow(clippy::all)]
 impl<'a, 'b> EvaluationInner<'a> {
-    fn new(
-        board: &'a Board,
-        pawn_entry: &'a mut PawnEntry,
-        material_entry: &'a mut MaterialEntry,
-    ) -> Self {
+    fn new(board: &'a Board, pawn_entry: &'a mut PawnEntry, material_entry: &'a mut MaterialEntry) -> Self {
         EvaluationInner {
             board,
             pawn_entry,
@@ -390,8 +380,7 @@ impl<'a, 'b> EvaluationInner<'a> {
     }
 
     fn value(&mut self) -> Value {
-        let mut score = self.pawn_entry.pawns_score(Player::White)
-            - self.pawn_entry.pawns_score(Player::Black)
+        let mut score = self.pawn_entry.pawns_score(Player::White) - self.pawn_entry.pawns_score(Player::Black)
             + self.material_entry.score()
             + self.board.psq();
 
@@ -407,21 +396,16 @@ impl<'a, 'b> EvaluationInner<'a> {
         self.initialize::<WhiteType>();
         self.initialize::<BlackType>();
 
-        score += self.evaluate_pieces::<WhiteType, KnightType>()
-            - self.evaluate_pieces::<BlackType, KnightType>();
-        score += self.evaluate_pieces::<WhiteType, BishopType>()
-            - self.evaluate_pieces::<BlackType, BishopType>();
-        score += self.evaluate_pieces::<WhiteType, RookType>()
-            - self.evaluate_pieces::<BlackType, RookType>();
-        score += self.evaluate_pieces::<WhiteType, QueenType>()
-            - self.evaluate_pieces::<BlackType, QueenType>();
+        score += self.evaluate_pieces::<WhiteType, KnightType>() - self.evaluate_pieces::<BlackType, KnightType>();
+        score += self.evaluate_pieces::<WhiteType, BishopType>() - self.evaluate_pieces::<BlackType, BishopType>();
+        score += self.evaluate_pieces::<WhiteType, RookType>() - self.evaluate_pieces::<BlackType, RookType>();
+        score += self.evaluate_pieces::<WhiteType, QueenType>() - self.evaluate_pieces::<BlackType, QueenType>();
 
         score += self.mobility[Player::White as usize] - self.mobility[Player::Black as usize];
 
         score += self.evaluate_king::<WhiteType>() - self.evaluate_king::<BlackType>();
         score += self.evaluate_threats::<WhiteType>() - self.evaluate_threats::<BlackType>();
-        score +=
-            self.evaluate_passed_pawns::<WhiteType>() - self.evaluate_passed_pawns::<BlackType>();
+        score += self.evaluate_passed_pawns::<WhiteType>() - self.evaluate_passed_pawns::<BlackType>();
         score += self.evaluate_space::<WhiteType>() - self.evaluate_space::<BlackType>();
 
         score += self.evaluate_initiative(score.eg());
@@ -429,16 +413,11 @@ impl<'a, 'b> EvaluationInner<'a> {
         let phase = self.material_entry.phase as i32;
         let sf = self.scale_factor(score.eg());
 
-        v = score.mg() * phase
-            + score.eg() * (PHASE_MID_GAME as i32 - phase) * sf as i32 / SCALE_FACTOR_NORMAL as i32;
+        v = score.mg() * phase + score.eg() * (PHASE_MID_GAME as i32 - phase) * sf as i32 / SCALE_FACTOR_NORMAL as i32;
 
         v /= PHASE_MID_GAME as i32;
 
-        return if self.board.turn() == Player::White {
-            v
-        } else {
-            -v
-        };
+        return if self.board.turn() == Player::White { v } else { -v };
     }
 
     fn initialize<P: PlayerTrait>(&mut self) {
@@ -452,8 +431,7 @@ impl<'a, 'b> EvaluationInner<'a> {
         };
 
         // Find our pawns on the first two ranks, and those which are blocked
-        let mut b: BitBoard = self.board.piece_bb(us, PieceType::P)
-            & P::shift_down(self.board.occupied() | low_ranks);
+        let mut b: BitBoard = self.board.piece_bb(us, PieceType::P) & P::shift_down(self.board.occupied() | low_ranks);
 
         // Squares occupied by those pawns, by our king, or controlled by enemy pawns
         // are excluded from the mobility area.
@@ -480,8 +458,7 @@ impl<'a, 'b> EvaluationInner<'a> {
                 self.king_ring[us as usize] |= P::shift_right(b);
             }
 
-            self.king_attackers_count[them as usize] =
-                (b & self.pawn_entry.pawn_attacks(them)).count_bits();
+            self.king_attackers_count[them as usize] = (b & self.pawn_entry.pawn_attacks(them)).count_bits();
             self.king_adjacent_zone_attacks_count[them as usize] = 0;
             self.king_attackers_weight[them as usize] = 0;
         } else {
@@ -508,8 +485,7 @@ impl<'a, 'b> EvaluationInner<'a> {
 
         while let Some((s, bits)) = ps1.pop_some_lsb_and_bit() {
             b = if piece == PieceType::B {
-                let o: BitBoard =
-                    self.board.occupied() ^ self.board.piece_bb_both_players(PieceType::Q);
+                let o: BitBoard = self.board.occupied() ^ self.board.piece_bb_both_players(PieceType::Q);
                 bishop_moves(o, s)
             } else if piece == PieceType::R {
                 let o: BitBoard = self.board.occupied()
@@ -524,8 +500,7 @@ impl<'a, 'b> EvaluationInner<'a> {
                 b &= line_bb(ksq_us, s);
             }
 
-            self.attacked_by2[us as usize] |=
-                b & self.attacked_by[us as usize][PieceType::All as usize];
+            self.attacked_by2[us as usize] |= b & self.attacked_by[us as usize][PieceType::All as usize];
             self.attacked_by[us as usize][piece as usize] |= b;
             self.attacked_by[us as usize][PieceType::All as usize] |= b;
 
@@ -533,8 +508,7 @@ impl<'a, 'b> EvaluationInner<'a> {
                 self.king_attackers_count[us as usize] += 1;
                 self.king_attackers_weight[us as usize] += KING_ATTACKS_WEIGHT[piece as usize];
                 self.king_adjacent_zone_attacks_count[us as usize] +=
-                    (b & self.attacked_by[them as usize][PieceType::K as usize]).count_bits()
-                        as i32;
+                    (b & self.attacked_by[them as usize][PieceType::K as usize]).count_bits() as i32;
             }
 
             let mob: u8 = (b & self.mobility_area[us as usize]).count_bits();
@@ -547,27 +521,20 @@ impl<'a, 'b> EvaluationInner<'a> {
             if piece == PieceType::B || piece == PieceType::N {
                 bb = outpost_ranks & !self.pawn_entry.pawn_attacks_span(them);
                 if (bb & bits).is_not_empty() {
-                    score += OUTPOST[(piece == PieceType::B) as usize][(self.attacked_by
-                        [us as usize][PieceType::P as usize]
-                        & bits)
-                        .is_not_empty()
-                        as usize]
+                    score += OUTPOST[(piece == PieceType::B) as usize]
+                        [(self.attacked_by[us as usize][PieceType::P as usize] & bits).is_not_empty() as usize]
                         * 2;
                 } else {
                     bb &= b & !self.board.get_occupied_player(us);
                     if bb.is_not_empty() {
-                        score += OUTPOST[(piece == PieceType::B) as usize][(self.attacked_by
-                            [us as usize][PieceType::P as usize]
-                            & bb)
-                            .is_not_empty()
-                            as usize];
+                        score += OUTPOST[(piece == PieceType::B) as usize]
+                            [(self.attacked_by[us as usize][PieceType::P as usize] & bb).is_not_empty() as usize];
                     }
                 }
 
                 // bonus when behind a pawn
                 if us.relative_rank_of_sq(s) < Rank::R5
-                    && (self.board.piece_bb_both_players(PieceType::P) & P::up(s).to_bb())
-                        .is_not_empty()
+                    && (self.board.piece_bb_both_players(PieceType::P) & P::up(s).to_bb()).is_not_empty()
                 {
                     score += MINOR_BEHIND_PAWN;
                 }
@@ -577,8 +544,7 @@ impl<'a, 'b> EvaluationInner<'a> {
                     score -= BISHOP_PAWNS * self.pawn_entry.pawns_on_same_color_squares(us, s);
 
                     // Bonus for bishop on a long diagonal which can "see" both center squares
-                    if (CENTER & (bishop_moves(self.board.piece_bb_both_players(PieceType::P), s))
-                        | bits)
+                    if (CENTER & (bishop_moves(self.board.piece_bb_both_players(PieceType::P), s)) | bits)
                         .more_than_one()
                     {
                         score += LONG_RANGED_BISHOP;
@@ -588,8 +554,7 @@ impl<'a, 'b> EvaluationInner<'a> {
                 // Bonus for aligning with enemy pawns on the same rank/file
                 if us.relative_rank_of_sq(s) >= Rank::R5 {
                     score += ROOK_ON_PAWN
-                        * (self.board.piece_bb(them, PieceType::P) & rook_moves(BitBoard(0), s))
-                            .count_bits();
+                        * (self.board.piece_bb(them, PieceType::P) & rook_moves(BitBoard(0), s)).count_bits();
                 }
 
                 // Bonus when on an open or semi-open file
@@ -640,9 +605,7 @@ impl<'a, 'b> EvaluationInner<'a> {
         let mut score = self.pawn_entry.king_safety::<P>(self.board, ksq_us);
 
         // Main king safety evaluation
-        if self.king_attackers_count[them as usize] as i32
-            > (1 - self.board.count_piece(them, PieceType::Q) as i32)
-        {
+        if self.king_attackers_count[them as usize] as i32 > (1 - self.board.count_piece(them, PieceType::Q) as i32) {
             let mut king_danger: i32 = 0;
             unsafe_checks = BitBoard(0);
 
@@ -655,8 +618,8 @@ impl<'a, 'b> EvaluationInner<'a> {
 
             // Analyse the safe enemy's checks which are possible on next move
             safe_b = !self.board.get_occupied_player(them);
-            safe_b &= !self.attacked_by[us as usize][PieceType::All as usize]
-                | (weak & self.attacked_by2[them as usize]);
+            safe_b &=
+                !self.attacked_by[us as usize][PieceType::All as usize] | (weak & self.attacked_by2[them as usize]);
 
             let us_queen: BitBoard = self.board.piece_bb(us, PieceType::Q);
             b1 = rook_moves(self.board.occupied() ^ us_queen, ksq_us);
@@ -703,8 +666,7 @@ impl<'a, 'b> EvaluationInner<'a> {
 
             pinned = self.board.all_pinned_pieces(us) & self.board.get_occupied_player(us);
 
-            king_danger += self.king_attackers_count[them as usize] as i32
-                * self.king_attackers_weight[them as usize];
+            king_danger += self.king_attackers_count[them as usize] as i32 * self.king_attackers_weight[them as usize];
             king_danger += 102 * self.king_adjacent_zone_attacks_count[them as usize];
             king_danger += 191 * (self.king_ring[us as usize] & weak).count_bits() as i32;
             king_danger += 848 * (pinned | unsafe_checks).count_bits() as i32;
@@ -713,8 +675,7 @@ impl<'a, 'b> EvaluationInner<'a> {
             king_danger += 40;
 
             if king_danger > 0 {
-                let mobility_danger =
-                    (self.mobility[them as usize] - self.mobility[us as usize]).mg();
+                let mobility_danger = (self.mobility[them as usize] - self.mobility[us as usize]).mg();
                 king_danger = (king_danger + mobility_danger).max(0);
                 let mg: Value = (king_danger * king_danger) / 4096;
                 let eg: Value = king_danger / 16;
@@ -731,12 +692,8 @@ impl<'a, 'b> EvaluationInner<'a> {
 
         // Find the squares that opponent attacks in our king flank, and the squares
         // which are attacked twice in that flank but not defended by our pawns.
-        b1 = self.attacked_by[them as usize][PieceType::All as usize]
-            & SQ(kf as u8).file_bb()
-            & camp;
-        b2 = b1
-            & self.attacked_by2[them as usize]
-            & !self.attacked_by[us as usize][PieceType::P as usize];
+        b1 = self.attacked_by[them as usize][PieceType::All as usize] & SQ(kf as u8).file_bb() & camp;
+        b2 = b1 & self.attacked_by2[them as usize] & !self.attacked_by[us as usize][PieceType::P as usize];
 
         score -= CLOSE_ENEMIES * (b1.count_bits() + b2.count_bits());
 
@@ -761,8 +718,7 @@ impl<'a, 'b> EvaluationInner<'a> {
         let mut score: Score = Score::ZERO;
 
         // Non-pawn enemies attacked by a pawn
-        non_pawn_enemies =
-            self.board.piece_bb(them, PieceType::P) ^ self.board.get_occupied_player(them);
+        non_pawn_enemies = self.board.piece_bb(them, PieceType::P) ^ self.board.get_occupied_player(them);
         weak = non_pawn_enemies & self.attacked_by[us as usize][PieceType::P as usize];
 
         if weak.is_not_empty() {
@@ -779,8 +735,8 @@ impl<'a, 'b> EvaluationInner<'a> {
             | (self.attacked_by2[them as usize] & !self.attacked_by2[us as usize]);
 
         // Non-pawn enemies, strongly protected
-        defended = (self.board.get_occupied_player(them) ^ self.board.piece_bb(them, PieceType::P))
-            & strongly_protected;
+        defended =
+            (self.board.get_occupied_player(them) ^ self.board.piece_bb(them, PieceType::P)) & strongly_protected;
 
         // Add a bonus according to the kind of attacking pieces
         if (defended | weak).is_not_empty() {
@@ -796,8 +752,7 @@ impl<'a, 'b> EvaluationInner<'a> {
                 }
             }
 
-            b = (self.board.piece_bb(them, PieceType::Q) | weak)
-                & self.attacked_by[us as usize][PieceType::R as usize];
+            b = (self.board.piece_bb(them, PieceType::Q) | weak) & self.attacked_by[us as usize][PieceType::R as usize];
             while let Some(s) = b.pop_some_lsb() {
                 let piece = self.board.piece_at_sq(s).type_of();
                 score += THREAT_BY_ROOK[piece as usize];
@@ -806,8 +761,7 @@ impl<'a, 'b> EvaluationInner<'a> {
                 }
             }
 
-            score += HANGING
-                * (weak & !self.attacked_by[them as usize][PieceType::All as usize]).count_bits();
+            score += HANGING * (weak & !self.attacked_by[them as usize][PieceType::All as usize]).count_bits();
 
             b = weak & self.attacked_by[us as usize][PieceType::K as usize];
             if b.is_not_empty() {
@@ -816,11 +770,7 @@ impl<'a, 'b> EvaluationInner<'a> {
         }
 
         // Bonus for opponent unopposed weak pawns
-        if self
-            .board
-            .piece_two_bb(PieceType::R, PieceType::Q, us)
-            .is_not_empty()
-        {
+        if self.board.piece_two_bb(PieceType::R, PieceType::Q, us).is_not_empty() {
             score += WEAK_UNOPOSSED_PAWN * self.pawn_entry.weak_unopposed(them);
         }
 
@@ -846,19 +796,15 @@ impl<'a, 'b> EvaluationInner<'a> {
                 safe_threats = self.mobility_area[us as usize] & !strongly_protected;
 
                 let occ_all = self.board.occupied();
-                b = (self.attacked_by[us as usize][PieceType::B as usize]
-                    & bishop_moves(occ_all, s))
-                    | (self.attacked_by[us as usize][PieceType::R as usize]
-                        & rook_moves(occ_all, s));
+                b = (self.attacked_by[us as usize][PieceType::B as usize] & bishop_moves(occ_all, s))
+                    | (self.attacked_by[us as usize][PieceType::R as usize] & rook_moves(occ_all, s));
 
-                score += SLIDER_ON_QUEEN
-                    * (b * safe_threats & self.attacked_by2[us as usize]).count_bits();
+                score += SLIDER_ON_QUEEN * (b * safe_threats & self.attacked_by2[us as usize]).count_bits();
             }
         }
 
         // Connectivity: ensure that knights, bishops, rooks, and queens are protected
-        b = (self.board.get_occupied_player(us)
-            ^ self.board.piece_two_bb(PieceType::P, PieceType::K, us))
+        b = (self.board.get_occupied_player(us) ^ self.board.piece_two_bb(PieceType::P, PieceType::K, us))
             & self.attacked_by[us as usize][PieceType::All as usize];
 
         score += CONNECTIVITY * b.count_bits();
@@ -885,8 +831,7 @@ impl<'a, 'b> EvaluationInner<'a> {
 
         while let Some((s, bits)) = b.pop_some_lsb_and_bit() {
             bb = forward_file_bb(us, s)
-                & (self.attacked_by[them as usize][PieceType::All as usize]
-                    | self.board.get_occupied_player(them));
+                & (self.attacked_by[them as usize][PieceType::All as usize] | self.board.get_occupied_player(them));
             score -= HINDER_PASSED_PAWN * bb.count_bits();
 
             let r: Rank = us.relative_rank_of_sq(s);
@@ -898,9 +843,7 @@ impl<'a, 'b> EvaluationInner<'a> {
             if w != 0 {
                 let block_sq: SQ = P::up(s);
 
-                ebonus += (king_proximity(block_sq, them_ksq) * 5
-                    - king_proximity(block_sq, us_ksq) as i32 * 2)
-                    * w;
+                ebonus += (king_proximity(block_sq, them_ksq) * 5 - king_proximity(block_sq, us_ksq) as i32 * 2) * w;
 
                 if r != Rank::R7 {
                     ebonus -= self.king_distance(us, P::up(block_sq)) as i32 * w;
@@ -914,9 +857,7 @@ impl<'a, 'b> EvaluationInner<'a> {
                     unsafe_squares = defended_squares;
                     squares_to_queen = defended_squares;
 
-                    bb = self
-                        .board
-                        .piece_two_bb_both_players(PieceType::R, PieceType::Q)
+                    bb = self.board.piece_two_bb_both_players(PieceType::R, PieceType::Q)
                         & rook_moves(self.board.occupied(), s)
                         & forward_file_bb(them, s);
 
@@ -958,8 +899,7 @@ impl<'a, 'b> EvaluationInner<'a> {
             // Scale down bonus for candidate passers which need more than one
             // pawn push to become passed or have a pawn in front of them.
             if !self.board.pawn_passed(us, P::up(s))
-                || (self.board.piece_bb_both_players(PieceType::P) & forward_file_bb(us, s))
-                    .is_not_empty()
+                || (self.board.piece_bb_both_players(PieceType::P) & forward_file_bb(us, s)).is_not_empty()
             {
                 mbonus /= 2;
                 ebonus /= 2;
@@ -992,9 +932,7 @@ impl<'a, 'b> EvaluationInner<'a> {
             CENTER_FILES & (BitBoard::RANK_7 | BitBoard::RANK_6 | BitBoard::RANK_5)
         };
 
-        if self.board.non_pawn_material(Player::White) + self.board.non_pawn_material(Player::Black)
-            < SPACE_THRESHOLD
-        {
+        if self.board.non_pawn_material(Player::White) + self.board.non_pawn_material(Player::Black) < SPACE_THRESHOLD {
             return Score::ZERO;
         }
 
@@ -1009,8 +947,7 @@ impl<'a, 'b> EvaluationInner<'a> {
         behind |= P::shift_down(P::shift_down(behind));
 
         let bonus: i32 = (safe).count_bits() as i32 + (behind & safe).count_bits() as i32;
-        let weight: i32 =
-            self.board.count_pieces_player(us) as i32 - 2 * self.pawn_entry.open_files() as i32;
+        let weight: i32 = self.board.count_pieces_player(us) as i32 - 2 * self.pawn_entry.open_files() as i32;
 
         Score(bonus * weight * weight / 16, 0)
     }
@@ -1023,14 +960,12 @@ impl<'a, 'b> EvaluationInner<'a> {
         let b_ksq = self.board.king_sq(Player::Black);
         let king_distance: i32 =
             w_ksq.file().distance(b_ksq.file()) as i32 - w_ksq.rank().distance(b_ksq.rank()) as i32;
-        let both_flanks: bool = (self.board.piece_bb_both_players(PieceType::P) & QUEEN_SIDE)
-            .is_not_empty()
+        let both_flanks: bool = (self.board.piece_bb_both_players(PieceType::P) & QUEEN_SIDE).is_not_empty()
             && (self.board.piece_bb_both_players(PieceType::P) & KING_SIDE).is_not_empty();
-        let pawn_count: u8 = self.board.count_piece(Player::White, PieceType::P)
-            + self.board.count_piece(Player::Black, PieceType::P);
+        let pawn_count: u8 =
+            self.board.count_piece(Player::White, PieceType::P) + self.board.count_piece(Player::Black, PieceType::P);
 
-        let npm = self.board.non_pawn_material(Player::White)
-            + self.board.non_pawn_material(Player::Black);
+        let npm = self.board.non_pawn_material(Player::White) + self.board.non_pawn_material(Player::Black);
 
         // Compute the initiative bonus for the attacking side
         let complexity: i32 = 8 * self.pawn_entry.asymmetry() as i32
@@ -1071,9 +1006,7 @@ impl<'a, 'b> EvaluationInner<'a> {
         // pawns are drawish.
         else if eg.abs() < BISHOP_EG
             && self.board.count_piece(strong_side, PieceType::P) <= 2
-            && !self
-                .board
-                .pawn_passed(!strong_side, self.board.king_sq(!strong_side))
+            && !self.board.pawn_passed(!strong_side, self.board.king_sq(!strong_side))
         {
             sf = 37 + 7 * self.board.count_piece(strong_side, PieceType::P);
         }
@@ -1095,14 +1028,10 @@ mod tests {
     fn basic_evaluate() {
         let net = StockfishNet;
 
-        let pos1 =
-            ChessPosition::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        let pos2 =
-            ChessPosition::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1");
-        let pos3 =
-            ChessPosition::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
-        let pos4 =
-            ChessPosition::from_fen("r1bqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
+        let pos1 = ChessPosition::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        let pos2 = ChessPosition::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1");
+        let pos3 = ChessPosition::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
+        let pos4 = ChessPosition::from_fen("r1bqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
 
         assert!(net.evaluate(&pos1).1 == -net.evaluate(&pos3).1);
         assert!(net.evaluate(&pos2).1 == -net.evaluate(&pos4).1);

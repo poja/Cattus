@@ -31,10 +31,7 @@ impl<const BOARD_SIZE: usize> TwoHeadedNet<BOARD_SIZE> {
 }
 
 impl<const BOARD_SIZE: usize> ValueFunction<HexGame<BOARD_SIZE>> for TwoHeadedNet<BOARD_SIZE> {
-    fn evaluate(
-        &self,
-        position: &HexPosition<BOARD_SIZE>,
-    ) -> (Vec<(HexMove<BOARD_SIZE>, f32)>, f32) {
+    fn evaluate(&self, position: &HexPosition<BOARD_SIZE>) -> (Vec<(HexMove<BOARD_SIZE>, f32)>, f32) {
         self.base.evaluate(position, common::position_to_planes)
     }
 }

@@ -17,8 +17,8 @@ fn comapre_engines(
     // let mut rng = rand::thread_rng();
     // let engine1_errfile = working_dir.join("errlog" + rng.gen::<u64>().to_string());
     // let engine2_errfile = working_dir.join("errlog" + rng.gen::<u64>().to_string());
-    let mut engine1 = HexPlayerUXI::new(engine1_filename.to_path_buf() /*, engine1_errfile*/);
-    let mut engine2 = HexPlayerUXI::new(engine2_filename.to_path_buf() /*, engine2_errfile*/);
+    let mut engine1 = HexPlayerUXI::new(engine1_filename.to_path_buf() /* , engine1_errfile */);
+    let mut engine2 = HexPlayerUXI::new(engine2_filename.to_path_buf() /* , engine2_errfile */);
 
     let engine1_started = engine1.start(engine1_params);
     let engine2_started = engine2.start(engine2_params);
@@ -68,8 +68,7 @@ fn compare_players(
             true => GameColor::Player1,
             false => GameColor::Player2,
         };
-        let mut game =
-            HexGameStandard::new_from_pos(HexPosition::new_with_starting_color(starting_player));
+        let mut game = HexGameStandard::new_from_pos(HexPosition::new_with_starting_color(starting_player));
         let (_final_pos, winner) = game.play_until_over(player1, player2);
         if let Some(winner) = winner {
             match winner {
@@ -79,18 +78,8 @@ fn compare_players(
         };
     }
     log::info!("Comparison results:");
-    log::info!(
-        "\t{}/{} : {}",
-        player1_wins,
-        number_of_games,
-        player1_display_name
-    );
-    log::info!(
-        "\t{}/{} : {}",
-        player2_wins,
-        number_of_games,
-        player2_display_name
-    );
+    log::info!("\t{}/{} : {}", player1_wins, number_of_games, player1_display_name);
+    log::info!("\t{}/{} : {}", player2_wins, number_of_games, player2_display_name);
     log::info!("\tRunning time: {}s", run_time.elapsed().as_secs());
 }
 

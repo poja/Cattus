@@ -8,9 +8,7 @@ impl GamePlayer<ChessGame> for ChessPlayerCmd {
         let position = pos_history.last().unwrap();
         let read_cmd_move = || -> Option<ChessMove> {
             let mut line = String::new();
-            io::stdin()
-                .read_line(&mut line)
-                .expect("failed to read input");
+            io::stdin().read_line(&mut line).expect("failed to read input");
 
             match ChessMove::from_san(position, line.trim()) {
                 Err(e) => {
@@ -42,10 +40,7 @@ impl GamePlayer<ChessGame> for ChessPlayerCmd {
 
 pub fn cmd_print_chess_board(pos: &ChessPosition) {
     let square_str = |rank, file| -> String {
-        let square = chess::Square::make_square(
-            chess::Rank::from_index(rank),
-            chess::File::from_index(file),
-        );
+        let square = chess::Square::make_square(chess::Rank::from_index(rank), chess::File::from_index(file));
         match pos.board.piece_on(square) {
             Some(piece) => piece.to_string(pos.board.color_on(square).unwrap()),
             None => "·".to_string(),
@@ -53,16 +48,12 @@ pub fn cmd_print_chess_board(pos: &ChessPosition) {
     };
 
     for rank in (0..ChessGame::BOARD_SIZE).rev() {
-        let row_chars: Vec<String> = (0..ChessGame::BOARD_SIZE)
-            .map(|file| square_str(rank, file))
-            .collect();
+        let row_chars: Vec<String> = (0..ChessGame::BOARD_SIZE).map(|file| square_str(rank, file)).collect();
         println!("{} | {}", (rank + 1), row_chars.join(" "));
     }
 
     let files = ["A", "B", "C", "D", "E", "F", "G", "H"];
-    let files_indices: Vec<String> = (0..ChessGame::BOARD_SIZE)
-        .map(|file| files[file].to_string())
-        .collect();
+    let files_indices: Vec<String> = (0..ChessGame::BOARD_SIZE).map(|file| files[file].to_string()).collect();
     println!("    {}", "-".repeat(ChessGame::BOARD_SIZE * 2 - 1));
     println!("    {}", files_indices.join(" "));
 }

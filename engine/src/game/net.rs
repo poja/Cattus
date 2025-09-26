@@ -1,9 +1,9 @@
 use super::model::Model;
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
-use crate::util::Device;
 use crate::util::batch::Batcher;
 use crate::util::metrics::RunningAverage;
+use crate::util::Device;
 use itertools::Itertools;
 use ndarray::{Array2, Array4};
 use std::path::Path;
@@ -92,11 +92,9 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
     ) -> (Vec<(Game::Move, f32)>, f32) {
         let planes = to_planes(pos);
 
-        let (move_scores, val) = self
-            .batcher
-            .apply(planes, Duration::from_millis(20), |inputs| {
-                self.run_net(planes_to_tensor::<Game>(&inputs, self.batcher.batch_size()))
-            });
+        let (move_scores, val) = self.batcher.apply(planes, Duration::from_millis(20), |inputs| {
+            self.run_net(planes_to_tensor::<Game>(&inputs, self.batcher.batch_size()))
+        });
 
         let moves = pos.get_legal_moves();
         let moves_probs = calc_moves_probs::<Game>(moves, &move_scores);
@@ -104,31 +102,19 @@ impl<Game: IGame> TwoHeadedNetBase<Game> {
     }
 }
 
-pub fn calc_moves_probs<Game: IGame>(
-    moves: Vec<Game::Move>,
-    move_scores: &[f32],
-) -> Vec<(Game::Move, f32)> {
-    let moves_scores = moves
-        .iter()
-        .map(|m| move_scores[m.to_nn_idx()])
-        .collect_vec();
+pub fn calc_moves_probs<Game: IGame>(moves: Vec<Game::Move>, move_scores: &[f32]) -> Vec<(Game::Move, f32)> {
+    let moves_scores = moves.iter().map(|m| move_scores[m.to_nn_idx()]).collect_vec();
 
     // Softmax normalization
     let max_p = moves_scores.iter().cloned().fold(f32::MIN, f32::max);
-    let scores = moves_scores
-        .into_iter()
-        .map(|p| (p - max_p).exp())
-        .collect_vec();
+    let scores = moves_scores.into_iter().map(|p| (p - max_p).exp()).collect_vec();
     let p_sum: f32 = scores.iter().sum();
     let probs = scores.into_iter().map(|p| p / p_sum).collect_vec();
 
     moves.into_iter().zip(probs).collect_vec()
 }
 
-pub fn planes_to_tensor<Game: IGame>(
-    samples: &[Vec<Game::Bitboard>],
-    batch_size: usize,
-) -> Array4<f32> {
+pub fn planes_to_tensor<Game: IGame>(samples: &[Vec<Game::Bitboard>], batch_size: usize) -> Array4<f32> {
     assert!(
         (1..=batch_size).contains(&samples.len()),
         "invalid sample len {}, 1..={}",
@@ -186,10 +172,7 @@ pub fn flip_score_if_needed<Move: GameMove>(
     let val = -val;
 
     /* Flip moves */
-    let moves_probs = moves_probs
-        .into_iter()
-        .map(|(m, p)| (m.get_flip(), p))
-        .collect_vec();
+    let moves_probs = moves_probs.into_iter().map(|(m, p)| (m.get_flip(), p)).collect_vec();
 
     (moves_probs, val)
 }
