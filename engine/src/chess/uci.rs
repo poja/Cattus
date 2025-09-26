@@ -1,13 +1,9 @@
 use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
 use crate::game::common::{GamePlayer, GamePosition};
-use crate::game::mcts::MctsPlayer;
-use crate::util::Builder;
+use crate::game::mcts::{MctsParams, MctsPlayer};
 use itertools::Itertools;
 use std::collections::HashMap;
-// use std::fs::{File, OpenOptions};
 use std::io;
-// use std::io::prelude::*;
-// use std::path::Path;
 
 struct GoParams {
     searchmoves: Vec<String>,
@@ -41,7 +37,7 @@ impl GoParams {
 }
 
 struct Engine {
-    player_builder: Box<dyn Builder<MctsPlayer<ChessGame>>>,
+    player_params: MctsParams<ChessGame>,
     options: HashMap<String, String>,
     player: Option<MctsPlayer<ChessGame>>,
     position: Option<ChessPosition>,
@@ -49,9 +45,9 @@ struct Engine {
 }
 
 impl Engine {
-    pub fn new(player_builder: Box<dyn Builder<MctsPlayer<ChessGame>>>) -> Self {
+    pub fn new(player_params: MctsParams<ChessGame>) -> Self {
         Self {
-            player_builder,
+            player_params,
             options: HashMap::new(),
             player: None,
             position: None,
@@ -77,7 +73,7 @@ impl Engine {
     }
 
     pub fn cmd_ucinewgame(&mut self) {
-        self.player = Some(self.player_builder.build());
+        self.player = Some(MctsPlayer::new(self.player_params.clone()));
     }
 
     pub fn cmd_position(&mut self, args: HashMap<String, String>) {
@@ -140,9 +136,9 @@ pub struct UCI {
 }
 
 impl UCI {
-    pub fn new(player_builder: Box<dyn Builder<MctsPlayer<ChessGame>>>) -> Self {
+    pub fn new(player_params: MctsParams<ChessGame>) -> Self {
         Self {
-            engine: Engine::new(player_builder),
+            engine: Engine::new(player_params),
         }
     }
 
