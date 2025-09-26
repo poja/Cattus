@@ -75,7 +75,6 @@ pub struct GamesResults {
 pub struct SelfPlayRunner<Game: IGame> {
     player1_params: MctsParams<Game>,
     player2_params: MctsParams<Game>,
-    temperature_policy: String,
     serializer: Arc<dyn DataSerializer<Game>>,
     thread_num: usize,
 }
@@ -84,7 +83,6 @@ impl<Game: SelfPlayGame + 'static> SelfPlayRunner<Game> {
     pub fn new(
         player1_params: MctsParams<Game>,
         player2_params: MctsParams<Game>,
-        temperature_policy: String,
         serializer: Arc<dyn DataSerializer<Game>>,
         thread_num: u32,
     ) -> Self {
@@ -92,7 +90,6 @@ impl<Game: SelfPlayGame + 'static> SelfPlayRunner<Game> {
         Self {
             player1_params,
             player2_params,
-            temperature_policy,
             serializer,
             thread_num: thread_num as usize,
         }
@@ -120,7 +117,6 @@ impl<Game: SelfPlayGame + 'static> SelfPlayRunner<Game> {
             let worker = SelfPlayWorker::new(
                 self.player1_params.clone(),
                 self.player2_params.clone(),
-                &self.temperature_policy,
                 self.serializer.clone(),
                 output_dir1.to_path_buf(),
                 output_dir2.to_path_buf(),
@@ -154,7 +150,6 @@ impl<Game: SelfPlayGame + 'static> SelfPlayRunner<Game> {
 struct SelfPlayWorker<Game: IGame> {
     player1_params: MctsParams<Game>,
     player2_params: MctsParams<Game>,
-    temperature_scheduler: TemperatureScheduler,
     serializer: Arc<dyn DataSerializer<Game>>,
     output_dir1: PathBuf,
     output_dir2: PathBuf,
@@ -168,7 +163,6 @@ impl<Game: SelfPlayGame> SelfPlayWorker<Game> {
     fn new(
         player1_params: MctsParams<Game>,
         player2_params: MctsParams<Game>,
-        temperature_policy: &str,
         serializer: Arc<dyn DataSerializer<Game>>,
         output_dir1: PathBuf,
         output_dir2: PathBuf,
@@ -179,7 +173,6 @@ impl<Game: SelfPlayGame> SelfPlayWorker<Game> {
         Self {
             player1_params,
             player2_params,
-            temperature_scheduler: TemperatureScheduler::from_str(temperature_policy),
             serializer,
             output_dir1,
             output_dir2,
@@ -205,7 +198,6 @@ impl<Game: SelfPlayGame> SelfPlayWorker<Game> {
             let mut pos_probs_pairs = Vec::new();
             let players_switch = game_idx % 2 == 1;
 
-            let mut half_move_num = 0;
             while !game.is_over() {
                 let mut player = game.position().get_turn();
                 if players_switch {
@@ -217,20 +209,16 @@ impl<Game: SelfPlayGame> SelfPlayWorker<Game> {
                 };
 
                 /* Generate probabilities from MCTS player */
-                player.set_temperature(
-                    self.temperature_scheduler
-                        .get_temperature((half_move_num / 2) as u32),
-                );
                 let moves = player.calc_moves_probabilities(game.pos_history());
-                let next_move = player.choose_move_from_probabilities(&moves).unwrap();
+                let next_move = player
+                    .choose_move_from_probabilities(game.pos_history(), &moves)
+                    .unwrap();
 
                 /* Store probabilities */
                 pos_probs_pairs.push((*game.position(), moves));
 
                 /* Advance game position */
                 game.play_single_turn(next_move);
-
-                half_move_num += 1;
             }
 
             /* Save all data entries */
@@ -290,61 +278,6 @@ impl<Game: SelfPlayGame> SelfPlayWorker<Game> {
             )?;
         }
         Ok(())
-    }
-}
-
-struct TemperatureScheduler {
-    temperatures: Vec<(u32, f32)>,
-    last_temperature: f32,
-}
-
-impl TemperatureScheduler {
-    /// Create a scheduler from a string describing the temperature policy
-    ///
-    /// # Arguments
-    ///
-    /// * `s` - A string representing the temperature policy. The string should contain an odd number of numbers,
-    ///   with a ',' between them.
-    ///
-    /// The string will be split into pairs of two numbers, and a final number.
-    /// Each pair should be of the form (moves_num, temperature) and the final number is the final temperature.
-    /// Each pair represent an interval of moves number in which the corresponding temperature will be assigned.
-    /// The pairs should be ordered by the moves_num.
-    ///
-    /// # Examples
-    ///
-    /// "1.0" means a constant temperature of 1
-    /// "30,1.0,0.0" means a temperature of 1.0 for the first 30 moves, and temperature of zero after than
-    /// "15,2.0,30,0.5,0.1" means a temperature of 2.0 for the first 15 moves, 0.5 in the moves 16 up to 30, and 0.1
-    /// after that
-    fn from_str(s: &str) -> Self {
-        let s = s.split(',').collect_vec();
-        assert!(s.len() % 2 == 1);
-
-        let mut temperatures = Vec::new();
-        for i in 0..((s.len() - 1) / 2) {
-            let threshold = s[i * 2].parse::<u32>().unwrap();
-            let temperature = s[i * 2 + 1].parse::<f32>().unwrap();
-            if !temperatures.is_empty() {
-                let (last_threshold, _last_temp) = temperatures.last().unwrap();
-                assert!(*last_threshold < threshold);
-            }
-            temperatures.push((threshold, temperature));
-        }
-        let last_temp = s.last().unwrap().parse::<f32>().unwrap();
-        Self {
-            temperatures,
-            last_temperature: last_temp,
-        }
-    }
-
-    fn get_temperature(&self, move_num: u32) -> f32 {
-        for (threshold, temperature) in &self.temperatures {
-            if move_num < *threshold {
-                return *temperature;
-            }
-        }
-        self.last_temperature
     }
 }
 

@@ -56,7 +56,7 @@ pub struct MctsPlayer<Game: IGame> {
 
     sim_num: u32,
     explore_factor: f32,
-    temperature: f32,
+    temperature: TemperaturePolicy,
     prior_noise_alpha: f32,
     prior_noise_epsilon: f32,
     value_func: Arc<dyn ValueFunction<Game>>,
@@ -67,6 +67,7 @@ pub struct MctsPlayer<Game: IGame> {
 pub struct MctsParams<Game: IGame> {
     pub sim_num: u32,
     pub explore_factor: f32,
+    pub temperature: TemperaturePolicy,
     pub prior_noise_alpha: f32,
     pub prior_noise_epsilon: f32,
     pub value_func: Arc<dyn ValueFunction<Game>>,
@@ -76,6 +77,7 @@ impl<Game: IGame> MctsParams<Game> {
         Self {
             sim_num,
             explore_factor: std::f32::consts::SQRT_2,
+            temperature: TemperaturePolicy::constant(1.0),
             prior_noise_alpha: 0.0,
             prior_noise_epsilon: 0.0,
             value_func,
@@ -87,6 +89,7 @@ impl<Game: IGame> Clone for MctsParams<Game> {
         Self {
             sim_num: self.sim_num,
             explore_factor: self.explore_factor,
+            temperature: self.temperature.clone(),
             prior_noise_alpha: self.prior_noise_alpha,
             prior_noise_epsilon: self.prior_noise_epsilon,
             value_func: Arc::clone(&self.value_func),
@@ -117,7 +120,7 @@ impl<Game: IGame> MctsPlayer<Game> {
             explore_factor: params.explore_factor,
             prior_noise_alpha: params.prior_noise_alpha,
             prior_noise_epsilon: params.prior_noise_epsilon,
-            temperature: 1.0,
+            temperature: params.temperature,
             value_func: params.value_func,
             search_duration_metric,
         }
@@ -396,13 +399,17 @@ impl<Game: IGame> MctsPlayer<Game> {
 
     pub fn choose_move_from_probabilities(
         &self,
+        pos_history: &[Game::Position],
         moves_probs: &[(Game::Move, f32)],
     ) -> Option<Game::Move> {
         if moves_probs.is_empty() {
             return None;
         }
 
-        if self.temperature == 0.0 {
+        let temperature = self
+            .temperature
+            .get_temperature(pos_history.len() as u32 / 2);
+        if temperature == 0.0 {
             let (m, _p) = moves_probs
                 .iter()
                 .max_by(|(_m1, p1), (_m2, p2)| p1.total_cmp(p2))
@@ -410,10 +417,10 @@ impl<Game: IGame> MctsPlayer<Game> {
             Some(*m)
         } else {
             /* prob -> prob^temperature */
-            assert!(self.temperature > 0.0);
+            assert!(temperature > 0.0);
             let probabilities = moves_probs
                 .iter()
-                .map(|(_m, p)| p.powf(1.0 / self.temperature))
+                .map(|(_m, p)| p.powf(1.0 / temperature))
                 .collect_vec();
 
             /* normalize, prob -> prob / (probs sum) */
@@ -422,11 +429,6 @@ impl<Game: IGame> MctsPlayer<Game> {
             let distribution = WeightedIndex::new(probabilities).unwrap();
             Some(moves_probs[distribution.sample(&mut rand::rng())].0)
         }
-    }
-
-    pub fn set_temperature(&mut self, temperature: f32) {
-        assert!(temperature >= 0.0);
-        self.temperature = temperature;
     }
 
     fn add_dirichlet_noise(&mut self, node_id: NodeIndex) {
@@ -469,7 +471,43 @@ impl<Game: IGame> MctsPlayer<Game> {
 impl<Game: IGame> GamePlayer<Game> for MctsPlayer<Game> {
     fn next_move(&mut self, pos_history: &[Game::Position]) -> Option<Game::Move> {
         let moves = self.calc_moves_probabilities(pos_history);
-        self.choose_move_from_probabilities(&moves)
+        self.choose_move_from_probabilities(pos_history, &moves)
+    }
+}
+
+#[derive(Clone)]
+pub struct TemperaturePolicy {
+    temperatures: Vec<(u32, f32)>,
+    last_temperature: f32,
+}
+
+impl TemperaturePolicy {
+    pub fn constant(temperature: f32) -> Self {
+        assert!(temperature >= 0.0);
+        Self {
+            temperatures: Vec::new(),
+            last_temperature: temperature,
+        }
+    }
+
+    pub fn scheduled(temperatures: Vec<(u32, f32)>, last_temperature: f32) -> Self {
+        assert!(temperatures.iter().all(|(_n, t)| *t >= 0.0));
+        assert!(last_temperature >= 0.0);
+        assert!(temperatures.windows(2).all(|w| w[0].0 < w[1].0)); // strictly increasing
+
+        Self {
+            temperatures,
+            last_temperature,
+        }
+    }
+
+    pub fn get_temperature(&self, move_num: u32) -> f32 {
+        for (threshold, temperature) in &self.temperatures {
+            if move_num < *threshold {
+                return *temperature;
+            }
+        }
+        self.last_temperature
     }
 }
 

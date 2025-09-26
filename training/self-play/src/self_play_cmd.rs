@@ -1,6 +1,6 @@
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::common::IGame;
-use cattus::game::mcts::{MctsParams, ValueFunction};
+use cattus::game::mcts::{MctsParams, TemperaturePolicy, ValueFunction};
 use cattus::util::{self, Device};
 use clap::Parser;
 use std::collections::HashMap;
@@ -96,6 +96,7 @@ pub fn run_main<Game: SelfPlayGame + 'static>(
 
     let mut cache_builder = CacheBuilder::new(args.cache_size);
 
+    let temperature = temperature_from_str(&args.temperature_policy);
     let player1_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
         &args.model1_path,
         cache_builder.build_cache(),
@@ -105,6 +106,7 @@ pub fn run_main<Game: SelfPlayGame + 'static>(
     let player1_params = MctsParams {
         sim_num: args.sim_num,
         explore_factor: args.explore_factor,
+        temperature: temperature.clone(),
         prior_noise_alpha: args.prior_noise_alpha,
         prior_noise_epsilon: args.prior_noise_epsilon,
         value_func: player1_net,
@@ -122,6 +124,7 @@ pub fn run_main<Game: SelfPlayGame + 'static>(
         MctsParams {
             sim_num: args.sim_num,
             explore_factor: args.explore_factor,
+            temperature: temperature.clone(),
             prior_noise_alpha: args.prior_noise_alpha,
             prior_noise_epsilon: args.prior_noise_epsilon,
             value_func: player2_net,
@@ -131,7 +134,6 @@ pub fn run_main<Game: SelfPlayGame + 'static>(
     let result = SelfPlayRunner::new(
         player1_params,
         player2_params,
-        args.temperature_policy,
         Arc::from(serializer),
         args.threads,
     )
@@ -181,4 +183,40 @@ pub fn run_main<Game: SelfPlayGame + 'static>(
     }
 
     Ok(())
+}
+
+/// Create a scheduler from a string describing the temperature policy
+///
+/// # Arguments
+///
+/// * `s` - A string representing the temperature policy. The string should contain an odd number of numbers,
+///   with a ',' between them.
+///
+/// The string will be split into pairs of two numbers, and a final number.
+/// Each pair should be of the form (moves_num, temperature) and the final number is the final temperature.
+/// Each pair represent an interval of moves number in which the corresponding temperature will be assigned.
+/// The pairs should be ordered by the moves_num.
+///
+/// # Examples
+///
+/// "1.0" means a constant temperature of 1
+/// "30,1.0,0.0" means a temperature of 1.0 for the first 30 moves, and temperature of zero after than
+/// "15,2.0,30,0.5,0.1" means a temperature of 2.0 for the first 15 moves, 0.5 in the moves 16 up to 30, and 0.1
+/// after that
+pub fn temperature_from_str(s: &str) -> TemperaturePolicy {
+    let s = s.split(',').collect::<Vec<_>>();
+    assert!(s.len() % 2 == 1);
+
+    let mut temperatures = Vec::new();
+    for i in 0..((s.len() - 1) / 2) {
+        let threshold = s[i * 2].parse::<u32>().unwrap();
+        let temperature = s[i * 2 + 1].parse::<f32>().unwrap();
+        if !temperatures.is_empty() {
+            let (last_threshold, _last_temp) = temperatures.last().unwrap();
+            assert!(*last_threshold < threshold);
+        }
+        temperatures.push((threshold, temperature));
+    }
+    let last_temp = s.last().unwrap().parse::<f32>().unwrap();
+    TemperaturePolicy::scheduled(temperatures, last_temp)
 }
