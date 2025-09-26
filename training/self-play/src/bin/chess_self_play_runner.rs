@@ -24,5 +24,5 @@ impl INNetworkBuilder<ChessGame> for NNetworkBuilder {
 }
 
 fn main() -> std::io::Result<()> {
-    run_main(Box::new(NNetworkBuilder {}), Box::new(ChessSerializer {}))
+    run_main(Box::new(NNetworkBuilder), Box::new(ChessSerializer))
 }

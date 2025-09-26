@@ -207,7 +207,7 @@ impl<Game: SelfPlayGame> SelfPlayWorker<Game> {
 
             let mut half_move_num = 0;
             while !game.is_over() {
-                let mut player = game.get_position().get_turn();
+                let mut player = game.position().get_turn();
                 if players_switch {
                     player = player.opposite()
                 }
@@ -221,11 +221,11 @@ impl<Game: SelfPlayGame> SelfPlayWorker<Game> {
                     self.temperature_scheduler
                         .get_temperature((half_move_num / 2) as u32),
                 );
-                let moves = player.calc_moves_probabilities(game.get_position());
+                let moves = player.calc_moves_probabilities(game.pos_history());
                 let next_move = player.choose_move_from_probabilities(&moves).unwrap();
 
                 /* Store probabilities */
-                pos_probs_pairs.push((*game.get_position(), moves));
+                pos_probs_pairs.push((*game.position(), moves));
 
                 /* Advance game position */
                 game.play_single_turn(next_move);

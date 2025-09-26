@@ -181,6 +181,9 @@ impl<const BOARD_SIZE: usize> HexPosition<BOARD_SIZE> {
     }
 
     pub fn is_valid_move(&self, m: HexMove<BOARD_SIZE>) -> bool {
+        if self.is_over() {
+            return false;
+        }
         let idx = m.to_idx();
         idx < BOARD_SIZE * BOARD_SIZE && !self.board_red.get(idx) && !self.board_blue.get(idx)
     }
@@ -260,9 +263,14 @@ impl<const BOARD_SIZE: usize> HexPosition<BOARD_SIZE> {
         }
     }
 
+    pub fn make_move_new(&self, m: HexMove<BOARD_SIZE>) -> Self {
+        let mut res = *self;
+        res.make_move(m);
+        res
+    }
+
     pub fn make_move(&mut self, m: HexMove<BOARD_SIZE>) {
         assert!(self.is_valid_move(m));
-        assert!(!self.is_over());
 
         match self.turn {
             GameColor::Player1 => &mut self.board_red,
@@ -342,7 +350,7 @@ impl<const BOARD_SIZE: usize> GamePosition for HexPosition<BOARD_SIZE> {
 }
 
 pub struct HexGame<const BOARD_SIZE: usize> {
-    pos: HexPosition<BOARD_SIZE>,
+    pos_history: Vec<HexPosition<BOARD_SIZE>>,
 }
 
 pub const HEX_STANDARD_BOARD_SIZE: usize = 11;
@@ -357,30 +365,32 @@ impl<const BOARD_SIZE: usize> IGame for HexGame<BOARD_SIZE> {
     const REPETITION_LIMIT: Option<usize> = None;
 
     fn new() -> Self {
-        Self {
-            pos: HexPosition::new(),
-        }
+        Self::new_from_pos(HexPosition::new())
     }
 
     fn new_from_pos(pos: Self::Position) -> Self {
-        Self { pos }
+        Self {
+            pos_history: vec![pos],
+        }
     }
 
-    fn get_position(&self) -> &Self::Position {
-        &self.pos
+    fn pos_history(&self) -> &[Self::Position] {
+        &self.pos_history
     }
 
     fn is_over(&self) -> bool {
-        self.pos.is_over()
+        self.position().is_over()
     }
 
     fn get_winner(&self) -> Option<GameColor> {
         assert!(self.is_over());
-        self.pos.get_winner()
+        self.position().get_winner()
     }
 
     fn play_single_turn(&mut self, next_move: Self::Move) {
-        assert!(self.pos.is_valid_move(next_move));
-        self.pos.make_move(next_move);
+        let pos = self.position();
+        assert!(pos.is_valid_move(next_move));
+        let new_pos = pos.make_move_new(next_move);
+        self.pos_history.push(new_pos);
     }
 }

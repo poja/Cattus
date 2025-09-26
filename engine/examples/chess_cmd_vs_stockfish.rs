@@ -16,8 +16,8 @@ fn color_to_str(c: Option<GameColor>) -> String {
 fn main() {
     cattus::util::init_globals(None);
 
-    let mut player1 = ChessPlayerCmd {};
-    let value_func = Arc::new(StockfishNet {});
+    let mut player1 = ChessPlayerCmd;
+    let value_func = Arc::new(StockfishNet);
     let mut player2 = MctsPlayer::new(MctsParams::new(100000, value_func));
     let mut game = ChessGame::new();
 

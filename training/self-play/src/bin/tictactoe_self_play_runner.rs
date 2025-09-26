@@ -24,5 +24,5 @@ impl INNetworkBuilder<TttGame> for NNetworkBuilder {
 }
 
 fn main() -> std::io::Result<()> {
-    run_main(Box::new(NNetworkBuilder {}), Box::new(TttSerializer {}))
+    run_main(Box::new(NNetworkBuilder), Box::new(TttSerializer))
 }

@@ -5,8 +5,7 @@ use crate::game::net;
 
 /* Copied from https://github.com/LeelaChessZero/lc0/blob/master/src/neural/network_trivial.cc */
 
-pub struct TrivialNet {}
-
+pub struct TrivialNet;
 impl ValueFunction<ChessGame> for TrivialNet {
     fn evaluate(&self, position: &ChessPosition) -> (Vec<(<ChessGame as IGame>::Move, f32)>, f32) {
         let (position, is_flipped) = net::flip_pos_if_needed(*position);

@@ -45,7 +45,10 @@ pub trait IGame: Sized {
 
     fn new() -> Self;
     fn new_from_pos(pos: Self::Position) -> Self;
-    fn get_position(&self) -> &Self::Position;
+    fn position(&self) -> &Self::Position {
+        self.pos_history().last().unwrap()
+    }
+    fn pos_history(&self) -> &[Self::Position];
     fn is_over(&self) -> bool;
     fn get_winner(&self) -> Option<GameColor>;
     fn play_single_turn(&mut self, next_move: Self::Move);
@@ -56,14 +59,14 @@ pub trait IGame: Sized {
         player2: &mut impl GamePlayer<Self>,
     ) -> (Self::Position, Option<GameColor>) {
         while !self.is_over() {
-            let pos = self.get_position();
-            let next_move = match pos.get_turn() {
-                GameColor::Player1 => player1.next_move(pos).unwrap(),
-                GameColor::Player2 => player2.next_move(pos).unwrap(),
+            let positions = self.pos_history();
+            let next_move = match positions.last().unwrap().get_turn() {
+                GameColor::Player1 => player1.next_move(positions).unwrap(),
+                GameColor::Player2 => player2.next_move(positions).unwrap(),
             };
             self.play_single_turn(next_move);
         }
-        (*self.get_position(), self.get_winner())
+        (*self.position(), self.get_winner())
     }
 }
 
@@ -88,7 +91,7 @@ pub trait GameMove: Clone + Copy + Eq + Hash + Display + Debug + Send + Sync {
 }
 
 pub trait GamePlayer<Game: IGame> {
-    fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move>;
+    fn next_move(&mut self, pos_history: &[Game::Position]) -> Option<Game::Move>;
 }
 
 pub trait GameBitboard: Clone + Copy {
@@ -121,8 +124,8 @@ impl PlayerRand {
 }
 
 impl<Game: IGame> GamePlayer<Game> for PlayerRand {
-    fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
-        let moves = position.get_legal_moves();
+    fn next_move(&mut self, pos_history: &[Game::Position]) -> Option<Game::Move> {
+        let moves = pos_history.last().unwrap().get_legal_moves();
         if moves.is_empty() {
             None
         } else {

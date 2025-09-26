@@ -6,7 +6,7 @@ mod tests {
 
     #[test]
     fn basic_evaluate() {
-        let net = TrivialNet {};
+        let net = TrivialNet;
 
         let pos1 =
             ChessPosition::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");

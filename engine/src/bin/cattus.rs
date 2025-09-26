@@ -16,6 +16,6 @@ fn main() {
 
     let args = Args::parse();
 
-    let mut uci = UCI::new(MctsParams::new(args.sim_num, Arc::new(StockfishNet {})));
+    let mut uci = UCI::new(MctsParams::new(args.sim_num, Arc::new(StockfishNet)));
     uci.run();
 }

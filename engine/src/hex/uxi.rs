@@ -169,13 +169,13 @@ impl HexPlayerUXI {
 impl GamePlayer<HexGameStandard> for HexPlayerUXI {
     fn next_move(
         &mut self,
-        position: &<HexGameStandard as IGame>::Position,
+        pos_history: &[<HexGameStandard as IGame>::Position],
     ) -> Option<<HexGameStandard as IGame>::Move> {
         let mut command = String::with_capacity(
             10 + HexGameStandard::BOARD_SIZE * HexGameStandard::BOARD_SIZE + 3,
         );
         command.push_str("next_move ");
-        position_to_uxi(position, &mut command);
+        position_to_uxi(pos_history.last().unwrap(), &mut command);
         self.send_command(command);
         let resp = self.receive_command()?;
         let response: Vec<_> = resp.split(' ').collect();
@@ -252,7 +252,7 @@ impl UxiEngine {
                             continue;
                         }
                         Some(pos) => {
-                            match self.player.next_move(&pos) {
+                            match self.player.next_move(&[pos]) {
                                 None => println!("error"),
                                 Some(m) => println!("move {},{}", m.row(), m.column()),
                             };

@@ -123,43 +123,36 @@ impl<Game: IGame> MctsPlayer<Game> {
         }
     }
 
-    fn detect_repetition(&self, trajectory: &[EdgeIndex]) -> bool {
-        let repetition_limit = Game::REPETITION_LIMIT;
-        if repetition_limit.is_none() || trajectory.is_empty() {
-            return false;
-        }
+    fn detect_repetition(&self, pos_history: &[Game::Position], trajectory: &[EdgeIndex]) -> bool {
+        let repetition_limit = match Game::REPETITION_LIMIT {
+            Some(l) if l > 1 => l,
+            _ => return false,
+        };
 
-        let mut positions = Vec::with_capacity(1 + trajectory.len());
-
-        let (e0_source, _e0_target) = self.search_tree.edge_endpoints(trajectory[0]).unwrap();
-        assert!(e0_source == self.root.unwrap());
-        positions.push(&self.search_tree[e0_source].position);
-
-        positions.extend(trajectory.iter().map(|idx| {
+        let trajectory = trajectory.iter().map(|idx| {
             let (_e_source, e_target) = self.search_tree.edge_endpoints(*idx).unwrap();
             &self.search_tree[e_target].position
-        }));
+        });
+        let full_trajectory = pos_history.iter().chain(trajectory);
 
         let mut repetitions = HashMap::new();
-        for pos in positions {
-            *repetitions.entry(pos).or_insert(0) += 1;
-        }
-
-        for (_pos, repeat) in repetitions {
-            if repeat >= repetition_limit.unwrap() {
+        for pos in full_trajectory {
+            let repeat = repetitions.entry(pos).or_insert(0);
+            *repeat += 1;
+            if *repeat >= repetition_limit {
                 return true;
             }
         }
         false
     }
 
-    fn develop_tree(&mut self) {
+    fn develop_tree(&mut self, pos_history: &[Game::Position]) {
         assert!(self.sim_num > 1);
         for _ in 0..self.sim_num {
             /* Select a leaf node */
             let path_to_selection = self.select();
 
-            let repetition_reached = self.detect_repetition(&path_to_selection);
+            let repetition_reached = self.detect_repetition(pos_history, &path_to_selection);
             let leaf_id: NodeIndex = if path_to_selection.is_empty() {
                 self.root.unwrap()
             } else {
@@ -345,9 +338,10 @@ impl<Game: IGame> MctsPlayer<Game> {
 
     pub fn calc_moves_probabilities(
         &mut self,
-        position: &Game::Position,
+        pos_history: &[Game::Position],
     ) -> Vec<(Game::Move, f32)> {
         let search_start_time = Instant::now();
+        let position = pos_history.last().unwrap();
 
         if self.root.is_some() {
             // Tree was saved from the last search
@@ -372,7 +366,7 @@ impl<Game: IGame> MctsPlayer<Game> {
         assert!(position == &self.search_tree[self.root.unwrap()].position);
 
         // Run all simulations
-        self.develop_tree();
+        self.develop_tree(pos_history);
 
         // create moves vector (move, sim_count)
         let moves_and_simcounts = self
@@ -473,8 +467,8 @@ impl<Game: IGame> MctsPlayer<Game> {
 }
 
 impl<Game: IGame> GamePlayer<Game> for MctsPlayer<Game> {
-    fn next_move(&mut self, position: &Game::Position) -> Option<Game::Move> {
-        let moves = self.calc_moves_probabilities(position);
+    fn next_move(&mut self, pos_history: &[Game::Position]) -> Option<Game::Move> {
+        let moves = self.calc_moves_probabilities(pos_history);
         self.choose_move_from_probabilities(&moves)
     }
 }

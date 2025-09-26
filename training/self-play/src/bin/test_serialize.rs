@@ -41,19 +41,19 @@ fn main() -> std::io::Result<()> {
 
 fn test_tictactoe(args: Args) -> std::io::Result<()> {
     let pos = ttt_position_from_str(&args.position);
-    let serializer = TttSerializer {};
+    let serializer = TttSerializer;
     serialize_position(pos, &serializer, &args.outfile)
 }
 
 fn test_hex<const BOARD_SIZE: usize>(args: Args) -> std::io::Result<()> {
     let pos = hex_position_from_str(&args.position);
-    let serializer = HexSerializer {};
+    let serializer = HexSerializer;
     serialize_position::<HexGame<BOARD_SIZE>>(pos, &serializer, &args.outfile)
 }
 
 fn test_chess(args: Args) -> std::io::Result<()> {
     let pos = ChessPosition::from_fen(&args.position);
-    let serializer = ChessSerializer {};
+    let serializer = ChessSerializer;
     serialize_position(pos, &serializer, &args.outfile)
 }
 
