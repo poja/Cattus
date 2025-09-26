@@ -2,17 +2,18 @@
 mod tests {
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
+    use std::cmp::Ordering;
     use std::collections::HashSet;
 
-    use crate::game::common::GamePlayer;
+    use crate::game::common::{GameBitboard, GamePlayer};
     use crate::game::common::{GameColor, GameMove, GamePosition, IGame, PlayerRand};
-    use crate::hex::hex_game::HexGameStandard;
+    use crate::hex::hex_game::{HexBitboard, HexGameStandard, HexPosition};
 
     type HexStandardPosition = <HexGameStandard as IGame>::Position;
 
     #[test]
     fn short_diagonal_wins() {
-        let pos = HexStandardPosition::from_str(
+        let pos: HexStandardPosition = hex_position_from_str(
             "reeeeeeeeee\
             ereeeeeeeee\
             eereeeeeeee\
@@ -29,7 +30,7 @@ mod tests {
         assert!(pos.is_over());
         assert!(pos.get_winner() == Some(GameColor::Player1));
 
-        let pos = HexStandardPosition::from_str(
+        let pos: HexStandardPosition = hex_position_from_str(
             "beeeeeeeeee\
             ebeeeeeeeee\
             eebeeeeeeee\
@@ -50,7 +51,7 @@ mod tests {
 
     #[test]
     fn almost_short_diagonal_doesnt_win() {
-        let pos = HexStandardPosition::from_str(
+        let pos: HexStandardPosition = hex_position_from_str(
             "eeeeeeeeeee\
             ereeeeeeeee\
             eereeeeeeee\
@@ -66,7 +67,7 @@ mod tests {
         );
         assert!(!pos.is_over());
 
-        let pos = HexStandardPosition::from_str(
+        let pos: HexStandardPosition = hex_position_from_str(
             "beeeeeeeeee\
             ebeeeeeeeee\
             eebeeeeeeee\
@@ -85,7 +86,7 @@ mod tests {
 
     #[test]
     fn long_diagonal_doesnt_win() {
-        let pos = HexStandardPosition::from_str(
+        let pos: HexStandardPosition = hex_position_from_str(
             "eeeeeeeeeer\
             eeeeeeeeere\
             eeeeeeeeree\
@@ -101,7 +102,7 @@ mod tests {
         );
         assert!(!pos.is_over());
 
-        let pos = HexStandardPosition::from_str(
+        let pos: HexStandardPosition = hex_position_from_str(
             "eeeeeeeeeeb\
             eeeeeeeeebe\
             eeeeeeeebee\
@@ -120,7 +121,7 @@ mod tests {
 
     #[test]
     fn flip() {
-        let pos = HexStandardPosition::from_str(
+        let pos: HexStandardPosition = hex_position_from_str(
             "eebeeeeeeer\
             eeeeeeeeeee\
             eeeebeeeree\
@@ -175,5 +176,37 @@ mod tests {
                 game.play_single_turn(next_move);
             }
         }
+    }
+
+    pub fn hex_position_from_str<const BOARD_SIZE: usize>(s: &str) -> HexPosition<BOARD_SIZE> {
+        assert_eq!(
+            s.chars().count(),
+            BOARD_SIZE * BOARD_SIZE + 1,
+            "unexpected string length"
+        );
+
+        let mut board_red = HexBitboard::new();
+        let mut board_blue = HexBitboard::new();
+        let mut turn = None;
+        for (idx, c) in s.chars().enumerate() {
+            match idx.cmp(&(BOARD_SIZE * BOARD_SIZE)) {
+                Ordering::Less => match c {
+                    'e' => {}
+                    'r' => board_red.set(idx, true),
+                    'b' => board_blue.set(idx, true),
+                    _ => panic!("unknown board char: {:?}", c),
+                },
+                Ordering::Equal => {
+                    turn = Some(match c {
+                        'r' => GameColor::Player1,
+                        'b' => GameColor::Player2,
+                        _ => panic!("unknown turn char: {:?}", c),
+                    })
+                }
+                Ordering::Greater => panic!("Too many chars in position string"),
+            }
+        }
+
+        HexPosition::new_from_board(board_red, board_blue, turn.unwrap())
     }
 }

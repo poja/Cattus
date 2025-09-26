@@ -2,13 +2,13 @@ use std::path::{Path, PathBuf};
 
 use cattus::chess::chess_game::ChessPosition;
 use cattus::game::common::{GameColor, GamePosition, IGame};
-use cattus::hex::hex_game::{HexGame, HexPosition};
-use cattus::ttt::ttt_game::TttPosition;
+use cattus::hex::hex_game::HexGame;
 use cattus_self_play::self_play::DataEntry;
 use cattus_self_play::serialize::DataSerializer;
 use cattus_self_play::serialize::chess::ChessSerializer;
 use cattus_self_play::serialize::hex::HexSerializer;
 use cattus_self_play::serialize::ttt::TttSerializer;
+use cattus_self_play::test_util::{hex_position_from_str, ttt_position_from_str};
 use clap::Parser;
 use itertools::Itertools;
 
@@ -40,19 +40,19 @@ fn main() -> std::io::Result<()> {
 }
 
 fn test_tictactoe(args: Args) -> std::io::Result<()> {
-    let pos = TttPosition::from_str(&args.position);
+    let pos = ttt_position_from_str(&args.position);
     let serializer = TttSerializer {};
     serialize_position(pos, &serializer, &args.outfile)
 }
 
 fn test_hex<const BOARD_SIZE: usize>(args: Args) -> std::io::Result<()> {
-    let pos = HexPosition::from_str(&args.position);
+    let pos = hex_position_from_str(&args.position);
     let serializer = HexSerializer {};
     serialize_position::<HexGame<BOARD_SIZE>>(pos, &serializer, &args.outfile)
 }
 
 fn test_chess(args: Args) -> std::io::Result<()> {
-    let pos = ChessPosition::from_str(&args.position);
+    let pos = ChessPosition::from_fen(&args.position);
     let serializer = ChessSerializer {};
     serialize_position(pos, &serializer, &args.outfile)
 }

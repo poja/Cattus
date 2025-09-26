@@ -1,9 +1,10 @@
 use cattus::chess::chess_game::{ChessGame, ChessPosition};
 use cattus::game::model::Model;
 use cattus::game::net;
-use cattus::hex::hex_game::{HexGame, HexPosition};
-use cattus::ttt::ttt_game::{TttGame, TttPosition};
+use cattus::hex::hex_game::HexGame;
+use cattus::ttt::ttt_game::TttGame;
 use cattus::{chess, hex, ttt};
+use cattus_self_play::test_util::{hex_position_from_str, ttt_position_from_str};
 use clap::Parser;
 use itertools::Itertools;
 use ndarray::{Array2, ArrayD, Axis};
@@ -46,7 +47,7 @@ fn main() -> std::io::Result<()> {
 }
 
 fn run_net_tictactoe(args: &Args) -> Vec<ArrayD<f32>> {
-    let pos = TttPosition::from_str(&args.position);
+    let pos = ttt_position_from_str(&args.position);
     let mut model = Model::new(&args.model_path);
     let outputs = (0..args.repeat)
         .map(|_| {
@@ -67,7 +68,7 @@ fn run_net_tictactoe(args: &Args) -> Vec<ArrayD<f32>> {
 }
 
 fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<ArrayD<f32>> {
-    let pos = HexPosition::from_str(&args.position);
+    let pos = hex_position_from_str(&args.position);
     let mut model = Model::new(&args.model_path);
     let outputs = (0..args.repeat)
         .map(|_| {
@@ -88,7 +89,7 @@ fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<ArrayD<f32>> {
 }
 
 fn run_net_chess(args: &Args) -> Vec<ArrayD<f32>> {
-    let pos = ChessPosition::from_str(&args.position);
+    let pos = ChessPosition::from_fen(&args.position);
     let mut model = Model::new(&args.model_path);
 
     let outputs = (0..args.repeat)

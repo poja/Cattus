@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::fmt::{self, Display};
 
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
@@ -171,39 +170,6 @@ impl<const BOARD_SIZE: usize> HexPosition<BOARD_SIZE> {
             }
         }
         s
-    }
-
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(s: &str) -> Self {
-        assert_eq!(
-            s.chars().count(),
-            BOARD_SIZE * BOARD_SIZE + 1,
-            "unexpected string length"
-        );
-
-        let mut board_red = HexBitboard::new();
-        let mut board_blue = HexBitboard::new();
-        let mut turn = None;
-        for (idx, c) in s.chars().enumerate() {
-            match idx.cmp(&(BOARD_SIZE * BOARD_SIZE)) {
-                Ordering::Less => match c {
-                    'e' => {}
-                    'r' => board_red.set(idx, true),
-                    'b' => board_blue.set(idx, true),
-                    _ => panic!("unknown board char: {:?}", c),
-                },
-                Ordering::Equal => {
-                    turn = Some(match c {
-                        'r' => GameColor::Player1,
-                        'b' => GameColor::Player2,
-                        _ => panic!("unknown turn char: {:?}", c),
-                    })
-                }
-                Ordering::Greater => panic!("Too many chars in position string"),
-            }
-        }
-
-        Self::new_from_board(board_red, board_blue, turn.unwrap())
     }
 
     pub fn pieces_red(&self) -> HexBitboard<BOARD_SIZE> {

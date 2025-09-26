@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::fmt::{self, Display};
 
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
@@ -105,36 +104,6 @@ pub struct TttPosition {
 }
 
 impl TttPosition {
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(s: &str) -> Self {
-        assert_eq!(
-            s.chars().count(),
-            TttGame::BOARD_SIZE * TttGame::BOARD_SIZE + 1,
-            "unexpected string length"
-        );
-        let mut pos = Self::new();
-        for (idx, c) in s.chars().enumerate() {
-            match idx.cmp(&(TttGame::BOARD_SIZE * TttGame::BOARD_SIZE)) {
-                Ordering::Less => match c {
-                    'x' => pos.board_x.set(idx, true),
-                    'o' => pos.board_o.set(idx, true),
-                    '_' => {}
-                    _ => panic!("unknown board char: {:?}", c),
-                },
-                Ordering::Equal => {
-                    pos.turn = match c {
-                        'x' => GameColor::Player1,
-                        'o' => GameColor::Player2,
-                        _ => panic!("unknown turn char: {:?}", c),
-                    }
-                }
-                Ordering::Greater => panic!("too many turn chars: {:?}", c),
-            }
-        }
-        pos.check_winner();
-        pos
-    }
-
     /* Could lead to invalid board */
     pub fn from_bitboards(board_x: TttBitboard, board_o: TttBitboard, turn: GameColor) -> Self {
         let mut s = Self {
