@@ -2,10 +2,10 @@ use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
 use crate::game::common::{GamePlayer, GamePosition};
 use std::io;
 
-pub struct ChessPlayerCmd {}
-
+pub struct ChessPlayerCmd;
 impl GamePlayer<ChessGame> for ChessPlayerCmd {
-    fn next_move(&mut self, position: &ChessPosition) -> Option<ChessMove> {
+    fn next_move(&mut self, pos_history: &[ChessPosition]) -> Option<ChessMove> {
+        let position = pos_history.last().unwrap();
         let read_cmd_move = || -> Option<ChessMove> {
             let mut line = String::new();
             io::stdin()

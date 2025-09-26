@@ -7,7 +7,7 @@ pub struct HexPlayerCmd;
 impl<const BOARD_SIZE: usize> GamePlayer<HexGame<BOARD_SIZE>> for HexPlayerCmd {
     fn next_move(
         &mut self,
-        position: &<HexGame<BOARD_SIZE> as IGame>::Position,
+        pos_history: &[<HexGame<BOARD_SIZE> as IGame>::Position],
     ) -> Option<<HexGame<BOARD_SIZE> as IGame>::Move> {
         let read_usize = || -> Option<usize> {
             let mut line = String::new();
@@ -24,6 +24,7 @@ impl<const BOARD_SIZE: usize> GamePlayer<HexGame<BOARD_SIZE>> for HexPlayerCmd {
         };
 
         println!("Current position:");
+        let position = pos_history.last().unwrap();
         position.print();
 
         loop {

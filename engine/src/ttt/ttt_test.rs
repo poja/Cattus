@@ -54,7 +54,7 @@ mod tests {
             let mut game = TttGame::new();
 
             while !game.is_over() {
-                let pos = *game.get_position();
+                let pos = *game.position();
                 let pos_t = pos.get_flip();
 
                 /* Assert flip of flip is original */
@@ -73,8 +73,7 @@ mod tests {
                 }
 
                 let next_move =
-                    <_ as GamePlayer<TttGame>>::next_move(&mut player, game.get_position())
-                        .unwrap();
+                    <_ as GamePlayer<TttGame>>::next_move(&mut player, game.pos_history()).unwrap();
                 game.play_single_turn(next_move);
             }
         }

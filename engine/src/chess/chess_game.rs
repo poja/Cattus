@@ -455,7 +455,7 @@ impl GamePosition for ChessPosition {
 }
 
 pub struct ChessGame {
-    pos: ChessPosition,
+    pos_history: Vec<ChessPosition>,
     seen_positions: HashMap<ChessPosition, u32>,
     repetition_detected: bool,
 }
@@ -474,18 +474,18 @@ impl IGame for ChessGame {
 
     fn new_from_pos(pos: Self::Position) -> Self {
         Self {
-            pos,
+            pos_history: vec![pos],
             seen_positions: HashMap::from([(pos, 1)]),
             repetition_detected: false,
         }
     }
 
-    fn get_position(&self) -> &Self::Position {
-        &self.pos
+    fn pos_history(&self) -> &[Self::Position] {
+        &self.pos_history
     }
 
     fn is_over(&self) -> bool {
-        self.repetition_detected || self.pos.is_over()
+        self.repetition_detected || self.position().is_over()
     }
 
     fn get_winner(&self) -> Option<GameColor> {
@@ -493,16 +493,17 @@ impl IGame for ChessGame {
         if self.repetition_detected {
             None
         } else {
-            self.pos.get_winner()
+            self.position().get_winner()
         }
     }
 
     fn play_single_turn(&mut self, next_move: Self::Move) {
         assert!(!self.is_over());
-        assert!(self.pos.is_valid_move(next_move));
-        self.pos = self.pos.get_moved_position(next_move);
+        let pos = self.position();
+        let new_pos = pos.get_moved_position(next_move);
+        self.pos_history.push(new_pos);
 
-        let repeat = self.seen_positions.entry(self.pos).or_insert(0);
+        let repeat = self.seen_positions.entry(new_pos).or_insert(0);
         *repeat += 1;
         if *repeat as usize >= Self::REPETITION_LIMIT.unwrap() {
             self.repetition_detected = true;

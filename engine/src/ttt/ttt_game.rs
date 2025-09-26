@@ -136,9 +136,14 @@ impl TttPosition {
         None
     }
 
+    pub fn make_move_new(&self, m: TttMove) -> Self {
+        let mut res = *self;
+        res.make_move(m);
+        res
+    }
+
     pub fn make_move(&mut self, m: TttMove) {
         assert!(self.is_valid_move(m));
-        assert!(!self.is_over());
 
         match self.turn {
             GameColor::Player1 => &mut self.board_x,
@@ -151,6 +156,9 @@ impl TttPosition {
     }
 
     pub fn is_valid_move(&self, m: TttMove) -> bool {
+        if self.is_over() {
+            return false;
+        }
         let idx = m.to_idx();
         !self.board_x.get(idx) && !self.board_o.get(idx)
     }
@@ -250,11 +258,8 @@ impl GamePosition for TttPosition {
 }
 
 pub struct TttGame {
-    pos: TttPosition,
+    pos_history: Vec<TttPosition>,
 }
-
-impl TttGame {}
-
 impl IGame for TttGame {
     type Position = TttPosition;
     type Move = TttMove;
@@ -264,30 +269,30 @@ impl IGame for TttGame {
     const REPETITION_LIMIT: Option<usize> = None;
 
     fn new() -> Self {
-        Self {
-            pos: TttPosition::new(),
-        }
+        Self::new_from_pos(TttPosition::new())
     }
 
     fn new_from_pos(pos: Self::Position) -> Self {
-        Self { pos }
+        Self {
+            pos_history: vec![pos],
+        }
     }
 
-    fn get_position(&self) -> &Self::Position {
-        &self.pos
+    fn pos_history(&self) -> &[Self::Position] {
+        &self.pos_history
     }
 
     fn is_over(&self) -> bool {
-        self.pos.is_over()
+        self.position().is_over()
     }
 
     fn get_winner(&self) -> Option<GameColor> {
         assert!(self.is_over());
-        self.pos.get_winner()
+        self.position().get_winner()
     }
 
     fn play_single_turn(&mut self, next_move: Self::Move) {
-        assert!(self.pos.is_valid_move(next_move));
-        self.pos.make_move(next_move);
+        self.pos_history
+            .push(self.position().make_move_new(next_move));
     }
 }

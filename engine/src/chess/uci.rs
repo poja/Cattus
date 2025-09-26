@@ -9,7 +9,7 @@ pub struct UCI {
     player_params: MctsParams<ChessGame>,
     options: HashMap<String, String>,
     player: Option<MctsPlayer<ChessGame>>,
-    position: Option<ChessPosition>,
+    pos_history: Option<Vec<ChessPosition>>,
     best_move: Option<ChessMove>,
 }
 
@@ -19,7 +19,7 @@ impl UCI {
             player_params,
             options: HashMap::new(),
             player: None,
-            position: None,
+            pos_history: None,
             best_move: None,
         }
     }
@@ -81,12 +81,14 @@ impl UCI {
         );
         let mut pos = fen
             .map(ChessPosition::from_fen)
-            .unwrap_or_else(|| ChessPosition::new());
+            .unwrap_or_else(ChessPosition::new);
+        let mut pos_history = vec![pos];
         for move_str in moves {
             let m = ChessMove::from_lan(move_str).unwrap();
             pos = pos.get_moved_position(m);
+            pos_history.push(pos);
         }
-        self.position = Some(pos);
+        self.pos_history = Some(pos_history);
     }
 
     pub fn cmd_go(&mut self, args: &[&str]) {
@@ -141,7 +143,11 @@ impl UCI {
         };
 
         let player = self.player.as_mut().unwrap();
-        self.best_move = Some(player.next_move(&self.position.unwrap()).unwrap());
+        self.best_move = Some(
+            player
+                .next_move(self.pos_history.as_ref().unwrap())
+                .unwrap(),
+        );
         self.send_response(format!("bestmove {}", self.best_move.unwrap()));
     }
 

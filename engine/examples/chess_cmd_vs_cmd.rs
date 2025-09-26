@@ -13,8 +13,8 @@ fn color_to_str(c: Option<GameColor>) -> String {
 fn main() {
     cattus::util::init_globals(None);
 
-    let mut player1 = ChessPlayerCmd {};
-    let mut player2 = ChessPlayerCmd {};
+    let mut player1 = ChessPlayerCmd;
+    let mut player2 = ChessPlayerCmd;
     let mut game = ChessGame::new();
 
     let (final_pos, winner) = game.play_until_over(&mut player1, &mut player2);

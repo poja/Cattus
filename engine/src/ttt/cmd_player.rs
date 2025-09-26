@@ -2,10 +2,9 @@ use crate::game::common::{GamePlayer, GamePosition};
 use crate::ttt::ttt_game::{TttGame, TttMove, TttPosition};
 use std::io;
 
-pub struct TttPlayerCmd {}
-
+pub struct TttPlayerCmd;
 impl GamePlayer<TttGame> for TttPlayerCmd {
-    fn next_move(&mut self, position: &TttPosition) -> Option<TttMove> {
+    fn next_move(&mut self, pos_history: &[TttPosition]) -> Option<TttMove> {
         let read_usize = || -> Option<usize> {
             let mut line = String::new();
             io::stdin()
@@ -21,6 +20,7 @@ impl GamePlayer<TttGame> for TttPlayerCmd {
         };
 
         println!("Current position:");
+        let position = pos_history.last().unwrap();
         position.print();
 
         loop {

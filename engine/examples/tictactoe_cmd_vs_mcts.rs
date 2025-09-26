@@ -29,7 +29,7 @@ fn main() {
     ));
     let mut player1 = MctsPlayer::new(MctsParams::new(1000, value_func));
 
-    let mut player2 = TttPlayerCmd {};
+    let mut player2 = TttPlayerCmd;
 
     let mut game = TttGame::new();
 

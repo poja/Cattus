@@ -343,8 +343,7 @@ const SPACE_THRESHOLD: Value = 12222;
 //     }
 // }
 
-pub struct Evaluation {}
-
+pub struct Evaluation;
 impl Evaluation {
     pub fn evaluate(board: &Board) -> Value {
         let mut pawn_entry = PawnEntry::new(board);
@@ -1094,7 +1093,7 @@ mod tests {
 
     #[test]
     fn basic_evaluate() {
-        let net = StockfishNet {};
+        let net = StockfishNet;
 
         let pos1 =
             ChessPosition::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");

@@ -152,7 +152,7 @@ mod tests {
             let mut game = HexGameStandard::new();
 
             while !game.is_over() {
-                let pos = *game.get_position();
+                let pos = *game.position();
                 let pos_t = pos.get_flip();
 
                 /* Assert flip of flip is original */
@@ -172,7 +172,8 @@ mod tests {
                 }
 
                 let next_move =
-                    <_ as GamePlayer<HexGameStandard>>::next_move(&mut player, &pos).unwrap();
+                    <_ as GamePlayer<HexGameStandard>>::next_move(&mut player, game.pos_history())
+                        .unwrap();
                 game.play_single_turn(next_move);
             }
         }

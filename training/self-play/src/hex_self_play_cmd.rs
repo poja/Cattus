@@ -27,7 +27,7 @@ impl<const BOARD_SIZE: usize> INNetworkBuilder<HexGame<BOARD_SIZE>>
 
 pub fn run_main<const BOARD_SIZE: usize>() -> std::io::Result<()> {
     self_play_cmd::run_main(
-        Box::new(NNetworkBuilder::<BOARD_SIZE> {}),
-        Box::new(HexSerializer {}),
+        Box::new(NNetworkBuilder::<BOARD_SIZE>),
+        Box::new(HexSerializer),
     )
 }

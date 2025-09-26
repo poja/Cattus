@@ -103,7 +103,7 @@ mod tests {
             let mut game = ChessGame::new();
 
             while !game.is_over() {
-                let pos = *game.get_position();
+                let pos = *game.position();
                 let pos_t = pos.get_flip();
 
                 /* Assert flip of flip is original */
@@ -121,7 +121,9 @@ mod tests {
                     assert!(pos.get_winner() == pos_t.get_winner().map(|w| w.opposite()));
                 }
 
-                let next_move = <_ as GamePlayer<ChessGame>>::next_move(&mut player, &pos).unwrap();
+                let next_move =
+                    <_ as GamePlayer<ChessGame>>::next_move(&mut player, game.pos_history())
+                        .unwrap();
                 game.play_single_turn(next_move);
             }
         }
