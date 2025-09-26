@@ -2,14 +2,17 @@
 mod tests {
     use rand::rngs::StdRng;
     use rand::{Rng, RngCore, SeedableRng};
+    use std::cmp::Ordering;
     use std::collections::HashSet;
 
-    use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame, PlayerRand};
+    use crate::game::common::{
+        GameBitboard, GameColor, GameMove, GamePlayer, GamePosition, IGame, PlayerRand,
+    };
     use crate::ttt::ttt_game::{TttGame, TttMove, TttPosition};
 
     #[test]
     fn simple_game_and_mate() {
-        let to_pos = |s: &str| TttPosition::from_str(s);
+        let to_pos = |s: &str| ttt_position_from_str(s);
         assert!(to_pos("xxxoo____o").get_winner() == Some(GameColor::Player1));
         assert!(to_pos("oo_xxx___o").get_winner() == Some(GameColor::Player1));
         assert!(to_pos("oo____xxxo").get_winner() == Some(GameColor::Player1));
@@ -32,7 +35,7 @@ mod tests {
             "__xx_x__ox",
         ]
         .into_iter()
-        .map(TttPosition::from_str)
+        .map(ttt_position_from_str)
         {
             assert!(pos.get_turn().opposite() == pos.get_flip().get_turn());
             assert!(pos.get_flip().get_flip() == pos);
@@ -75,5 +78,34 @@ mod tests {
                 game.play_single_turn(next_move);
             }
         }
+    }
+
+    pub fn ttt_position_from_str(s: &str) -> TttPosition {
+        assert_eq!(
+            s.chars().count(),
+            TttGame::BOARD_SIZE * TttGame::BOARD_SIZE + 1,
+            "unexpected string length"
+        );
+        let mut pos = TttPosition::new();
+        for (idx, c) in s.chars().enumerate() {
+            match idx.cmp(&(TttGame::BOARD_SIZE * TttGame::BOARD_SIZE)) {
+                Ordering::Less => match c {
+                    'x' => pos.board_x.set(idx, true),
+                    'o' => pos.board_o.set(idx, true),
+                    '_' => {}
+                    _ => panic!("unknown board char: {:?}", c),
+                },
+                Ordering::Equal => {
+                    pos.turn = match c {
+                        'x' => GameColor::Player1,
+                        'o' => GameColor::Player2,
+                        _ => panic!("unknown turn char: {:?}", c),
+                    }
+                }
+                Ordering::Greater => panic!("too many turn chars: {:?}", c),
+            }
+        }
+        pos.check_winner();
+        pos
     }
 }

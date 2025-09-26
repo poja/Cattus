@@ -184,8 +184,7 @@ impl ChessPosition {
         }
     }
 
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(s: &str) -> Self {
+    pub fn from_fen(s: &str) -> Self {
         Self::new_from_board(chess::Board::from_str(s).unwrap())
     }
 

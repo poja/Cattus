@@ -71,18 +71,16 @@ impl UCI {
     pub fn cmd_position(&mut self, args: &[&str]) {
         let args = Self::parse_args(args, &["fen", "startpos", "moves"]);
         let fen = args.value("fen");
-        let startpos = args.value("startpos");
+        let startpos = args.flag("startpos");
         let moves = args.values_iter("moves");
 
-        // assert_ne!(
-        //     fen.is_some(),
-        //     startpos.is_some(),
-        //     "position cmd requires either fen or startpos"
-        // );
-        assert!(startpos.is_none(), "startpos not supported yet");
-
+        assert_ne!(
+            fen.is_some(),
+            startpos,
+            "position cmd requires either fen or startpos"
+        );
         let mut pos = fen
-            .map(|f| ChessPosition::from_str(f))
+            .map(ChessPosition::from_fen)
             .unwrap_or_else(|| ChessPosition::new());
         for move_str in moves {
             let m = ChessMove::from_lan(move_str).unwrap();
@@ -214,16 +212,15 @@ impl<'a> CommandArgs<'a> {
     }
 }
 
-fn log<S: Into<String>>(_s: S) {
-    // let s = s.into();
-    // let path = Path::new("C:\\code\\cattus\\log.txt");
-    // if !path.exists() {
-    //     File::create(path).expect("failed to create log file");
-    // }
-    // let mut file = OpenOptions::new()
+fn log(_s: impl AsRef<str>) {
+    // let mut file = std::fs::File::options()
     //     .write(true)
     //     .append(true)
-    //     .open(path)
+    //     .create(true)
+    //     .open("/Users/barak/code/Cattus/uci_log.txt")
     //     .unwrap();
-    // writeln!(file, "{}", s).expect("failed to append to log file");
+    // <_ as std::io::Seek>::seek(&mut file, std::io::SeekFrom::End(0))
+    //     .expect("failed to seek to end of log file");
+    // <_ as std::io::Write>::write(&mut file, format!("{}\n", _s.as_ref()).as_bytes())
+    //     .expect("failed to append to log file");
 }

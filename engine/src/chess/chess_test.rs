@@ -84,7 +84,7 @@ mod tests {
             "3r4/1b2p3/7k/1P3R2/K4nrN/1N5P/n1Pp3P/8 b - - 0 1",
         ]
         .into_iter()
-        .map(ChessPosition::from_str)
+        .map(ChessPosition::from_fen)
         {
             assert!(pos.get_turn().opposite() == pos.get_flip().get_turn());
             assert!(pos.get_flip().get_flip() == pos);
