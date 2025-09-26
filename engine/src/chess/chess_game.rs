@@ -425,33 +425,6 @@ impl GamePosition for ChessPosition {
             fifty_rule_count: self.fifty_rule_count,
         }
     }
-
-    fn print(&self) {
-        let square_str = |rank, file| -> String {
-            let square = chess::Square::make_square(
-                chess::Rank::from_index(rank),
-                chess::File::from_index(file),
-            );
-            match self.board.piece_on(square) {
-                Some(piece) => piece.to_string(self.board.color_on(square).unwrap()),
-                None => "_".to_string(),
-            }
-        };
-
-        for rank in (0..ChessGame::BOARD_SIZE).rev() {
-            let row_chars: Vec<String> = (0..ChessGame::BOARD_SIZE)
-                .map(|file| square_str(rank, file))
-                .collect();
-            println!("{} | {}", (rank + 1), row_chars.join(" "));
-        }
-
-        let files = ["A", "B", "C", "D", "E", "F", "G", "H"];
-        let files_indices: Vec<String> = (0..ChessGame::BOARD_SIZE)
-            .map(|file| files[file].to_string())
-            .collect();
-        println!("    {}", "-".repeat(ChessGame::BOARD_SIZE * 2 - 1));
-        println!("    {}", files_indices.join(" "));
-    }
 }
 
 pub struct ChessGame {

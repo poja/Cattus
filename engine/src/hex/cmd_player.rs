@@ -1,7 +1,7 @@
 use std::io;
 
-use crate::game::common::{GamePlayer, GamePosition, IGame};
-use crate::hex::hex_game::{HexGame, HexMove};
+use crate::game::common::{GameColor, GamePlayer, IGame};
+use crate::hex::hex_game::{HexGame, HexMove, HexPosition};
 
 pub struct HexPlayerCmd;
 impl<const BOARD_SIZE: usize> GamePlayer<HexGame<BOARD_SIZE>> for HexPlayerCmd {
@@ -25,7 +25,7 @@ impl<const BOARD_SIZE: usize> GamePlayer<HexGame<BOARD_SIZE>> for HexPlayerCmd {
 
         println!("Current position:");
         let position = pos_history.last().unwrap();
-        position.print();
+        cmd_print_hex_board(position);
 
         loop {
             println!("Waiting for input move...");
@@ -44,5 +44,21 @@ impl<const BOARD_SIZE: usize> GamePlayer<HexGame<BOARD_SIZE>> for HexPlayerCmd {
             }
             println!("invalid move");
         }
+    }
+}
+
+pub fn cmd_print_hex_board<const BOARD_SIZE: usize>(pos: &HexPosition<BOARD_SIZE>) {
+    for r in 0..BOARD_SIZE {
+        let row_characters: Vec<String> = (0..BOARD_SIZE)
+            .map(|c| {
+                String::from(match pos.get_tile(r, c) {
+                    None => '·',
+                    Some(GameColor::Player1) => 'R',
+                    Some(GameColor::Player2) => 'B',
+                })
+            })
+            .collect();
+        let spaces = " ".repeat(BOARD_SIZE - r - 1);
+        println!("{}{}", spaces, row_characters.join(" "));
     }
 }

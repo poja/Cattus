@@ -331,22 +331,6 @@ impl<const BOARD_SIZE: usize> GamePosition for HexPosition<BOARD_SIZE> {
             winner: self.winner.map(|w| w.opposite()),
         }
     }
-
-    fn print(&self) {
-        for r in 0..BOARD_SIZE {
-            let row_characters: Vec<String> = (0..BOARD_SIZE)
-                .map(|c| {
-                    String::from(match self.get_tile(r, c) {
-                        None => '.',
-                        Some(GameColor::Player1) => 'R',
-                        Some(GameColor::Player2) => 'B',
-                    })
-                })
-                .collect();
-            let spaces = " ".repeat(BOARD_SIZE - r - 1);
-            println!("{}{}", spaces, row_characters.join(" "));
-        }
-    }
 }
 
 pub struct HexGame<const BOARD_SIZE: usize> {
