@@ -5,38 +5,7 @@ use itertools::Itertools;
 use std::collections::HashMap;
 use std::io;
 
-struct GoParams {
-    searchmoves: Vec<String>,
-    ponder: bool,
-    wtime: Option<u64>,
-    btime: Option<u64>,
-    winc: Option<u64>,
-    binc: Option<u64>,
-    movestogo: Option<u32>,
-    depth: Option<u32>,
-    nodes: Option<u32>,
-    movetime: Option<u64>,
-    infinite: bool,
-}
-impl GoParams {
-    pub fn new() -> Self {
-        Self {
-            searchmoves: Vec::new(),
-            ponder: false,
-            wtime: None,
-            btime: None,
-            winc: None,
-            binc: None,
-            movestogo: None,
-            depth: None,
-            nodes: None,
-            movetime: None,
-            infinite: false,
-        }
-    }
-}
-
-struct Engine {
+pub struct UCI {
     player_params: MctsParams<ChessGame>,
     options: HashMap<String, String>,
     player: Option<MctsPlayer<ChessGame>>,
@@ -44,7 +13,7 @@ struct Engine {
     best_move: Option<ChessMove>,
 }
 
-impl Engine {
+impl UCI {
     pub fn new(player_params: MctsParams<ChessGame>) -> Self {
         Self {
             player_params,
@@ -52,93 +21,6 @@ impl Engine {
             player: None,
             position: None,
             best_move: None,
-        }
-    }
-
-    pub fn cmd_uci(&self) {
-        self.send_response("id name _PROJECT_NAME_TODO_ v1.0.0");
-        self.send_response("id author Barak Ugav Yishai Gronich");
-
-        /* TODO send options */
-
-        self.send_response("uciok");
-    }
-
-    pub fn cmd_isready(&self) {
-        self.send_response("readyok");
-    }
-
-    pub fn cmd_setoption(&mut self, args: HashMap<String, String>) {
-        self.options.extend(args);
-    }
-
-    pub fn cmd_ucinewgame(&mut self) {
-        self.player = Some(MctsPlayer::new(self.player_params.clone()));
-    }
-
-    pub fn cmd_position(&mut self, args: HashMap<String, String>) {
-        assert_ne!(
-            args.contains_key("fen"),
-            args.contains_key("startpos"),
-            "position cmd requires either fen or startpos"
-        );
-        let fen = (args
-            .get("fen")
-            .unwrap_or(&"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string()))
-        .to_owned();
-
-        let mut pos = ChessPosition::from_str(&fen);
-        for move_str in args.get("moves").unwrap_or(&"".to_string()).split(' ') {
-            if move_str.is_empty() {
-                continue;
-            }
-            let m = ChessMove::from_lan(move_str).unwrap();
-            pos = pos.get_moved_position(m);
-        }
-        self.position = Some(pos);
-    }
-
-    pub fn cmd_go(&mut self, args: HashMap<String, String>) {
-        let mut go_args = GoParams::new();
-        go_args.searchmoves = args
-            .get("searchmoves")
-            .unwrap_or(&"".to_string())
-            .split(' ')
-            .map(|s| s.to_string())
-            .collect_vec();
-        go_args.ponder = args.contains_key("ponder");
-        go_args.wtime = args.get("wtime").and_then(|s| s.parse::<u64>().ok());
-        go_args.btime = args.get("btime").and_then(|s| s.parse::<u64>().ok());
-        go_args.winc = args.get("winc").and_then(|s| s.parse::<u64>().ok());
-        go_args.binc = args.get("binc").and_then(|s| s.parse::<u64>().ok());
-        go_args.movestogo = args.get("movestogo").and_then(|s| s.parse::<u32>().ok());
-        go_args.depth = args.get("depth").and_then(|s| s.parse::<u32>().ok());
-        go_args.nodes = args.get("nodes").and_then(|s| s.parse::<u32>().ok());
-        go_args.movetime = args.get("movetime").and_then(|s| s.parse::<u64>().ok());
-        go_args.infinite = args.contains_key("infinite");
-
-        let player = self.player.as_mut().unwrap();
-        self.best_move = Some(player.next_move(&self.position.unwrap()).unwrap());
-        self.send_response(format!("bestmove {}", self.best_move.unwrap()));
-    }
-
-    pub fn cmd_stop(&mut self) {}
-
-    fn send_response<S: Into<String>>(&self, s: S) {
-        let s = s.into();
-        log(format!("[To GUI] {}", s));
-        println!("{}", s);
-    }
-}
-
-pub struct UCI {
-    engine: Engine,
-}
-
-impl UCI {
-    pub fn new(player_params: MctsParams<ChessGame>) -> Self {
-        Self {
-            engine: Engine::new(player_params),
         }
     }
 
@@ -153,114 +35,182 @@ impl UCI {
             }
             line = line.trim().to_string();
             log(format!("[From GUI] {}", line));
-            let parsed = self.parse_command(line.clone());
-            if parsed.is_none() {
-                continue;
-            }
-            let (command, args) = parsed.unwrap();
+            let (command, args) = Self::parse_command(&line);
 
-            if command == "uci" {
-                self.engine.cmd_uci();
-            } else if command == "isready" {
-                self.engine.cmd_isready();
-            } else if command == "setoption" {
-                self.engine.cmd_setoption(args);
-            } else if command == "ucinewgame" {
-                self.engine.cmd_ucinewgame();
-            } else if command == "position" {
-                self.engine.cmd_position(args);
-            } else if command == "go" {
-                self.engine.cmd_go(args);
-            } else if command == "stop" {
-                self.engine.cmd_stop();
-            // } else if command == "ponderhit" {
-            //     println!("uciok");
-            // } else if command == "start" {
-            //     println!("uciok");
-            // } else if command == "fen" {
-            //     println!("uciok");
-            // } else if command == "xyzzy" {
-            //     println!("uciok");
-            } else if command == "quit" {
-                return;
-            } else {
-                eprintln!("unknown command {command}");
+            match command {
+                "uci" => {
+                    self.send_response("id name _PROJECT_NAME_TODO_ v1.0.0");
+                    self.send_response("id author Barak Ugav Yishai Gronich");
+                    /* TODO send options */
+                    self.send_response("uciok");
+                }
+                "isready" => self.send_response("readyok"),
+                "setoption" => {
+                    let args = Self::parse_args(&args, &["name", "value"]);
+                    let name = args.value("name").expect("setoption requires 'name' arg");
+                    let value = args.value("value").expect("setoption requires 'value' arg");
+                    self.options.insert(name.to_string(), value.to_string());
+                }
+                "ucinewgame" => self.player = Some(MctsPlayer::new(self.player_params.clone())),
+                "position" => self.cmd_position(&args),
+                "go" => self.cmd_go(&args),
+                "stop" => {}
+                "ponderhit" => println!("uciok"),
+                "start" => println!("uciok"),
+                "fen" => println!("uciok"),
+                "xyzzy" => println!("uciok"),
+                "quit" => return,
+                _ => {
+                    eprintln!("unknown command {command}");
+                    continue;
+                }
             }
         }
     }
 
-    fn parse_command(&self, s: String) -> Option<(String, HashMap<String, String>)> {
-        let commands_format = [
-            ("uci", vec![]),
-            ("isready", vec![]),
-            ("setoption", vec!["name", "value"]),
-            ("ucinewgame", vec![]),
-            ("position", vec!["fen", "startpos", "moves"]),
-            (
-                "go",
-                vec![
-                    "searchmoves",
-                    "ponder",
-                    "wtime",
-                    "btime",
-                    "winc",
-                    "binc",
-                    "movestogo",
-                    "depth",
-                    "nodes",
-                    "mate",
-                    "movetime",
-                    "infinite",
-                ],
-            ),
-            ("stop", vec![]),
-            // ("ponderhit", vec![]),
-            ("quit", vec![]),
-        ];
+    pub fn cmd_position(&mut self, args: &[&str]) {
+        let args = Self::parse_args(args, &["fen", "startpos", "moves"]);
+        let fen = args.value("fen");
+        let startpos = args.value("startpos");
+        let moves = args.values_iter("moves");
 
-        let command;
-        let suffix;
-        match s.chars().position(|c| c == ' ') {
-            None => {
-                command = &s[..];
-                suffix = "";
-            }
-            Some(first_space) => {
-                command = &s[..first_space];
-                suffix = &s[first_space..];
-            }
+        // assert_ne!(
+        //     fen.is_some(),
+        //     startpos.is_some(),
+        //     "position cmd requires either fen or startpos"
+        // );
+        assert!(startpos.is_none(), "startpos not supported yet");
+
+        let mut pos = fen
+            .map(|f| ChessPosition::from_str(f))
+            .unwrap_or_else(|| ChessPosition::new());
+        for move_str in moves {
+            let m = ChessMove::from_lan(move_str).unwrap();
+            pos = pos.get_moved_position(m);
+        }
+        self.position = Some(pos);
+    }
+
+    pub fn cmd_go(&mut self, args: &[&str]) {
+        let args = Self::parse_args(
+            args,
+            &[
+                "searchmoves",
+                "ponder",
+                "wtime",
+                "btime",
+                "winc",
+                "binc",
+                "movestogo",
+                "depth",
+                "nodes",
+                "mate",
+                "movetime",
+                "infinite",
+            ],
+        );
+
+        #[allow(unused)]
+        struct GoParams {
+            searchmoves: Vec<String>,
+            ponder: bool,
+            wtime: Option<u64>,
+            btime: Option<u64>,
+            winc: Option<u64>,
+            binc: Option<u64>,
+            movestogo: Option<u32>,
+            depth: Option<u32>,
+            nodes: Option<u32>,
+            movetime: Option<u64>,
+            infinite: bool,
+        }
+        #[allow(unused)]
+        let go_args = GoParams {
+            searchmoves: args
+                .values_iter("searchmoves")
+                .map(|s| s.to_string())
+                .collect_vec(),
+            ponder: args.flag("ponder"),
+            wtime: args.value("wtime").and_then(|s| s.parse::<u64>().ok()),
+            btime: args.value("btime").and_then(|s| s.parse::<u64>().ok()),
+            winc: args.value("winc").and_then(|s| s.parse::<u64>().ok()),
+            binc: args.value("binc").and_then(|s| s.parse::<u64>().ok()),
+            movestogo: args.value("movestogo").and_then(|s| s.parse::<u32>().ok()),
+            depth: args.value("depth").and_then(|s| s.parse::<u32>().ok()),
+            nodes: args.value("nodes").and_then(|s| s.parse::<u32>().ok()),
+            movetime: args.value("movetime").and_then(|s| s.parse::<u64>().ok()),
+            infinite: args.flag("infinite"),
         };
 
-        let command_format = commands_format
-            .into_iter()
-            .find(|(c, _fmt)| command == *c)
-            .unwrap_or_else(|| panic!("unknown command {command}"))
-            .1;
+        let player = self.player.as_mut().unwrap();
+        self.best_move = Some(player.next_move(&self.position.unwrap()).unwrap());
+        self.send_response(format!("bestmove {}", self.best_move.unwrap()));
+    }
 
-        let mut args = HashMap::new();
-        let mut last_arg = None;
-        for word in suffix.split(' ') {
-            if word.is_empty() {
-                continue;
-            }
-            if command_format.contains(&word) {
-                let duplication = args.insert(word.to_string(), "".to_string()).is_some();
-                assert!(!duplication, "duplicate argument '{}'", word);
-                last_arg = Some(word);
+    fn send_response<S: Into<String>>(&self, s: S) {
+        let s = s.into();
+        log(format!("[To GUI] {}", s));
+        println!("{}", s);
+    }
+
+    fn parse_command(s: &str) -> (&str, Vec<&str>) {
+        let mut words = s
+            .split(' ')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect_vec();
+        assert!(!words.is_empty(), "empty command");
+        let command = words.remove(0);
+        (command, words)
+    }
+
+    fn parse_args<'a>(args: &[&'a str], keys: &[&str]) -> CommandArgs<'a> {
+        let mut key = None;
+        let mut map = HashMap::new();
+        for arg in args {
+            if keys.contains(arg) {
+                let old_val = map.insert(*arg, Vec::new());
+                assert!(old_val.is_none(), "arg '{arg}' appears multiple times");
+                key = Some(*arg);
             } else {
-                let val = args
-                    .get_mut(last_arg.unwrap_or_else(|| panic!("unexpected argument '{}'", word)))
-                    .unwrap();
-                val.push(' ');
-                val.push_str(word);
+                assert!(key.is_some(), "arg '{arg}' has no key");
+                map.get_mut(key.unwrap()).unwrap().push(*arg);
             }
         }
+        CommandArgs::new(map)
+    }
+}
 
-        args = args
-            .into_iter()
-            .map(|(key, val)| (key.trim().to_string(), val.trim().to_string()))
-            .collect();
-        Some((command.to_string(), args))
+struct CommandArgs<'a> {
+    args: HashMap<&'a str, Vec<&'a str>>,
+}
+impl<'a> CommandArgs<'a> {
+    fn new(args: HashMap<&'a str, Vec<&'a str>>) -> Self {
+        Self { args }
+    }
+
+    fn value(&self, key: &str) -> Option<&'a str> {
+        let values = self.args.get(key)?;
+        assert_eq!(values.len(), 1, "arg '{key}' should have exactly one value");
+        Some(values[0])
+    }
+
+    fn values(&self, key: &str) -> Option<&Vec<&'a str>> {
+        self.args.get(key)
+    }
+
+    fn values_iter(&self, key: &str) -> impl Iterator<Item = &'a str> {
+        self.values(key).into_iter().flatten().copied()
+    }
+
+    fn flag(&self, key: &str) -> bool {
+        match self.args.get(key) {
+            Some(values) => {
+                assert!(values.is_empty(), "flag arg '{key}' should have no values");
+                true
+            }
+            None => false,
+        }
     }
 }
 
