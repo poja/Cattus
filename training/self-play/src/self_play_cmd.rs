@@ -1,7 +1,7 @@
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::common::IGame;
-use cattus::game::mcts::{MctsPlayer, ValueFunction};
-use cattus::util::{self, Builder, Device};
+use cattus::game::mcts::{MctsParams, ValueFunction};
+use cattus::util::{self, Device};
 use clap::Parser;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -55,45 +55,6 @@ pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
     ) -> Box<dyn ValueFunction<Game>>;
 }
 
-struct PlayerBuilder<Game: IGame> {
-    network: Arc<dyn ValueFunction<Game>>,
-    sim_num: u32,
-    explore_factor: f32,
-    prior_noise_alpha: f32,
-    prior_noise_epsilon: f32,
-}
-
-impl<Game: IGame> PlayerBuilder<Game> {
-    #[allow(clippy::too_many_arguments)]
-    fn new(
-        network: Arc<dyn ValueFunction<Game>>,
-        sim_num: u32,
-        explore_factor: f32,
-        prior_noise_alpha: f32,
-        prior_noise_epsilon: f32,
-    ) -> Self {
-        Self {
-            network,
-            sim_num,
-            explore_factor,
-            prior_noise_alpha,
-            prior_noise_epsilon,
-        }
-    }
-}
-
-impl<Game: IGame> Builder<MctsPlayer<Game>> for PlayerBuilder<Game> {
-    fn build(&self) -> MctsPlayer<Game> {
-        MctsPlayer::new_custom(
-            self.sim_num,
-            self.explore_factor,
-            self.prior_noise_alpha,
-            self.prior_noise_epsilon,
-            self.network.clone(),
-        )
-    }
-}
-
 struct CacheBuilder<Game: IGame> {
     max_size: usize,
     caches: Vec<Arc<ValueFuncCache<Game>>>,
@@ -143,16 +104,16 @@ pub fn run_main<Game: GameExt + 'static>(
         args.batch_size,
     ));
     nets.push(player1_net.clone());
-    let player1_builder = Arc::new(PlayerBuilder::new(
-        player1_net,
-        args.sim_num,
-        args.explore_factor,
-        args.prior_noise_alpha,
-        args.prior_noise_epsilon,
-    ));
+    let player1_params = MctsParams {
+        sim_num: args.sim_num,
+        explore_factor: args.explore_factor,
+        prior_noise_alpha: args.prior_noise_alpha,
+        prior_noise_epsilon: args.prior_noise_epsilon,
+        value_func: player1_net,
+    };
 
-    let player2_builder = if args.model1_path == args.model2_path {
-        player1_builder.clone()
+    let player2_params = if args.model1_path == args.model2_path {
+        player1_params.clone()
     } else {
         let player2_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
             &args.model2_path,
@@ -161,18 +122,18 @@ pub fn run_main<Game: GameExt + 'static>(
             args.batch_size,
         ));
         nets.push(player2_net.clone());
-        Arc::new(PlayerBuilder::new(
-            player2_net,
-            args.sim_num,
-            args.explore_factor,
-            args.prior_noise_alpha,
-            args.prior_noise_epsilon,
-        ))
+        MctsParams {
+            sim_num: args.sim_num,
+            explore_factor: args.explore_factor,
+            prior_noise_alpha: args.prior_noise_alpha,
+            prior_noise_epsilon: args.prior_noise_epsilon,
+            value_func: player2_net,
+        }
     };
 
     let result = SelfPlayRunner::new(
-        player1_builder,
-        player2_builder,
+        player1_params,
+        player2_params,
         args.temperature_policy,
         Arc::from(serializer),
         args.threads,

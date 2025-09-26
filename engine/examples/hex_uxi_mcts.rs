@@ -1,4 +1,4 @@
-use cattus::game::mcts::MctsPlayer;
+use cattus::game::mcts::{MctsParams, MctsPlayer};
 use cattus::hex::hex_game::HEX_STANDARD_BOARD_SIZE;
 use cattus::hex::net::two_headed_net::TwoHeadedNet;
 use cattus::hex::uxi;
@@ -28,7 +28,7 @@ fn main() {
         args.batch_size,
         Device::Cpu,
     ));
-    let player = Box::new(MctsPlayer::new(args.sim_num, value_func));
+    let player = Box::new(MctsPlayer::new(MctsParams::new(args.sim_num, value_func)));
     let mut engine = uxi::UxiEngine::new(player);
     engine.run();
 }

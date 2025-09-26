@@ -11,9 +11,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use cattus::game::common::{GameColor, GameMove, GamePosition};
-use cattus::game::mcts::MctsPlayer;
+use cattus::game::mcts::{MctsParams, MctsPlayer};
 use cattus::game::net;
-use cattus::util::Builder;
 
 use crate::serialize::DataSerializer;
 
@@ -74,8 +73,8 @@ pub struct GamesResults {
 }
 
 pub struct SelfPlayRunner<Game: IGame> {
-    player1_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
-    player2_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
+    player1_params: MctsParams<Game>,
+    player2_params: MctsParams<Game>,
     temperature_policy: String,
     serializer: Arc<dyn DataSerializer<Game>>,
     thread_num: usize,
@@ -83,16 +82,16 @@ pub struct SelfPlayRunner<Game: IGame> {
 
 impl<Game: GameExt + 'static> SelfPlayRunner<Game> {
     pub fn new(
-        player1_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
-        player2_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
+        player1_params: MctsParams<Game>,
+        player2_params: MctsParams<Game>,
         temperature_policy: String,
         serializer: Arc<dyn DataSerializer<Game>>,
         thread_num: u32,
     ) -> Self {
         assert!(thread_num > 0);
         Self {
-            player1_builder,
-            player2_builder,
+            player1_params,
+            player2_params,
             temperature_policy,
             serializer,
             thread_num: thread_num as usize,
@@ -119,8 +118,8 @@ impl<Game: GameExt + 'static> SelfPlayRunner<Game> {
 
         let job_builder = || {
             let worker = SelfPlayWorker::new(
-                self.player1_builder.clone(),
-                self.player2_builder.clone(),
+                self.player1_params.clone(),
+                self.player2_params.clone(),
                 &self.temperature_policy,
                 self.serializer.clone(),
                 output_dir1.to_path_buf(),
@@ -153,8 +152,8 @@ impl<Game: GameExt + 'static> SelfPlayRunner<Game> {
 }
 
 struct SelfPlayWorker<Game: IGame> {
-    player1_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
-    player2_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
+    player1_params: MctsParams<Game>,
+    player2_params: MctsParams<Game>,
     temperature_scheduler: TemperatureScheduler,
     serializer: Arc<dyn DataSerializer<Game>>,
     output_dir1: PathBuf,
@@ -167,8 +166,8 @@ struct SelfPlayWorker<Game: IGame> {
 impl<Game: GameExt> SelfPlayWorker<Game> {
     #[allow(clippy::too_many_arguments)]
     fn new(
-        player1_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
-        player2_builder: Arc<dyn Builder<MctsPlayer<Game>>>,
+        player1_params: MctsParams<Game>,
+        player2_params: MctsParams<Game>,
         temperature_policy: &str,
         serializer: Arc<dyn DataSerializer<Game>>,
         output_dir1: PathBuf,
@@ -178,8 +177,8 @@ impl<Game: GameExt> SelfPlayWorker<Game> {
         games_num: usize,
     ) -> Self {
         Self {
-            player1_builder,
-            player2_builder,
+            player1_params,
+            player2_params,
             temperature_scheduler: TemperatureScheduler::from_str(temperature_policy),
             serializer,
             output_dir1,
@@ -191,8 +190,8 @@ impl<Game: GameExt> SelfPlayWorker<Game> {
     }
 
     fn generate_data(&self) -> std::io::Result<()> {
-        let mut player1 = self.player1_builder.build();
-        let mut player2 = self.player2_builder.build();
+        let mut player1 = MctsPlayer::new(self.player1_params.clone());
+        let mut player2 = MctsPlayer::new(self.player2_params.clone());
 
         loop {
             let game_idx = self

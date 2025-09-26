@@ -17,10 +17,6 @@ use std::path::Path;
 #[cfg(feature = "torch-python")]
 use pyo3::types::PyAnyMethods;
 
-pub trait Builder<T>: Sync + Send {
-    fn build(&self) -> T;
-}
-
 #[derive(Copy, Clone)]
 pub enum Device {
     Cpu,

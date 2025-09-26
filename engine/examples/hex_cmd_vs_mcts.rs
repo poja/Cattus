@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::common::{GameColor, GamePosition, IGame};
-use cattus::game::mcts::MctsPlayer;
+use cattus::game::mcts::{MctsParams, MctsPlayer};
 use cattus::hex::cmd_player::HexPlayerCmd;
 use cattus::hex::hex_game::HexGame;
 use cattus::hex::net::two_headed_net::TwoHeadedNet;
@@ -43,13 +43,13 @@ fn run_main<const BOARD_SIZE: usize>(args: Args) {
         args.batch_size,
         cache,
     ));
-    let mut player2 = MctsPlayer::new_custom(
-        args.sim_num,
-        args.explore_factor,
-        args.prior_noise_alpha,
-        args.prior_noise_epsilon,
+    let mut player2 = MctsPlayer::new(MctsParams {
+        sim_num: args.sim_num,
+        explore_factor: args.explore_factor,
+        prior_noise_alpha: args.prior_noise_alpha,
+        prior_noise_epsilon: args.prior_noise_epsilon,
         value_func,
-    );
+    });
 
     let mut game = HexGame::<BOARD_SIZE>::new();
 

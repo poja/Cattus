@@ -64,22 +64,42 @@ pub struct MctsPlayer<Game: IGame> {
     search_duration_metric: RunningAverage,
 }
 
-impl<Game: IGame> MctsPlayer<Game> {
+pub struct MctsParams<Game: IGame> {
+    pub sim_num: u32,
+    pub explore_factor: f32,
+    pub prior_noise_alpha: f32,
+    pub prior_noise_epsilon: f32,
+    pub value_func: Arc<dyn ValueFunction<Game>>,
+}
+impl<Game: IGame> MctsParams<Game> {
     pub fn new(sim_num: u32, value_func: Arc<dyn ValueFunction<Game>>) -> Self {
-        Self::new_custom(sim_num, std::f32::consts::SQRT_2, 0.0, 0.0, value_func)
+        Self {
+            sim_num,
+            explore_factor: std::f32::consts::SQRT_2,
+            prior_noise_alpha: 0.0,
+            prior_noise_epsilon: 0.0,
+            value_func,
+        }
     }
+}
+impl<Game: IGame> Clone for MctsParams<Game> {
+    fn clone(&self) -> Self {
+        Self {
+            sim_num: self.sim_num,
+            explore_factor: self.explore_factor,
+            prior_noise_alpha: self.prior_noise_alpha,
+            prior_noise_epsilon: self.prior_noise_epsilon,
+            value_func: Arc::clone(&self.value_func),
+        }
+    }
+}
 
-    pub fn new_custom(
-        sim_num: u32,
-        explore_factor: f32,
-        prior_noise_alpha: f32,
-        prior_noise_epsilon: f32,
-        value_func: Arc<dyn ValueFunction<Game>>,
-    ) -> Self {
-        assert!(sim_num > 0);
-        assert!(explore_factor >= 0.0);
-        assert!(prior_noise_alpha >= 0.0);
-        assert!((0.0..=1.0).contains(&prior_noise_epsilon));
+impl<Game: IGame> MctsPlayer<Game> {
+    pub fn new(params: MctsParams<Game>) -> Self {
+        assert!(params.sim_num > 0);
+        assert!(params.explore_factor >= 0.0);
+        assert!(params.prior_noise_alpha >= 0.0);
+        assert!((0.0..=1.0).contains(&params.prior_noise_epsilon));
 
         let search_duration_metric_name = "mcts.search_duration";
         metrics::describe_gauge!(
@@ -93,12 +113,12 @@ impl<Game: IGame> MctsPlayer<Game> {
         Self {
             search_tree: DiGraph::new(),
             root: None,
-            sim_num,
-            explore_factor,
-            prior_noise_alpha,
-            prior_noise_epsilon,
+            sim_num: params.sim_num,
+            explore_factor: params.explore_factor,
+            prior_noise_alpha: params.prior_noise_alpha,
+            prior_noise_epsilon: params.prior_noise_epsilon,
             temperature: 1.0,
-            value_func,
+            value_func: params.value_func,
             search_duration_metric,
         }
     }
