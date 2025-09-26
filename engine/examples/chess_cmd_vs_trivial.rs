@@ -1,7 +1,7 @@
 use cattus::chess::chess_game::ChessGame;
-use cattus::chess::cmd_player::ChessPlayerCmd;
+use cattus::chess::cmd_player::{ChessPlayerCmd, cmd_print_chess_board};
 use cattus::chess::net::net_trivial::TrivialNet;
-use cattus::game::common::{GameColor, GamePosition, IGame};
+use cattus::game::common::{GameColor, IGame};
 use cattus::game::mcts::{MctsParams, MctsPlayer};
 use std::sync::Arc;
 
@@ -23,5 +23,5 @@ fn main() {
 
     let (final_pos, winner) = game.play_until_over(&mut player2, &mut player1);
     println!("The winner is: {}, details below:", color_to_str(winner));
-    final_pos.print();
+    cmd_print_chess_board(&final_pos);
 }

@@ -4,9 +4,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use cattus::game::cache::ValueFuncCache;
-use cattus::game::common::{GameColor, GamePosition, IGame};
+use cattus::game::common::{GameColor, IGame};
 use cattus::game::mcts::{MctsParams, MctsPlayer, TemperaturePolicy};
-use cattus::hex::cmd_player::HexPlayerCmd;
+use cattus::hex::cmd_player::{HexPlayerCmd, cmd_print_hex_board};
 use cattus::hex::hex_game::HexGame;
 use cattus::hex::net::two_headed_net::TwoHeadedNet;
 
@@ -63,7 +63,7 @@ fn run_main<const BOARD_SIZE: usize>(args: Args) {
             Some(GameColor::Player2) => String::from("MCTS player"),
         }
     );
-    final_pos.print();
+    cmd_print_hex_board(&final_pos);
 }
 
 fn main() {

@@ -1,6 +1,6 @@
 use cattus::chess::chess_game::ChessGame;
-use cattus::chess::cmd_player::ChessPlayerCmd;
-use cattus::game::common::{GameColor, GamePosition, IGame};
+use cattus::chess::cmd_player::{ChessPlayerCmd, cmd_print_chess_board};
+use cattus::game::common::{GameColor, IGame};
 
 fn color_to_str(c: Option<GameColor>) -> String {
     match c {
@@ -19,5 +19,5 @@ fn main() {
 
     let (final_pos, winner) = game.play_until_over(&mut player1, &mut player2);
     println!("The winner is: {}, details below:", color_to_str(winner));
-    final_pos.print();
+    cmd_print_chess_board(&final_pos);
 }

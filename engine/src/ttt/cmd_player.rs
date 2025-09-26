@@ -1,4 +1,4 @@
-use crate::game::common::{GamePlayer, GamePosition};
+use crate::game::common::{GameColor, GamePlayer, IGame};
 use crate::ttt::ttt_game::{TttGame, TttMove, TttPosition};
 use std::io;
 
@@ -21,7 +21,7 @@ impl GamePlayer<TttGame> for TttPlayerCmd {
 
         println!("Current position:");
         let position = pos_history.last().unwrap();
-        position.print();
+        cmd_print_ttt_board(position);
 
         loop {
             println!("Waiting for input move...");
@@ -40,5 +40,18 @@ impl GamePlayer<TttGame> for TttPlayerCmd {
             }
             println!("invalid move");
         }
+    }
+}
+
+pub fn cmd_print_ttt_board(pos: &TttPosition) {
+    for r in 0..TttGame::BOARD_SIZE {
+        let row_characters: Vec<String> = (0..TttGame::BOARD_SIZE)
+            .map(|c| match pos.get_tile(r, c) {
+                None => String::from("_"),
+                Some(GameColor::Player1) => String::from("X"),
+                Some(GameColor::Player2) => String::from("O"),
+            })
+            .collect();
+        println!("{}", row_characters.join(" "));
     }
 }

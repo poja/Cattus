@@ -242,19 +242,6 @@ impl GamePosition for TttPosition {
             winner: self.winner.map(|w| w.opposite()),
         }
     }
-
-    fn print(&self) {
-        for r in 0..TttGame::BOARD_SIZE {
-            let row_characters: Vec<String> = (0..TttGame::BOARD_SIZE)
-                .map(|c| match self.get_tile(r, c) {
-                    None => String::from("_"),
-                    Some(GameColor::Player1) => String::from("X"),
-                    Some(GameColor::Player2) => String::from("O"),
-                })
-                .collect();
-            println!("{}", row_characters.join(" "));
-        }
-    }
 }
 
 pub struct TttGame {

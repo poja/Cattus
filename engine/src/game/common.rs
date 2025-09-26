@@ -80,7 +80,6 @@ pub trait GamePosition: Clone + Copy + Eq + Hash + Send + Sync {
     fn is_over(&self) -> bool;
     fn get_winner(&self) -> Option<GameColor>;
     fn get_flip(&self) -> Self;
-    fn print(&self);
 }
 
 pub trait GameMove: Clone + Copy + Eq + Hash + Display + Debug + Send + Sync {

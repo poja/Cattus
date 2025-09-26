@@ -1,6 +1,6 @@
-use cattus::game::common::{GamePosition, IGame};
+use cattus::game::common::IGame;
 use cattus::game::mcts::{MctsParams, MctsPlayer};
-use cattus::ttt::cmd_player::TttPlayerCmd;
+use cattus::ttt::cmd_player::{TttPlayerCmd, cmd_print_ttt_board};
 use cattus::ttt::net::two_headed_net::TwoHeadedNet;
 use cattus::ttt::ttt_game::{TttGame, color_to_str};
 use cattus::util::Device;
@@ -35,5 +35,5 @@ fn main() {
 
     let (final_pos, winner) = game.play_until_over(&mut player1, &mut player2);
     println!("The winner is: {}, details below:", color_to_str(winner));
-    final_pos.print();
+    cmd_print_ttt_board(&final_pos);
 }
