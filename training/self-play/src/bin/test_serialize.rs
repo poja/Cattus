@@ -59,7 +59,7 @@ fn test_chess(args: Args) -> std::io::Result<()> {
 
 fn serialize_position<Game: IGame>(
     pos: Game::Position,
-    serializer: &dyn DataSerializer<Game>,
+    serializer: &impl DataSerializer<Game>,
     filename: &Path,
 ) -> std::io::Result<()> {
     let moves = pos.get_legal_moves();

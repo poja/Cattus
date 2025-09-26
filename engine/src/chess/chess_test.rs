@@ -99,8 +99,7 @@ mod tests {
 
         let games_num = 100;
         for _ in 0..games_num {
-            let mut player: Box<dyn GamePlayer<ChessGame>> =
-                Box::new(PlayerRand::from_seed(rand.next_u64() ^ 0xe4655449311aee87));
+            let mut player = PlayerRand::from_seed(rand.next_u64() ^ 0xe4655449311aee87);
             let mut game = ChessGame::new();
 
             while !game.is_over() {
@@ -122,7 +121,8 @@ mod tests {
                     assert!(pos.get_winner() == pos_t.get_winner().map(|w| w.opposite()));
                 }
 
-                game.play_single_turn(player.next_move(game.get_position()).unwrap());
+                let next_move = <_ as GamePlayer<ChessGame>>::next_move(&mut player, &pos).unwrap();
+                game.play_single_turn(next_move);
             }
         }
     }

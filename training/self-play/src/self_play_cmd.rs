@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::self_play::{GameExt, SelfPlayRunner};
+use crate::self_play::{SelfPlayGame, SelfPlayRunner};
 use crate::serialize::DataSerializer;
 
 #[derive(Parser, Debug)]
@@ -73,7 +73,7 @@ impl<Game: IGame> CacheBuilder<Game> {
     }
 }
 
-pub fn run_main<Game: GameExt + 'static>(
+pub fn run_main<Game: SelfPlayGame + 'static>(
     network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {
@@ -95,7 +95,6 @@ pub fn run_main<Game: GameExt + 'static>(
     };
 
     let mut cache_builder = CacheBuilder::new(args.cache_size);
-    let mut nets = vec![];
 
     let player1_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
         &args.model1_path,
@@ -103,7 +102,6 @@ pub fn run_main<Game: GameExt + 'static>(
         device,
         args.batch_size,
     ));
-    nets.push(player1_net.clone());
     let player1_params = MctsParams {
         sim_num: args.sim_num,
         explore_factor: args.explore_factor,
@@ -121,7 +119,6 @@ pub fn run_main<Game: GameExt + 'static>(
             device,
             args.batch_size,
         ));
-        nets.push(player2_net.clone());
         MctsParams {
             sim_num: args.sim_num,
             explore_factor: args.explore_factor,

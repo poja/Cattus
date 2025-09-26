@@ -6,7 +6,7 @@ use std::hash::{Hash, Hasher};
 use std::str::FromStr;
 
 use crate::game::common::GameBitboard;
-use crate::game::common::{GameColor, GameMove, GamePlayer, GamePosition, IGame};
+use crate::game::common::{GameColor, GameMove, GamePosition, IGame};
 
 fn err_to_str(err: chess::Error) -> String {
     match err {
@@ -508,22 +508,6 @@ impl IGame for ChessGame {
         if *repeat as usize >= Self::REPETITION_LIMIT.unwrap() {
             self.repetition_detected = true;
         }
-    }
-
-    fn play_until_over(
-        &mut self,
-        player1: &mut dyn GamePlayer<Self>,
-        player2: &mut dyn GamePlayer<Self>,
-    ) -> (Self::Position, Option<GameColor>) {
-        while !self.is_over() {
-            let player: &mut dyn GamePlayer<Self> = match self.pos.get_turn() {
-                GameColor::Player1 => player1,
-                GameColor::Player2 => player2,
-            };
-            let next_move = player.next_move(&self.pos).unwrap();
-            self.play_single_turn(next_move);
-        }
-        (self.pos, self.get_winner())
     }
 }
 
