@@ -1,7 +1,8 @@
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::common::IGame;
 use cattus::game::mcts::{MctsParams, TemperaturePolicy, ValueFunction};
-use cattus::util::{self, Device};
+use cattus::game::model::InferenceConfig;
+use cattus::util;
 use clap::Parser;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -25,41 +26,36 @@ struct SelfPlayArgs {
     out_dir2: PathBuf,
     #[clap(long)]
     summary_file: Option<PathBuf>,
-    #[clap(long, default_value = "100")]
-    sim_num: u32,
     #[clap(long)]
-    batch_size: usize,
-    #[clap(long, default_value = "1.41421")]
-    explore_factor: f32,
-    #[clap(long, default_value = "1.0")]
-    temperature_policy: String,
-    #[clap(long, default_value = "0.0")]
-    prior_noise_alpha: f32,
-    #[clap(long, default_value = "0.0")]
-    prior_noise_epsilon: f32,
-    #[clap(long, default_value = "1")]
-    threads: u32,
-    #[clap(long, default_value = "CPU")]
-    device: String,
-    #[clap(long, default_value = "100000")]
-    cache_size: usize,
+    config_file: PathBuf,
 }
 
-pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
-    fn build_net(
-        &self,
-        model_path: &Path,
-        cache: Arc<ValueFuncCache<Game>>,
-        device: Device,
-        batch_size: usize,
-    ) -> Box<dyn ValueFunction<Game>>;
+#[derive(serde::Deserialize)]
+struct Config {
+    model: ModelConfig,
+    mcts: MctsConfig,
+    threads: u32,
+}
+#[derive(serde::Deserialize)]
+struct ModelConfig {
+    inference: InferenceConfig,
+    batch_size: usize,
+}
+#[derive(serde::Deserialize)]
+struct MctsConfig {
+    sim_num: u32,
+    explore_factor: f32,
+    temperature_policy: Vec<(usize, f32)>,
+    prior_noise_alpha: f32,
+    prior_noise_epsilon: f32,
+    cache_size: usize,
 }
 
 pub fn run_main<Game: IGame + 'static>(
     network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {
-    util::init_globals(None);
+    util::init_globals();
     let args = SelfPlayArgs::parse();
 
     let metrics_snapshotter = args.summary_file.is_some().then(|| {
@@ -69,26 +65,26 @@ pub fn run_main<Game: IGame + 'static>(
         snapshotter
     });
 
-    let device = match args.device.to_uppercase().as_str() {
-        "CPU" => Device::Cpu,
-        "GPU" => Device::Cuda,
-        "MPS" => Device::Mps,
-        unknown_pu => panic!("unknown processing unit '{unknown_pu}'"),
-    };
+    let config: Config =
+        serde_json::from_reader(std::fs::File::open(&args.config_file)?).expect("failed to read config file");
 
-    let temperature = temperature_from_str(&args.temperature_policy);
+    assert!(!config.mcts.temperature_policy.is_empty());
+    let scheduled_temperatures = &config.mcts.temperature_policy[..config.mcts.temperature_policy.len() - 1];
+    let last_temperature = config.mcts.temperature_policy.last().unwrap().1;
+    let temperature = TemperaturePolicy::scheduled(scheduled_temperatures.to_vec(), last_temperature);
+
     let player1_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
         &args.model1_path,
-        Arc::new(ValueFuncCache::new(args.cache_size)),
-        device,
-        args.batch_size,
+        config.model.inference,
+        config.model.batch_size,
+        Arc::new(ValueFuncCache::new(config.mcts.cache_size)),
     ));
     let player1_params = MctsParams {
-        sim_num: args.sim_num,
-        explore_factor: args.explore_factor,
+        sim_num: config.mcts.sim_num,
+        explore_factor: config.mcts.explore_factor,
         temperature: temperature.clone(),
-        prior_noise_alpha: args.prior_noise_alpha,
-        prior_noise_epsilon: args.prior_noise_epsilon,
+        prior_noise_alpha: config.mcts.prior_noise_alpha,
+        prior_noise_epsilon: config.mcts.prior_noise_epsilon,
         value_func: player1_net,
     };
 
@@ -97,21 +93,17 @@ pub fn run_main<Game: IGame + 'static>(
     } else {
         let player2_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
             &args.model2_path,
-            Arc::new(ValueFuncCache::new(args.cache_size)),
-            device,
-            args.batch_size,
+            config.model.inference,
+            config.model.batch_size,
+            Arc::new(ValueFuncCache::new(config.mcts.cache_size)),
         ));
         MctsParams {
-            sim_num: args.sim_num,
-            explore_factor: args.explore_factor,
-            temperature: temperature.clone(),
-            prior_noise_alpha: args.prior_noise_alpha,
-            prior_noise_epsilon: args.prior_noise_epsilon,
             value_func: player2_net,
+            ..player1_params.clone()
         }
     };
 
-    let result = SelfPlayRunner::new(player1_params, player2_params, Arc::from(serializer), args.threads)
+    let result = SelfPlayRunner::new(player1_params, player2_params, Arc::from(serializer), config.threads)
         .generate_data(args.games_num as usize, &args.out_dir1, &args.out_dir2)?;
 
     if let Some(summary_file) = args.summary_file {
@@ -158,38 +150,12 @@ pub fn run_main<Game: IGame + 'static>(
     Ok(())
 }
 
-/// Create a scheduler from a string describing the temperature policy
-///
-/// # Arguments
-///
-/// * `s` - A string representing the temperature policy. The string should contain an odd number of numbers,
-///   with a ',' between them.
-///
-/// The string will be split into pairs of two numbers, and a final number.
-/// Each pair should be of the form (moves_num, temperature) and the final number is the final temperature.
-/// Each pair represent an interval of moves number in which the corresponding temperature will be assigned.
-/// The pairs should be ordered by the moves_num.
-///
-/// # Examples
-///
-/// "1.0" means a constant temperature of 1
-/// "30,1.0,0.0" means a temperature of 1.0 for the first 30 moves, and temperature of zero after than
-/// "15,2.0,30,0.5,0.1" means a temperature of 2.0 for the first 15 moves, 0.5 in the moves 16 up to 30, and 0.1
-/// after that
-pub fn temperature_from_str(s: &str) -> TemperaturePolicy {
-    let s = s.split(',').collect::<Vec<_>>();
-    assert!(s.len() % 2 == 1);
-
-    let mut temperatures = Vec::new();
-    for i in 0..((s.len() - 1) / 2) {
-        let threshold = s[i * 2].parse::<u32>().unwrap();
-        let temperature = s[i * 2 + 1].parse::<f32>().unwrap();
-        if !temperatures.is_empty() {
-            let (last_threshold, _last_temp) = temperatures.last().unwrap();
-            assert!(*last_threshold < threshold);
-        }
-        temperatures.push((threshold, temperature));
-    }
-    let last_temp = s.last().unwrap().parse::<f32>().unwrap();
-    TemperaturePolicy::scheduled(temperatures, last_temp)
+pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
+    fn build_net(
+        &self,
+        model_path: &Path,
+        inference_cfg: InferenceConfig,
+        batch_size: usize,
+        cache: Arc<ValueFuncCache<Game>>,
+    ) -> Box<dyn ValueFunction<Game>>;
 }

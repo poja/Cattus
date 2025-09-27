@@ -1,4 +1,4 @@
-use cattus::util::Device;
+use cattus::game::model::InferenceConfig;
 use clap::Parser;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -39,7 +39,7 @@ fn run_main<const BOARD_SIZE: usize>(args: Args) {
     let cache = Arc::new(ValueFuncCache::new(args.cache_size));
     let value_func = Arc::new(TwoHeadedNet::<BOARD_SIZE>::with_cache(
         &args.model_path,
-        Device::Cpu,
+        InferenceConfig::default(),
         args.batch_size,
         cache,
     ));

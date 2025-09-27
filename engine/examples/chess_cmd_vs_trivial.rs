@@ -14,7 +14,7 @@ fn color_to_str(c: Option<GameColor>) -> String {
 }
 
 fn main() {
-    cattus::util::init_globals(None);
+    cattus::util::init_globals();
 
     let mut player1 = ChessPlayerCmd;
     let value_func = Arc::new(TrivialNet);

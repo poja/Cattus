@@ -83,13 +83,13 @@ class TrainProcess:
             case _:
                 raise ValueError("Unknown base model argument in config file.")
 
-        if cfg.device == "auto":
+        if cfg.training.device is None:
             if torch.cuda.is_available():
-                cfg.device = "cuda"
+                cfg.training.device = "cuda"
             elif torch.backends.mps.is_available():
-                cfg.device = "mps"
+                cfg.training.device = "mps"
             else:
-                cfg.device = "cpu"
+                cfg.training.device = "cpu"
 
         self._lr_scheduler = LearningRateScheduler(cfg.training.learning_rate)
 
@@ -116,11 +116,11 @@ class TrainProcess:
         self._self_play_exec_path.parent.mkdir(parents=True, exist_ok=True)
         self._model_compare_exec_path.parent.mkdir(parents=True, exist_ok=True)
         temp_self_play_exec_path = compile_selfplay_exe(
-            self.cfg.game, self._self_play_engine_cfg.inference, self.cfg.debug
+            self.cfg.game, self._self_play_engine_cfg.model.inference, self.cfg.debug
         )
         shutil.copy(temp_self_play_exec_path, self._self_play_exec_path)
         temp_model_compare_exec_path = compile_selfplay_exe(
-            self.cfg.game, self._model_compare_engine_cfg.inference, self.cfg.debug
+            self.cfg.game, self._model_compare_engine_cfg.model.inference, self.cfg.debug
         )
         shutil.copy(temp_model_compare_exec_path, self._model_compare_exec_path)
 
@@ -144,50 +144,45 @@ class TrainProcess:
         logging.info("Self playing using model: %s", model_dir)
 
         games_dir = self.cfg.games_dir / self._run_id
-        summary_file = games_dir / "selfplay_summary.json"
-        if summary_file.exists():
-            summary_file.unlink()
         data_entries_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
 
-        self_play_start_time = time.time()
-        engine_cfg = self._self_play_engine_cfg
-        model_path = model_dir / "self_play" / f"model.{exported_model_suffix(engine_cfg.inference)}"
-        subprocess.check_call(
-            [
-                self._self_play_exec_path,
-                f"--model1-path={model_path}",
-                f"--model2-path={model_path}",
-                f"--games-num={self.cfg.self_play.games_num}",
-                f"--out-dir1={data_entries_dir}",
-                f"--out-dir2={data_entries_dir}",
-                f"--summary-file={summary_file}",
-                f"--sim-num={engine_cfg.mcts.sim_num}",
-                f"--batch-size={engine_cfg.batch_size}",
-                f"--explore-factor={engine_cfg.mcts.explore_factor}",
-                f"--temperature-policy={temperature_policy_to_str(engine_cfg.mcts.temperature_policy)}",
-                f"--prior-noise-alpha={engine_cfg.mcts.prior_noise_alpha}",
-                f"--prior-noise-epsilon={engine_cfg.mcts.prior_noise_epsilon}",
-                f"--threads={engine_cfg.threads}",
-                f"--device={self.cfg.device}",
-                f"--cache-size={engine_cfg.mcts.cache_size}",
-            ],
-            cwd=SELF_PLAY_CRATE_DIR,
-        )
-        self._metrics["self_play_duration"] = time.time() - self_play_start_time
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            cfg_file = Path(tmp_dir) / "config.json"
+            engine_cfg = self._self_play_engine_cfg
+            with open(cfg_file, "w") as f:
+                json.dump(asdict(engine_cfg), f, indent=2)
+            summary_file = Path(tmp_dir) / "selfplay_summary.json"
 
-        with open(summary_file, "r") as f:
-            summary = json.load(f)
-        self._metrics.update(
-            {
-                "net_activations_count": summary["metrics"]["model.activation_count"],
-                "net_run_duration_average_us": summary["metrics"]["model.run_duration"],
-                # "batch_size_average": summary["metrics"]["batch_size_average"],
-                # "search_count": summary["metrics"]["search_count"],
-                "search_duration": summary["metrics"]["mcts.search_duration"],
-                "cache_hit_ratio": summary["metrics"]["cache.hits"]
-                / (summary["metrics"]["cache.hits"] + summary["metrics"]["cache.misses"]),
-            }
-        )
+            self_play_start_time = time.time()
+            model_path = model_dir / "self_play" / f"model.{exported_model_suffix(engine_cfg.model.inference)}"
+            subprocess.check_call(
+                [
+                    self._self_play_exec_path,
+                    f"--model1-path={model_path}",
+                    f"--model2-path={model_path}",
+                    f"--games-num={self.cfg.self_play.games_num}",
+                    f"--out-dir1={data_entries_dir}",
+                    f"--out-dir2={data_entries_dir}",
+                    f"--summary-file={summary_file}",
+                    f"--config-file={cfg_file}",
+                ],
+                cwd=SELF_PLAY_CRATE_DIR,
+            )
+            self._metrics["self_play_duration"] = time.time() - self_play_start_time
+
+            with open(summary_file, "r") as f:
+                summary = json.load(f)
+            self._metrics.update(
+                {
+                    "net_activations_count": summary["metrics"]["model.activation_count"],
+                    "net_run_duration_average_us": summary["metrics"]["model.run_duration"],
+                    # "batch_size_average": summary["metrics"]["batch_size_average"],
+                    # "search_count": summary["metrics"]["search_count"],
+                    "search_duration": summary["metrics"]["mcts.search_duration"],
+                    "cache_hit_ratio": summary["metrics"]["cache.hits"]
+                    / (summary["metrics"]["cache.hits"] + summary["metrics"]["cache.misses"]),
+                }
+            )
 
     def _train(self, models, iter_num) -> list[tuple[nn.Module, Path]]:
         train_data_dir = (
@@ -205,7 +200,9 @@ class TrainProcess:
 
         def train_models(model_list: list[tuple[int, nn.Module]]):
             for m_idx, model in model_list:
-                data_set = DataSet(self._game, train_data_dir, self.cfg.training, torch.device(self.cfg.device))
+                data_set = DataSet(
+                    self._game, train_data_dir, self.cfg.training, torch.device(self.cfg.training.device)
+                )
                 data_loader = DataLoader(data_set, batch_size=self.cfg.training.batch_size)
 
                 def mask_illegal_moves(output, target):
@@ -225,7 +222,7 @@ class TrainProcess:
                     return policy_loss + value_loss
 
                 model.train()
-                model.to(self.cfg.device)
+                model.to(self.cfg.training.device)
                 optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
                 final_batch = None
                 training_start_time = time.time()
@@ -264,7 +261,7 @@ class TrainProcess:
 
         models = [(idx, model) for idx, (model, _model_path) in enumerate(models)]
         workers_num = min(self.cfg.training.threads, len(models))
-        workers_num = workers_num if self.cfg.device == "cpu" else 1
+        workers_num = workers_num if self.cfg.training.device == "cpu" else 1
         if workers_num > 1:
             # Divide the training into jobs
             jobs_per_cpu = len(models) // workers_num
@@ -331,10 +328,15 @@ class TrainProcess:
 
     def _compare_model_impl(self, model1_dir: Path, model2_dir: Path, model1_games_dir: Path, model2_games_dir: Path):
         with tempfile.TemporaryDirectory() as tmp_dir:
-            compare_res_file = Path(tmp_dir) / "compare_result.json"
+            cfg_file = Path(tmp_dir) / "config.json"
             engine_cfg = self._model_compare_engine_cfg
-            model1_path = model1_dir / "model_compare" / f"model.{exported_model_suffix(engine_cfg.inference)}"
-            model2_path = model2_dir / "model_compare" / f"model.{exported_model_suffix(engine_cfg.inference)}"
+            with open(cfg_file, "w") as f:
+                json.dump(asdict(engine_cfg), f, indent=2)
+
+            model_suffix = exported_model_suffix(engine_cfg.model.inference)
+            model1_path = model1_dir / "model_compare" / f"model.{model_suffix}"
+            model2_path = model2_dir / "model_compare" / f"model.{model_suffix}"
+            compare_res_file = Path(tmp_dir) / "compare_result.json"
             subprocess.check_call(
                 [
                     self._model_compare_exec_path,
@@ -344,14 +346,7 @@ class TrainProcess:
                     f"--out-dir1={model1_games_dir}",
                     f"--out-dir2={model2_games_dir}",
                     f"--summary-file={compare_res_file}",
-                    f"--sim-num={engine_cfg.mcts.sim_num}",
-                    f"--batch-size={engine_cfg.batch_size}",
-                    f"--explore-factor={engine_cfg.mcts.explore_factor}",
-                    f"--temperature-policy={temperature_policy_to_str(engine_cfg.mcts.temperature_policy)}",
-                    f"--prior-noise-alpha={engine_cfg.mcts.prior_noise_alpha}",
-                    f"--prior-noise-epsilon={engine_cfg.mcts.prior_noise_epsilon}",
-                    f"--threads={engine_cfg.threads}",
-                    f"--device={self.cfg.device}",
+                    f"--config-file={cfg_file}",
                 ],
                 cwd=SELF_PLAY_CRATE_DIR,
             )
@@ -373,23 +368,26 @@ class TrainProcess:
         torch.save(model.state_dict(), model_dir / "model.pt")
 
         #### Export model for self play
-        self_play_model_path = (
-            model_dir / "self_play" / f"model.{exported_model_suffix(self._self_play_engine_cfg.inference)}"
-        )
+        self_play_model_cfg = self._self_play_engine_cfg.model
+        model_compare_model_cfg = self._model_compare_engine_cfg.model
+        self_play_model_path = model_dir / "self_play" / f"model.{exported_model_suffix(self_play_model_cfg.inference)}"
         model_compare_model_path = (
-            model_dir / "model_compare" / f"model.{exported_model_suffix(self._model_compare_engine_cfg.inference)}"
+            model_dir / "model_compare" / f"model.{exported_model_suffix(model_compare_model_cfg.inference)}"
         )
         self_play_model_path.parent.mkdir(parents=True)
         model_compare_model_path.parent.mkdir(parents=True)
         # Export using a batch size different from training
         self_play_input_shape = self._game.model_input_shape(self._net_type)
-        self_play_input_shape = (self._self_play_engine_cfg.batch_size,) + self_play_input_shape[1:]
-        export_model(model, self_play_model_path, self._self_play_engine_cfg.inference, self_play_input_shape)
-        if self._self_play_engine_cfg.inference != self._model_compare_engine_cfg.inference:
+        self_play_input_shape = (self_play_model_cfg.batch_size,) + self_play_input_shape[1:]
+        export_model(model, self_play_model_path, self_play_model_cfg.inference, self_play_input_shape)
+        if self_play_model_cfg.inference != model_compare_model_cfg.inference:
             model_compare_input_shape = self._game.model_input_shape(self._net_type)
-            model_compare_input_shape = (self._model_compare_engine_cfg.batch_size,) + model_compare_input_shape[1:]
+            model_compare_input_shape = (model_compare_model_cfg.batch_size,) + model_compare_input_shape[1:]
             export_model(
-                model, model_compare_model_path, self._model_compare_engine_cfg.inference, model_compare_input_shape
+                model,
+                model_compare_model_path,
+                model_compare_model_cfg.inference,
+                model_compare_input_shape,
             )
         else:
             if self_play_model_path.is_file():
@@ -462,30 +460,6 @@ class LearningRateScheduler:
             if training_iter < threshold:
                 return lr
         return self.final_lr
-
-
-def temperature_policy_to_str(temperature_policy):
-    assert len(temperature_policy) > 0
-
-    thresholds = []
-    for idx, elm in enumerate(temperature_policy[:-1]):
-        assert len(elm) == 2
-        if idx > 0:
-            # assert the steps thresholds are ordered
-            assert elm[0] > temperature_policy[idx - 1][0]
-        assert elm[1] >= 0  # valid temperature
-        thresholds.append((elm[0], elm[1]))
-
-    # last elm, no step threshold
-    final_temp = temperature_policy[-1]
-    assert len(final_temp) == 1
-    final_temp = final_temp[0]
-
-    if len(thresholds) == 0:
-        return str(final_temp)
-    else:
-        thresholds = [f"{move_num},{temp}" for (move_num, temp) in thresholds]
-        return f"{','.join(thresholds)},{final_temp}"
 
 
 def dic2str(d, indent=0):

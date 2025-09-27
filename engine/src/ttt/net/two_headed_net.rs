@@ -1,10 +1,10 @@
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::IGame;
 use crate::game::mcts::ValueFunction;
+use crate::game::model::InferenceConfig;
 use crate::game::net::TwoHeadedNetBase;
 use crate::ttt::net::common;
 use crate::ttt::ttt_game::{TttGame, TttPosition};
-use crate::util::Device;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -13,20 +13,20 @@ pub struct TwoHeadedNet {
 }
 
 impl TwoHeadedNet {
-    pub fn new(model_path: &Path, batch_size: usize, device: Device) -> Self {
+    pub fn new(model_path: &Path, inference_cfg: InferenceConfig, batch_size: usize) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, device, batch_size, None),
+            base: TwoHeadedNetBase::new(model_path, inference_cfg, batch_size, None),
         }
     }
 
     pub fn with_cache(
         model_path: &Path,
-        device: Device,
+        inference_cfg: InferenceConfig,
         batch_size: usize,
         cache: Arc<ValueFuncCache<TttGame>>,
     ) -> Self {
         Self {
-            base: TwoHeadedNetBase::new(model_path, device, batch_size, Some(cache)),
+            base: TwoHeadedNetBase::new(model_path, inference_cfg, batch_size, Some(cache)),
         }
     }
 }

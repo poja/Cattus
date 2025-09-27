@@ -10,9 +10,6 @@ iterations: 100
 # Multiple models will be trained, and the best one will generate the training data
 model_num: 1
 
-# cpu/gpu/mps/auto
-device: auto
-
 # Use debug executable if true, else uses release executables
 debug: false
 
@@ -60,7 +57,7 @@ engine:
 
         # Softmax temperature
         temperature_policy:
-            - [0.0]
+            - [9999, 0.0]
 
         # Dirichlet noise added to root level prior edges scores
         # suggested value: (0.03, 0.25)
@@ -70,13 +67,14 @@ engine:
         # Network output cache size
         cache_size: 1000000
 
-    # Inference engine configuration
-    inference:
-        # Inference engine to use
-        engine: onnx-ort
-        # Following fields are engine specific
+    model:
+        batch_size: 1
 
-    batch_size: 1
+        # Inference engine configuration
+        inference:
+            # Inference engine to use
+            engine: onnx-ort
+            # Following fields are engine specific
 
     # Number of threads used by the engine
     threads: 8
@@ -88,7 +86,7 @@ self_play:
             # suggested value: 1.0 for the first 30 moves, 0.0 for the reset of the game
             temperature_policy:
                 - [30, 1.0]
-                - [0.0]
+                - [9999, 0.0]
 
     # Number of games played in each self play iteration
     # must be multiple of 2
@@ -138,3 +136,6 @@ training:
     # If true, training data will be reused from multiple runs, always with preference to newer data
     # Suggested value: true
     use_train_data_across_runs: true
+
+    # cpu/gpu/mps or null for automatic selection
+    device: null

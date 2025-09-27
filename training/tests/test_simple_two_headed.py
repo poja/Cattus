@@ -13,7 +13,6 @@ def _test_simple_two_headed(game_name):
         config = f"""
 game: "{game_name}"
 iterations: 3
-device: auto
 debug: true
 working_area: {tmp_dir}
 model:
@@ -24,13 +23,14 @@ engine:
         sim_num: 10
         explore_factor: 1.41421
         temperature_policy:
-            - [       0.0]
+            - [9999, 0.0]
         prior_noise_alpha: 0.0
         prior_noise_epsilon: 0.2
         cache_size: 1000
-    inference:
-        engine: {inference_engine}
-    batch_size: 1
+    model:
+        batch_size: 1
+        inference:
+            engine: {inference_engine}
     threads: 1
 self_play:
     games_num: 8
@@ -46,6 +46,7 @@ training:
         - [       0.001]
     # l2reg: 0.00005
     use_train_data_across_runs: false
+    device: null
 """
 
         logging.info("Running self play and generating new models...")
