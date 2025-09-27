@@ -1,8 +1,16 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import torch.nn as nn
-from torch import Tensor
+
+
+@dataclass(kw_only=True, slots=True)
+class DataEntry:
+    planes: np.ndarray
+    probs: np.ndarray
+    winner: float
 
 
 class Game(ABC):
@@ -16,7 +24,7 @@ class Game(ABC):
     def model_input_shape(self, net_type: str) -> tuple: ...
 
     @abstractmethod
-    def load_data_entry(self, path: Path) -> tuple[Tensor, tuple[Tensor, Tensor]]: ...
+    def load_data_entry(self, path: Path) -> DataEntry: ...
 
 
 class DataEntryParseError(ValueError):

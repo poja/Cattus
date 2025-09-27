@@ -1,15 +1,18 @@
 import os
 import random
 from pathlib import Path
-from typing import Generator
+from typing import Iterator
 
 import numpy as np
 import torch
 from torch import Tensor
 from torch.utils.data import IterableDataset
 
+from cattus_train.chess import Chess
 from cattus_train.config import TrainingConfig
-from cattus_train.trainable_game import DataEntryParseError, Game
+from cattus_train.hex import Hex
+from cattus_train.tictactoe import TicTacToe
+from cattus_train.trainable_game import DataEntry, DataEntryParseError, Game
 
 
 class DataSet(IterableDataset):
@@ -19,8 +22,30 @@ class DataSet(IterableDataset):
         self._cfg = cfg
         self._device: torch.device = device
 
-    def _data_entries_filenames_gen(self) -> Generator[int, None, None]:
-        filenames = [p for p in Path(self._train_data_dir).rglob("*.traindata")]
+    def __iter__(self) -> Iterator[tuple[Tensor, tuple[Tensor, Tensor]]]:
+        for filename in self._data_entries_filenames_gen():
+            try:
+                packed_entry = self._game.load_data_entry(filename)
+            except DataEntryParseError:
+                continue
+            entry = DataSet.unpack_planes(packed_entry, self._game)
+
+            # Transform (data augmentation)
+            self.transform(entry)
+
+            # Convert numpy to tensor and move to device
+            def to_tensor(array: np.ndarray) -> Tensor:
+                if any(s < 0 for s in array.strides):
+                    array = array.copy()
+                return torch.from_numpy(array)
+
+            planes = to_tensor(entry.planes).float().to(self._device)
+            probs = to_tensor(entry.probs).float().to(self._device)
+            winner = torch.tensor(entry.winner, dtype=torch.float32, device=self._device)
+            yield planes, (probs, winner)
+
+    def _data_entries_filenames_gen(self) -> Iterator[Path]:
+        filenames = [p for p in self._train_data_dir.rglob("*.traindata")]
 
         # take the latests files
         latest_de = self._cfg.latest_data_entries
@@ -37,42 +62,154 @@ class DataSet(IterableDataset):
         for filename in filenames:
             yield self._train_data_dir / filename
 
-    def _read_data_entry_gen(self, filenames_gen) -> Generator[tuple[Tensor, tuple[Tensor, Tensor]], None, None]:
-        for filename in filenames_gen:
-            try:
-                yield self._game.load_data_entry(filename)
-            except DataEntryParseError:
-                pass
-
     @staticmethod
-    def unpack_planes(
-        packed_entry: tuple[Tensor, tuple[Tensor, Tensor]], game: Game
-    ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
-        planes, (probs, winner) = packed_entry
-        assert len(planes) == game.PLANES_NUM
+    def unpack_planes(packed_entry: DataEntry, game: Game) -> DataEntry:
+        # planes, (probs, winner) = packed_entry
+        assert len(packed_entry.planes) == game.PLANES_NUM
         plane_size = game.BOARD_SIZE * game.BOARD_SIZE
-        planes = [np.frombuffer(plane.numpy(), dtype=np.uint8) for plane in planes]
+        planes = [np.frombuffer(plane, dtype=np.uint8) for plane in packed_entry.planes]
         planes = np.array([np.unpackbits(plane, count=plane_size, bitorder="little") for plane in planes])
-        planes = torch.tensor(planes, dtype=torch.float32)
         planes = planes.reshape((game.PLANES_NUM, game.BOARD_SIZE, game.BOARD_SIZE))
-        return planes, (probs, winner)
+        return DataEntry(planes=planes, probs=packed_entry.probs, winner=packed_entry.winner)
 
-    def _unpack_planes_gen(self, nparr_packed_gen) -> Generator[tuple[Tensor, tuple[Tensor, Tensor]], None, None]:
-        for packed_entry in nparr_packed_gen:
-            yield DataSet.unpack_planes(packed_entry, self._game)
+    def transform(self, entry: DataEntry):
+        match self._game:
+            case TicTacToe():
+                self._transform_ttt(entry)
+            case Hex():
+                self._transform_hex(entry)
+            case Chess():
+                self._transform_chess(entry)
+            case _:
+                raise NotImplementedError(f"DataSet.transform not implemented for game {self._game}")
 
-    def _move_to_device(self, tensors_gen) -> Generator[tuple[Tensor, tuple[Tensor, Tensor]], None, None]:
-        for planes, (probs, winner) in tensors_gen:
-            yield planes.to(self._device), (probs.to(self._device), winner.to(self._device))
+    def _transform_ttt(self, entry: DataEntry):
+        planes, probs = entry.planes, entry.probs
+        probs = probs.reshape((3, 3))
 
-    def __iter__(self) -> Generator[tuple[Tensor, tuple[Tensor, Tensor]], None, None]:
-        # choose entries
-        filenames_gen = self._data_entries_filenames_gen()
-        # filename -> tuple of np array with packed planes
-        packed_tensors_gen = self._read_data_entry_gen(filenames_gen)
-        # planes bitmap -> full planes arrays
-        tensors_gen = self._unpack_planes_gen(packed_tensors_gen)
-        # move to device
-        tensors_on_device_gen = self._move_to_device(tensors_gen)
+        # Use all combination of the basic transforms:
+        # - original
+        # - rows mirror
+        # - columns mirror
+        # - diagonal mirror
+        # - rows + columns = rotate 180
+        # - rows + diagonal = rotate 90
+        # - columns + diagonal = rotate 90 (other direction)
+        # - row + columns + diagonal = other diagonal mirror
 
-        yield from tensors_on_device_gen
+        # Rows mirror
+        if random.random() < 0.5:
+            planes = np.flip(planes, axis=1)
+            probs = np.flip(probs, axis=0)
+
+        # Columns mirror
+        if random.random() < 0.5:
+            planes = np.flip(planes, axis=2)
+            probs = np.flip(probs, axis=1)
+
+        # Diagonal mirror
+        if random.random() < 0.5:
+            planes = np.transpose(planes, (0, 2, 1))
+            probs = np.transpose(probs, (1, 0))
+
+        entry.planes = planes
+        entry.probs = probs.flatten()
+
+    def _transform_hex(self, entry: DataEntry):
+        planes, probs = entry.planes, entry.probs
+        probs = probs.reshape((self._game.BOARD_SIZE, self._game.BOARD_SIZE))
+
+        # Rotate 180
+        if random.random() < 0.5:
+            planes = np.flip(planes, axis=(1, 2))
+            probs = np.flip(probs, axis=(0, 1))
+
+        entry.planes = planes
+        entry.probs = probs.flatten()
+
+    def _transform_chess(self, entry: DataEntry):
+        planes = entry.planes
+        probs = entry.probs
+
+        import chess
+
+        def probs_as_list(probs) -> list[tuple[chess.Move, float]]:
+            if isinstance(probs, list):
+                return probs
+            from cattus_train.chess import NN_INDEX_TO_MOVE
+
+            assert isinstance(probs, np.ndarray)
+            return list(zip(NN_INDEX_TO_MOVE, probs))
+
+        def probs_as_array(probs) -> np.ndarray:
+            if isinstance(probs, np.ndarray):
+                return probs
+            from cattus_train.chess import MOVE_TO_NN_INDEX, chess_move_to_idx
+
+            assert isinstance(probs, list)
+            arr = np.zeros(len(probs), dtype=np.float32)
+            for move, p in probs:
+                arr[MOVE_TO_NN_INDEX[chess_move_to_idx(move)]] = p
+            return arr
+
+        ### Planes
+        # 0 - white pawns
+        # 1 - white knights
+        # 2 - white bishops
+        # 3 - white rooks
+        # 4 - white queens
+        # 5 - white kings
+        # 6 - black pawns
+        # 7 - black knights
+        # 8 - black bishops
+        # 9 - black rooks
+        # 10 - black queens
+        # 11 - black kings
+        # 12 - white can castle kingside
+        # 13 - white can castle queenside
+        # 14 - black can castle kingside
+        # 15 - black can castle queenside
+        # 16 - en passant square
+        # 17 - all ones
+        has_castle_rights = planes[12, 0, 0] or planes[13, 0, 0] or planes[14, 0, 0] or planes[15, 0, 0]
+        has_pawns = planes[0].any() or planes[6].any()
+
+        # Use all combination of the basic transforms:
+        # - original
+        # - rows mirror
+        # - columns mirror
+        # - diagonal mirror
+        # - rows + columns = rotate 180
+        # - rows + diagonal = rotate 90
+        # - columns + diagonal = rotate 90 (other direction)
+        # - row + columns + diagonal = other diagonal mirror
+
+        # Rows mirror
+        if not has_castle_rights and not has_pawns and random.random() < 0.5:
+            planes = np.flip(planes, axis=1)
+            probs = probs_as_list(probs)
+            for move, _p in probs:
+                # flip rank
+                move.from_square ^= 0b111000
+                move.to_square ^= 0b111000
+
+        # Columns mirror
+        if not has_castle_rights and random.random() < 0.5:
+            planes = np.flip(planes, axis=2)
+            probs = probs_as_list(probs)
+            for move, _p in probs:
+                # flip file
+                move.from_square ^= 0b000111
+                move.to_square ^= 0b000111
+
+        # Diagonal mirror
+        if not has_castle_rights and not has_pawns and random.random() < 0.5:
+            planes = np.transpose(planes, (0, 2, 1))
+            probs = probs_as_list(probs)
+            for move, _p in probs:
+                src, dst = move.from_square, move.to_square
+                move.from_square = chess.square(chess.square_rank(src), chess.square_file(src))
+                move.to_square = chess.square(chess.square_rank(dst), chess.square_file(dst))
+
+        entry.planes = planes
+        entry.probs = probs_as_array(probs)

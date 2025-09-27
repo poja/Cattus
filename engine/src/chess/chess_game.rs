@@ -161,6 +161,11 @@ impl GameBitboard for ChessBitboard {
         }
     }
 }
+impl From<chess::BitBoard> for ChessBitboard {
+    fn from(b: chess::BitBoard) -> Self {
+        Self::from_raw(b.0)
+    }
+}
 
 #[derive(Copy, Clone)]
 pub struct ChessPosition {

@@ -132,7 +132,7 @@ def _test_serialize_encode(game_name: str, game: Game, positions):
 
             packed_entry = game.load_data_entry(serialize_file)
             tensors_entry = DataSet.unpack_planes(packed_entry, game)
-            planes_py, _ = tensors_entry
+            planes_py = tensors_entry.planes
 
             with open(encode_file, "r") as encode_file:
                 rust_tensor_data = json.load(encode_file)
@@ -141,7 +141,7 @@ def _test_serialize_encode(game_name: str, game: Game, positions):
             if planes_rust_shape != planes_py.shape:
                 raise ValueError("planes tensor shape mismatch", planes_rust_shape, planes_py.shape)
 
-            planes_py = planes_py.numpy().flatten()
+            planes_py = planes_py.flatten()
             planes_rust = np.array(rust_tensor_data["data"], dtype=np.float32)
             if (planes_rust != planes_py).any():
                 raise ValueError(

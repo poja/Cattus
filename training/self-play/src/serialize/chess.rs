@@ -11,11 +11,7 @@ use cattus::game::common::{GameColor, GamePosition};
 
 pub struct ChessSerializer;
 impl DataSerializer<ChessGame> for ChessSerializer {
-    fn serialize_data_entry(
-        &self,
-        mut entry: DataEntry<ChessGame>,
-        filename: &Path,
-    ) -> std::io::Result<()> {
+    fn serialize_data_entry(&self, mut entry: DataEntry<ChessGame>, filename: &Path) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_idx(entry.winner) as i8;
         assert!(entry.pos.get_turn() == GameColor::Player1);
