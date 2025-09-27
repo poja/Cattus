@@ -15,7 +15,7 @@ class ModelConfig:
 class MctsConfig:
     sim_num: int
     explore_factor: float
-    temperature_policy: list[list[int | float]]
+    temperature_policy: list[tuple[int, float]]
     prior_noise_alpha: float
     prior_noise_epsilon: float
     cache_size: int = 0
@@ -46,10 +46,15 @@ InferenceConfig = ExecutorchConfig | TorchPyConfig | OnnxTractConfig | OnnxOrtCo
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
+class EngineModelConfig:
+    batch_size: int
+    inference: InferenceConfig = Field(discriminator="engine", default=None)
+
+
+@dataclass(config={"extra": "forbid"}, kw_only=True)
 class EngineConfig:
     mcts: MctsConfig
-    inference: InferenceConfig = Field(discriminator="engine", default=None)
-    batch_size: int
+    model: EngineModelConfig
     threads: int
 
     def copy_with_overrides(self, overrides: dict[str, Any]) -> "EngineConfig":
@@ -89,6 +94,7 @@ class TrainingConfig:
     threads: Optional[int] = 1
     latest_data_entries: int
     iteration_data_entries: int
+    device: Literal["cpu", "cuda", "mps"] | None = None
 
     def __post_init__(self):
         if self.latest_data_entries < self.iteration_data_entries:
@@ -106,7 +112,6 @@ class Config:
     engine: EngineConfig
     self_play: SelfPlayConfig
     model_num: int = 1
-    device: Literal["cpu", "cuda", "mps", "auto"] = "auto"
     iterations: int
     training: TrainingConfig
     debug: bool

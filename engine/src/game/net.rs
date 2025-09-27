@@ -1,9 +1,9 @@
 use super::model::Model;
 use crate::game::cache::ValueFuncCache;
 use crate::game::common::{GameBitboard, GameColor, GameMove, GamePosition, IGame};
+use crate::game::model::InferenceConfig;
 use crate::util::batch::Batcher;
 use crate::util::metrics::RunningAverage;
-use crate::util::Device;
 use itertools::Itertools;
 use ndarray::{Array2, Array4};
 use std::path::Path;
@@ -22,12 +22,12 @@ pub struct TwoHeadedNetBase<Game: IGame> {
 impl<Game: IGame> TwoHeadedNetBase<Game> {
     pub fn new(
         model_path: impl AsRef<Path>,
-        #[allow(unused)] device: Device,
+        inference_cfg: InferenceConfig,
         batch_size: usize,
         cache: Option<Arc<ValueFuncCache<Game>>>,
     ) -> Self {
         Self {
-            model: Mutex::new(Model::new(model_path)),
+            model: Mutex::new(Model::new(model_path, inference_cfg)),
             cache,
             batcher: Batcher::new(batch_size),
             metrics: Mutex::new(Metrics {

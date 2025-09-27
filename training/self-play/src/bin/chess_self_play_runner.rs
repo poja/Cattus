@@ -1,9 +1,9 @@
 use cattus::chess::chess_game::ChessGame;
-use cattus::chess::net::net_onnx_two_headed::TwoHeadedNet;
+use cattus::chess::net::net_two_headed::TwoHeadedNet;
 use cattus::game::cache::ValueFuncCache;
 use cattus::game::mcts::ValueFunction;
-use cattus::util::Device;
-use cattus_self_play::self_play_cmd::{INNetworkBuilder, run_main};
+use cattus::game::model::InferenceConfig;
+use cattus_self_play::self_play_cmd::{run_main, INNetworkBuilder};
 use cattus_self_play::serialize::chess::ChessSerializer;
 use std::path::Path;
 use std::sync::Arc;
@@ -13,13 +13,11 @@ impl INNetworkBuilder<ChessGame> for NNetworkBuilder {
     fn build_net(
         &self,
         model_path: &Path,
-        cache: Arc<ValueFuncCache<ChessGame>>,
-        device: Device,
+        inference_cfg: InferenceConfig,
         batch_size: usize,
+        cache: Arc<ValueFuncCache<ChessGame>>,
     ) -> Box<dyn ValueFunction<ChessGame>> {
-        Box::new(TwoHeadedNet::with_cache(
-            model_path, device, batch_size, cache,
-        ))
+        Box::new(TwoHeadedNet::with_cache(model_path, inference_cfg, batch_size, cache))
     }
 }
 

@@ -16,7 +16,6 @@ def test_ttt_training():
         config = f"""
 game: "tictactoe"
 iterations: 3
-device: auto
 debug: false
 working_area: {tmp_dir}
 model:
@@ -31,20 +30,21 @@ engine:
         sim_num: 600
         explore_factor: 1.41421
         temperature_policy:
-            - [       0.0]
+            - [9999, 0.0]
         prior_noise_alpha: 0.0
         prior_noise_epsilon: 0.2
         cache_size: 1000000
-    inference:
-        engine: {inference_engine}
-    batch_size: 4
+    model:
+        batch_size: 4
+        inference:
+            engine: {inference_engine}
     threads: 8
 self_play:
     engine_overrides:
         mcts:
             temperature_policy:
-                - [5,   1.0]
-                - [     0.0]
+                - [5,    1.0]
+                - [9999, 0.0]
     games_num: 100
     model_compare:
         games_num: 0
@@ -58,6 +58,7 @@ training:
         - [       0.001]
     # l2reg: 0.00005
     use_train_data_across_runs: false
+    device: null
 """
 
         logging.info("Running self play and generating new models...")

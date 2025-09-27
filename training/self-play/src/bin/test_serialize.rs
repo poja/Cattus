@@ -4,10 +4,10 @@ use cattus::chess::chess_game::ChessPosition;
 use cattus::game::common::{GameColor, GamePosition, IGame};
 use cattus::hex::hex_game::HexGame;
 use cattus_self_play::self_play::DataEntry;
-use cattus_self_play::serialize::DataSerializer;
 use cattus_self_play::serialize::chess::ChessSerializer;
 use cattus_self_play::serialize::hex::HexSerializer;
 use cattus_self_play::serialize::ttt::TttSerializer;
+use cattus_self_play::serialize::DataSerializer;
 use cattus_self_play::test_util::{hex_position_from_str, ttt_position_from_str};
 use clap::Parser;
 use itertools::Itertools;
@@ -24,7 +24,7 @@ struct Args {
 }
 
 fn main() -> std::io::Result<()> {
-    cattus::util::init_globals(None);
+    cattus::util::init_globals();
 
     let args = Args::parse();
     match args.game.as_str() {

@@ -1,6 +1,5 @@
 use ndarray::ArrayD;
 use std::path::Path;
-use std::sync::Mutex;
 
 #[cfg(feature = "torch-python")]
 use {crate::util::python::Unwrapy, pyo3::prelude::*};
@@ -8,17 +7,36 @@ use {crate::util::python::Unwrapy, pyo3::prelude::*};
 #[cfg(feature = "onnx-tract")]
 use tract_onnx::prelude::*;
 
-#[derive(Clone, Copy, Debug)]
-pub enum ImplType {
-    TorchPy,
-    Executorch,
-    OnnxTract,
-    OnnxOrt,
+#[derive(Copy, Clone, Debug, serde::Deserialize)]
+pub enum TorchDevice {
+    Cpu,
+    Cuda,
+    Mps,
 }
-static IMPL_TYPE: Mutex<Option<ImplType>> = Mutex::new(None);
-pub fn set_impl_type(impl_type: ImplType) {
-    log::debug!("Setting model implementation: {:?}", impl_type);
-    *IMPL_TYPE.lock().unwrap() = Some(impl_type);
+
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+#[serde(tag = "engine")]
+#[serde(rename_all = "kebab-case")]
+pub enum InferenceConfig {
+    OnnxOrt,
+    OnnxTract,
+    TorchPy { device: Option<TorchDevice> },
+    Executorch,
+}
+impl Default for InferenceConfig {
+    fn default() -> Self {
+        if cfg!(feature = "onnx-ort") {
+            Self::OnnxOrt
+        } else if cfg!(feature = "onnx-tract") {
+            Self::OnnxTract
+        } else if cfg!(feature = "executorch") {
+            Self::Executorch
+        } else if cfg!(feature = "torch-python") {
+            Self::TorchPy { device: None }
+        } else {
+            panic!("No model implementations available in this build");
+        }
+    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -40,19 +58,19 @@ pub struct Model {
     model: ModelImpl,
 }
 impl Model {
-    pub fn new(path: impl AsRef<Path>) -> Self {
+    pub fn new(path: impl AsRef<Path>, cfg: InferenceConfig) -> Self {
         let path = path.as_ref();
-        let impl_type = IMPL_TYPE.lock().unwrap().expect("impl_type not set");
         #[allow(unused)]
-        let model = match impl_type {
+        let model = match cfg {
             #[cfg(feature = "torch-python")]
-            ImplType::TorchPy => {
+            InferenceConfig::TorchPy { device } => {
                 let model = Python::attach(|py| {
                     let code = cr#"
 import torch
 class Model:
-    def __init__(self, path):
-        device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+    def __init__(self, path, device):
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         self.device = torch.device(device)
         self.model = torch.jit.load(path, map_location=self.device)
         self.model.eval()
@@ -67,12 +85,17 @@ class Model:
                     let module = PyModule::from_code(py, code, c"py/model.py", c"model").unwrapy(py);
 
                     let py_class = module.getattr("Model").unwrap();
-                    py_class.call1((path,)).unwrapy(py).into()
+                    let device = device.map(|d| match d {
+                        TorchDevice::Cpu => "cpu",
+                        TorchDevice::Cuda => "cuda",
+                        TorchDevice::Mps => "mps",
+                    });
+                    py_class.call1((path, device)).unwrapy(py).into()
                 });
                 ModelImpl::Py(model)
             }
             #[cfg(feature = "executorch")]
-            ImplType::Executorch => {
+            InferenceConfig::Executorch => {
                 let mut model = executorch::module::Module::from_file_path(path);
                 model
                     .load(Some(executorch::program::ProgramVerification::InternalConsistency))
@@ -81,7 +104,7 @@ class Model:
                 ModelImpl::Executorch(model)
             }
             #[cfg(feature = "onnx-tract")]
-            ImplType::OnnxTract => {
+            InferenceConfig::OnnxTract => {
                 let model = tract_onnx::onnx()
                     .model_for_path(path)
                     .unwrap()
@@ -92,7 +115,7 @@ class Model:
                 ModelImpl::Tract(model)
             }
             #[cfg(feature = "onnx-ort")]
-            ImplType::OnnxOrt => {
+            InferenceConfig::OnnxOrt => {
                 let model = ort::session::Session::builder()
                     .unwrap()
                     .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)

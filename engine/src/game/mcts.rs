@@ -387,7 +387,7 @@ impl<Game: IGame> MctsPlayer<Game> {
             return None;
         }
 
-        let temperature = self.temperature.get_temperature(pos_history.len() as u32 / 2);
+        let temperature = self.temperature.get_temperature(pos_history.len() / 2);
         if temperature == 0.0 {
             let (m, _p) = moves_probs
                 .iter()
@@ -449,7 +449,7 @@ impl<Game: IGame> GamePlayer<Game> for MctsPlayer<Game> {
 
 #[derive(Clone)]
 pub struct TemperaturePolicy {
-    temperatures: Vec<(u32, f32)>,
+    temperatures: Vec<(usize, f32)>,
     last_temperature: f32,
 }
 
@@ -462,7 +462,7 @@ impl TemperaturePolicy {
         }
     }
 
-    pub fn scheduled(temperatures: Vec<(u32, f32)>, last_temperature: f32) -> Self {
+    pub fn scheduled(temperatures: Vec<(usize, f32)>, last_temperature: f32) -> Self {
         assert!(temperatures.iter().all(|(_n, t)| *t >= 0.0));
         assert!(last_temperature >= 0.0);
         assert!(temperatures.windows(2).all(|w| w[0].0 < w[1].0)); // strictly increasing
@@ -473,7 +473,7 @@ impl TemperaturePolicy {
         }
     }
 
-    pub fn get_temperature(&self, move_num: u32) -> f32 {
+    pub fn get_temperature(&self, move_num: usize) -> f32 {
         self.temperatures
             .iter()
             .find(|(threshold, _t)| move_num < *threshold)

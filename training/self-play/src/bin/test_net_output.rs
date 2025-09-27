@@ -1,5 +1,5 @@
 use cattus::chess::chess_game::{ChessGame, ChessPosition};
-use cattus::game::model::Model;
+use cattus::game::model::{InferenceConfig, Model};
 use cattus::game::net;
 use cattus::hex::hex_game::HexGame;
 use cattus::ttt::ttt_game::TttGame;
@@ -29,7 +29,7 @@ struct Args {
 }
 
 fn main() -> std::io::Result<()> {
-    cattus::util::init_globals(None);
+    cattus::util::init_globals();
 
     let args = Args::parse();
 
@@ -48,7 +48,7 @@ fn main() -> std::io::Result<()> {
 
 fn run_net_tictactoe(args: &Args) -> Vec<ArrayD<f32>> {
     let pos = ttt_position_from_str(&args.position);
-    let mut model = Model::new(&args.model_path);
+    let mut model = Model::new(&args.model_path, InferenceConfig::default());
     let outputs = (0..args.repeat)
         .map(|_| {
             let samples = ttt::net::common::position_to_planes(&pos);
@@ -58,10 +58,7 @@ fn run_net_tictactoe(args: &Args) -> Vec<ArrayD<f32>> {
         .collect_vec();
     (0..outputs[0].len())
         .map(|output_idx| {
-            let outputs = outputs
-                .iter()
-                .map(|outputs| outputs[output_idx].view())
-                .collect_vec();
+            let outputs = outputs.iter().map(|outputs| outputs[output_idx].view()).collect_vec();
             ndarray::concatenate(Axis(0), &outputs).unwrap()
         })
         .collect()
@@ -69,7 +66,7 @@ fn run_net_tictactoe(args: &Args) -> Vec<ArrayD<f32>> {
 
 fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<ArrayD<f32>> {
     let pos = hex_position_from_str(&args.position);
-    let mut model = Model::new(&args.model_path);
+    let mut model = Model::new(&args.model_path, InferenceConfig::default());
     let outputs = (0..args.repeat)
         .map(|_| {
             let samples = hex::net::common::position_to_planes(&pos);
@@ -79,10 +76,7 @@ fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<ArrayD<f32>> {
         .collect_vec();
     (0..outputs[0].len())
         .map(|output_idx| {
-            let outputs = outputs
-                .iter()
-                .map(|outputs| outputs[output_idx].view())
-                .collect_vec();
+            let outputs = outputs.iter().map(|outputs| outputs[output_idx].view()).collect_vec();
             ndarray::concatenate(Axis(0), &outputs).unwrap()
         })
         .collect()
@@ -90,7 +84,7 @@ fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<ArrayD<f32>> {
 
 fn run_net_chess(args: &Args) -> Vec<ArrayD<f32>> {
     let pos = ChessPosition::from_fen(&args.position);
-    let mut model = Model::new(&args.model_path);
+    let mut model = Model::new(&args.model_path, InferenceConfig::default());
 
     let outputs = (0..args.repeat)
         .map(|_| {
@@ -101,10 +95,7 @@ fn run_net_chess(args: &Args) -> Vec<ArrayD<f32>> {
         .collect_vec();
     (0..outputs[0].len())
         .map(|output_idx| {
-            let outputs = outputs
-                .iter()
-                .map(|outputs| outputs[output_idx].view())
-                .collect_vec();
+            let outputs = outputs.iter().map(|outputs| outputs[output_idx].view()).collect_vec();
             ndarray::concatenate(Axis(0), &outputs).unwrap()
         })
         .collect()
@@ -114,11 +105,7 @@ fn outputs_to_json(mut outputs: Vec<ArrayD<f32>>, filename: &Path) -> std::io::R
     assert_eq!(outputs.len(), 2);
     let probs: Array2<f32> = outputs.remove(0).into_dimensionality().unwrap();
     let vals: Array2<f32> = outputs.remove(0).into_dimensionality().unwrap();
-    let probs = probs
-        .rows()
-        .into_iter()
-        .map(|row| row.to_vec())
-        .collect_vec();
+    let probs = probs.rows().into_iter().map(|row| row.to_vec()).collect_vec();
     assert_eq!(vals.shape()[1], 1);
     let vals = vals.iter().cloned().collect_vec();
 

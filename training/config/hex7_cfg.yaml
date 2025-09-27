@@ -1,7 +1,6 @@
 game: "hex7"
 iterations: 75
 model_num: 8
-device: auto
 debug: false
 working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
@@ -18,13 +17,14 @@ engine:
         sim_num: 600
         explore_factor: 1.41421
         temperature_policy:
-            - [0.0]
+            - [9999, 0.0]
         prior_noise_alpha: 0.03
         prior_noise_epsilon: 0.25
         cache_size: 1000000
-    inference:
-        engine: onnx-ort
-    batch_size: 8
+    model:
+        batch_size: 8
+        inference:
+            engine: onnx-ort
     threads: 16
 
 self_play:
@@ -32,7 +32,7 @@ self_play:
         mcts:
             temperature_policy:
                 - [12, 1.0]
-                - [0.0]
+                - [9999, 0.0]
     games_num: 200
     model_compare:
         games_num: 32
@@ -49,3 +49,4 @@ training:
         - [0.0001]
     # l2reg: 0.0001
     use_train_data_across_runs: true
+    device: null

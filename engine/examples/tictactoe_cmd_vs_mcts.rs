@@ -1,9 +1,9 @@
 use cattus::game::common::IGame;
 use cattus::game::mcts::{MctsParams, MctsPlayer};
+use cattus::game::model::InferenceConfig;
 use cattus::ttt::cmd_player::{cmd_print_ttt_board, TttPlayerCmd};
 use cattus::ttt::net::two_headed_net::TwoHeadedNet;
 use cattus::ttt::ttt_game::{color_to_str, TttGame};
-use cattus::util::Device;
 use clap::Parser;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -18,11 +18,15 @@ struct Args {
 }
 
 fn main() {
-    cattus::util::init_globals(None);
+    cattus::util::init_globals();
 
     let args = Args::parse();
 
-    let value_func = Arc::new(TwoHeadedNet::new(&args.model_path, args.batch_size, Device::Cpu));
+    let value_func = Arc::new(TwoHeadedNet::new(
+        &args.model_path,
+        InferenceConfig::default(),
+        args.batch_size,
+    ));
     let mut player1 = MctsPlayer::new(MctsParams::new(1000, value_func));
 
     let mut player2 = TttPlayerCmd;
