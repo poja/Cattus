@@ -3,9 +3,8 @@ use crate::game::common::GameBitboard;
 
 pub const PLANES_NUM: usize = 18;
 
-#[allow(clippy::vec_init_then_push)]
 pub fn position_to_planes(pos: &ChessPosition) -> Vec<ChessBitboard> {
-    let mut planes = Vec::new();
+    let mut planes = [ChessBitboard::from_raw(0); PLANES_NUM];
     let b = pos.get_raw_board();
 
     /* 12 planes of pieces */
@@ -17,37 +16,32 @@ pub fn position_to_planes(pos: &ChessPosition) -> Vec<ChessBitboard> {
     let kings = b.pieces(chess::Piece::King);
     let white = b.color_combined(chess::Color::White);
     let black = b.color_combined(chess::Color::Black);
-    let mut planes_raw = Vec::new();
-    planes_raw.push(pawns & white);
-    planes_raw.push(knights & white);
-    planes_raw.push(bishops & white);
-    planes_raw.push(rooks & white);
-    planes_raw.push(queens & white);
-    planes_raw.push(kings & white);
-    planes_raw.push(pawns & black);
-    planes_raw.push(knights & black);
-    planes_raw.push(bishops & black);
-    planes_raw.push(rooks & black);
-    planes_raw.push(queens & black);
-    planes_raw.push(kings & black);
-    for p in planes_raw {
-        planes.push(ChessBitboard::from_raw(p.0));
-    }
+    planes[0] = ChessBitboard::from(pawns & white);
+    planes[1] = ChessBitboard::from(knights & white);
+    planes[2] = ChessBitboard::from(bishops & white);
+    planes[3] = ChessBitboard::from(rooks & white);
+    planes[4] = ChessBitboard::from(queens & white);
+    planes[5] = ChessBitboard::from(kings & white);
+    planes[6] = ChessBitboard::from(pawns & black);
+    planes[7] = ChessBitboard::from(knights & black);
+    planes[8] = ChessBitboard::from(bishops & black);
+    planes[9] = ChessBitboard::from(rooks & black);
+    planes[10] = ChessBitboard::from(queens & black);
+    planes[11] = ChessBitboard::from(kings & black);
 
     /* 4 planes of castling rights */
     let white_cr = b.castle_rights(chess::Color::White);
     let black_cr = b.castle_rights(chess::Color::Black);
-    planes.push(ChessBitboard::new_with_all(white_cr.has_kingside()));
-    planes.push(ChessBitboard::new_with_all(white_cr.has_queenside()));
-    planes.push(ChessBitboard::new_with_all(black_cr.has_kingside()));
-    planes.push(ChessBitboard::new_with_all(black_cr.has_queenside()));
+    planes[12] = ChessBitboard::new_with_all(white_cr.has_kingside());
+    planes[13] = ChessBitboard::new_with_all(white_cr.has_queenside());
+    planes[14] = ChessBitboard::new_with_all(black_cr.has_kingside());
+    planes[15] = ChessBitboard::new_with_all(black_cr.has_queenside());
 
     /* A plane of en passant */
-    planes.push(ChessBitboard::from_raw(b.en_passant().map_or(0, |s| 1 << s.to_index())));
+    planes[16] = ChessBitboard::from_raw(b.en_passant().map_or(0, |s| 1 << s.to_index()));
 
     /* A plane with all ones to help NN find board edges */
-    planes.push(ChessBitboard::new_with_all(true));
+    planes[17] = ChessBitboard::new_with_all(true);
 
-    assert!(planes.len() == PLANES_NUM);
-    planes
+    planes.to_vec()
 }

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::self_play::{SelfPlayGame, SelfPlayRunner};
+use crate::self_play::SelfPlayRunner;
 use crate::serialize::DataSerializer;
 
 #[derive(Parser, Debug)]
@@ -55,25 +55,7 @@ pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
     ) -> Box<dyn ValueFunction<Game>>;
 }
 
-struct CacheBuilder<Game: IGame> {
-    max_size: usize,
-    caches: Vec<Arc<ValueFuncCache<Game>>>,
-}
-impl<Game: IGame> CacheBuilder<Game> {
-    fn new(max_size: usize) -> Self {
-        Self {
-            max_size,
-            caches: vec![],
-        }
-    }
-    fn build_cache(&mut self) -> Arc<ValueFuncCache<Game>> {
-        let cache = Arc::new(ValueFuncCache::new(self.max_size));
-        self.caches.push(cache.clone());
-        cache
-    }
-}
-
-pub fn run_main<Game: SelfPlayGame + 'static>(
+pub fn run_main<Game: IGame + 'static>(
     network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {
@@ -94,12 +76,10 @@ pub fn run_main<Game: SelfPlayGame + 'static>(
         unknown_pu => panic!("unknown processing unit '{unknown_pu}'"),
     };
 
-    let mut cache_builder = CacheBuilder::new(args.cache_size);
-
     let temperature = temperature_from_str(&args.temperature_policy);
     let player1_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
         &args.model1_path,
-        cache_builder.build_cache(),
+        Arc::new(ValueFuncCache::new(args.cache_size)),
         device,
         args.batch_size,
     ));
@@ -117,7 +97,7 @@ pub fn run_main<Game: SelfPlayGame + 'static>(
     } else {
         let player2_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
             &args.model2_path,
-            cache_builder.build_cache(),
+            Arc::new(ValueFuncCache::new(args.cache_size)),
             device,
             args.batch_size,
         ));
@@ -131,13 +111,8 @@ pub fn run_main<Game: SelfPlayGame + 'static>(
         }
     };
 
-    let result = SelfPlayRunner::new(
-        player1_params,
-        player2_params,
-        Arc::from(serializer),
-        args.threads,
-    )
-    .generate_data(args.games_num as usize, &args.out_dir1, &args.out_dir2)?;
+    let result = SelfPlayRunner::new(player1_params, player2_params, Arc::from(serializer), args.threads)
+        .generate_data(args.games_num as usize, &args.out_dir1, &args.out_dir2)?;
 
     if let Some(summary_file) = args.summary_file {
         let mut metrics = HashMap::new();
@@ -153,9 +128,7 @@ pub fn run_main<Game: SelfPlayGame + 'static>(
                 metrics_util::debugging::DebugValue::Histogram(values) => serde_json::Value::Array(
                     values
                         .into_iter()
-                        .map(|v| {
-                            serde_json::Value::Number(serde_json::Number::from_f64(v.0).unwrap())
-                        })
+                        .map(|v| serde_json::Value::Number(serde_json::Number::from_f64(v.0).unwrap()))
                         .collect(),
                 ),
             };

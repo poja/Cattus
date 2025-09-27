@@ -1,12 +1,11 @@
 from pathlib import Path
 
-import torch
+import numpy as np
 import torch.nn as nn
 from construct import Array, Float32l, Int8sl, Int64ul, Struct
-from torch import Tensor
 
 from cattus_train import net_utils
-from cattus_train.trainable_game import DataEntryParseError, Game
+from cattus_train.trainable_game import DataEntry, DataEntryParseError, Game
 
 
 class HexNetType:
@@ -26,7 +25,7 @@ class Hex(Game):
             "winner" / Int8sl,
         )
 
-    def load_data_entry(self, path: Path) -> tuple[Tensor, tuple[Tensor, Tensor]]:
+    def load_data_entry(self, path: Path) -> DataEntry:
         with open(path, "rb") as f:
             entry_bytes = f.read()
         if len(entry_bytes) != self.ENTRY_FORMAT.sizeof():
@@ -35,13 +34,13 @@ class Hex(Game):
             )
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
         # planes of 128bit are saved as two 64bit values
-        planes = torch.tensor(entry.planes, dtype=torch.uint64).reshape((self.PLANES_NUM, 2))
-        probs = torch.tensor(entry.probs, dtype=torch.float32)
-        winner = torch.tensor(float(entry.winner), dtype=torch.float32)
+        planes = np.array(entry.planes, dtype=np.uint64).reshape((self.PLANES_NUM, 2))
+        probs = np.array(entry.probs, dtype=np.float32)
+        winner = float(entry.winner)
 
         assert len(planes) == self.PLANES_NUM
         assert len(probs) == self.MOVE_NUM
-        return (planes, (probs, winner))
+        return DataEntry(planes=planes, probs=probs, winner=winner)
 
     def _get_input_shape(self):
         return (1, self.PLANES_NUM, self.BOARD_SIZE, self.BOARD_SIZE)

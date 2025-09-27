@@ -1,14 +1,10 @@
 import argparse
 import logging
-import os
 from pathlib import Path
 
 import yaml
 
 from cattus_train import Config, train
-
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
-
 
 CATTUS_ENGINE_TOP = Path(__file__).parent.parent.parent.resolve() / "engine"
 
