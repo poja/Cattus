@@ -1,3 +1,5 @@
-pub mod cmd_player;
+mod core;
+pub use core::*;
+
+pub mod cli;
 pub mod net;
-pub mod ttt_game;

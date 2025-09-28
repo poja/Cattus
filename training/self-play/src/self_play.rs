@@ -1,4 +1,3 @@
-use cattus::game::common::IGame;
 use itertools::Itertools;
 use std::fs;
 use std::ops::Deref;
@@ -7,22 +6,22 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use cattus::game::common::{GameColor, GameMove, GamePosition};
-use cattus::game::mcts::{MctsParams, MctsPlayer};
-use cattus::game::net;
+use cattus::game::{GameColor, GameStatus, Move, Position};
+use cattus::mcts::{MctsParams, MctsPlayer};
+use cattus::net;
 
 use crate::serialize::DataSerializer;
 
-pub struct DataEntry<Game: IGame> {
+pub struct DataEntry<Game: cattus::game::Game> {
     pub pos: Game::Position,
     pub probs: Vec<(Game::Move, f32)>,
     pub winner: Option<GameColor>,
 }
 
-impl<Game: IGame> Clone for DataEntry<Game> {
+impl<Game: cattus::game::Game> Clone for DataEntry<Game> {
     fn clone(&self) -> Self {
         DataEntry {
-            pos: self.pos,
+            pos: self.pos.clone(),
             probs: self.probs.clone(),
             winner: self.winner,
         }
@@ -31,7 +30,7 @@ impl<Game: IGame> Clone for DataEntry<Game> {
 
 pub struct SerializerBase;
 impl SerializerBase {
-    pub fn write_entry<Game: IGame>(
+    pub fn write_entry<Game: cattus::game::Game>(
         planes: Vec<u64>,
         probs: Vec<(Game::Move, f32)>,
         winner: i8,
@@ -69,14 +68,14 @@ pub struct GamesResults {
     pub d: u32,
 }
 
-pub struct SelfPlayRunner<Game: IGame> {
+pub struct SelfPlayRunner<Game: cattus::game::Game> {
     player1_params: MctsParams<Game>,
     player2_params: MctsParams<Game>,
     serializer: Arc<dyn DataSerializer<Game>>,
     thread_num: usize,
 }
 
-impl<Game: IGame + 'static> SelfPlayRunner<Game> {
+impl<Game: cattus::game::Game + 'static> SelfPlayRunner<Game> {
     pub fn new(
         player1_params: MctsParams<Game>,
         player2_params: MctsParams<Game>,
@@ -142,7 +141,7 @@ impl<Game: IGame + 'static> SelfPlayRunner<Game> {
     }
 }
 
-struct SelfPlayWorker<Game: IGame> {
+struct SelfPlayWorker<Game: cattus::game::Game> {
     player1_params: MctsParams<Game>,
     player2_params: MctsParams<Game>,
     serializer: Arc<dyn DataSerializer<Game>>,
@@ -153,7 +152,7 @@ struct SelfPlayWorker<Game: IGame> {
     games_num: usize,
 }
 
-impl<Game: IGame> SelfPlayWorker<Game> {
+impl<Game: cattus::game::Game> SelfPlayWorker<Game> {
     #[allow(clippy::too_many_arguments)]
     fn new(
         player1_params: MctsParams<Game>,
@@ -191,8 +190,12 @@ impl<Game: IGame> SelfPlayWorker<Game> {
             let mut pos_probs_pairs = Vec::new();
             let players_switch = game_idx % 2 == 1;
 
-            while !game.is_over() {
-                let mut player = game.position().get_turn();
+            let winner = loop {
+                if let GameStatus::Finished(winner) = game.status() {
+                    break winner;
+                }
+
+                let mut player = game.position().turn();
                 if players_switch {
                     player = player.opposite()
                 }
@@ -208,14 +211,13 @@ impl<Game: IGame> SelfPlayWorker<Game> {
                     .unwrap();
 
                 /* Store probabilities */
-                pos_probs_pairs.push((*game.position(), moves));
+                pos_probs_pairs.push((game.position().clone(), moves));
 
                 /* Advance game position */
                 game.play_single_turn(next_move);
-            }
+            };
 
             /* Save all data entries */
-            let winner = game.get_winner();
             for (pos_idx, (pos, probs)) in pos_probs_pairs.into_iter().enumerate() {
                 self.write_data_entry(game_idx, pos_idx, pos, probs, winner)?;
             }
@@ -251,15 +253,20 @@ impl<Game: IGame> SelfPlayWorker<Game> {
         probs: Vec<(Game::Move, f32)>,
         winner: Option<GameColor>,
     ) -> std::io::Result<()> {
-        let output_dir = match pos.get_turn() {
+        let output_dir = match pos.turn() {
             GameColor::Player1 => [&self.output_dir1, &self.output_dir2],
             GameColor::Player2 => [&self.output_dir2, &self.output_dir1],
         }[game_idx % 2];
 
-        let winner = GameColor::to_idx(winner) as f32;
+        let winner = GameColor::to_signed_one(winner) as f32;
         let (pos, is_flipped) = net::flip_pos_if_needed(pos);
         let (probs, winner) = net::flip_score_if_needed((probs, winner), is_flipped);
-        let winner = GameColor::from_idx(winner as i32);
+        let winner = match winner as i32 {
+            1 => Some(GameColor::Player1),
+            -1 => Some(GameColor::Player2),
+            0 => None,
+            other => panic!("unknown player index: {}", other),
+        };
 
         self.serializer.serialize_data_entry(
             DataEntry { pos, probs, winner },

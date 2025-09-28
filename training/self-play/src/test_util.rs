@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
-use cattus::game::common::{GameBitboard, GameColor, GamePosition, IGame};
-use cattus::hex::hex_game::{HexBitboard, HexPosition};
-use cattus::ttt::ttt_game::{TttGame, TttPosition};
+use cattus::game::{Bitboard, Game as _, GameColor, Position};
+use cattus::hex::{HexBitboard, HexPosition};
+use cattus::ttt::{TttGame, TttPosition};
 
 pub fn ttt_position_from_str(s: &str) -> TttPosition {
     assert_eq!(

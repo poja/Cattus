@@ -1,4 +1,4 @@
-use cattus::game::common::PlayerRand;
+use cattus::game::player::PlayerRand;
 use cattus::hex::uxi;
 
 fn main() {

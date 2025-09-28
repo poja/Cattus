@@ -41,7 +41,7 @@ def compile_selfplay_exe(game: str, cfg: InferenceConfig, debug: bool = False) -
             features = ["onnx-ort"]
         case _:
             raise ValueError(f"Unsupported inference engine: {cfg}")
-    self_play_exec_name = f"{game}_self_play_runner"
+    self_play_exec_name = f"{game}_self_player"
     profile = "dev" if debug else "release"
     subprocess.check_call(
         [

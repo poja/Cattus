@@ -1,7 +1,6 @@
-pub mod chess_game;
-pub mod cmd_player;
+mod core;
+pub use core::*;
+
+pub mod cli;
 pub mod net;
 pub mod uci;
-
-// re-export
-pub use chess;

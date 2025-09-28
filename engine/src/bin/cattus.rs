@@ -1,7 +1,7 @@
 use cattus::chess::net::stockfish::StockfishNet;
 use cattus::chess::uci::UCI;
-use cattus::game::mcts::{MctsParams, TemperaturePolicy};
-use cattus::game::model::InferenceConfig;
+use cattus::mcts::{MctsParams, TemperaturePolicy};
+use cattus::net::model::InferenceConfig;
 use clap::Parser;
 use std::path::PathBuf;
 use std::sync::Arc;

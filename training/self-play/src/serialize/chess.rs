@@ -4,19 +4,18 @@ use std::path::Path;
 
 use crate::self_play::DataEntry;
 use crate::serialize::DataSerializer;
-use cattus::chess::chess_game::ChessGame;
-use cattus::chess::net::common;
-use cattus::game::common::GameMove;
-use cattus::game::common::{GameColor, GamePosition};
+use cattus::chess::ChessGame;
+use cattus::game::Move;
+use cattus::game::{GameColor, Position};
 
 pub struct ChessSerializer;
 impl DataSerializer<ChessGame> for ChessSerializer {
     fn serialize_data_entry(&self, mut entry: DataEntry<ChessGame>, filename: &Path) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
-        let winner = GameColor::to_idx(entry.winner) as i8;
-        assert!(entry.pos.get_turn() == GameColor::Player1);
+        let winner = GameColor::to_signed_one(entry.winner) as i8;
+        assert!(entry.pos.turn() == GameColor::Player1);
 
-        let planes = common::position_to_planes(&entry.pos)
+        let planes = cattus::chess::net::position_to_planes(&entry.pos)
             .iter()
             .map(|p| p.get_raw())
             .collect_vec();

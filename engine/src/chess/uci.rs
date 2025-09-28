@@ -1,6 +1,7 @@
-use crate::chess::chess_game::{ChessGame, ChessMove, ChessPosition};
-use crate::game::common::{GamePlayer, GamePosition};
-use crate::game::mcts::{MctsParams, MctsPlayer};
+use crate::chess::{ChessGame, ChessMove, ChessPosition};
+use crate::game::player::GamePlayer;
+use crate::game::Position;
+use crate::mcts::{MctsParams, MctsPlayer};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::io;
@@ -79,7 +80,7 @@ impl UCI {
         let mut pos_history = vec![pos];
         for move_str in moves {
             let m = ChessMove::from_lan(move_str).unwrap();
-            pos = pos.get_moved_position(m);
+            pos = pos.moved_position(m);
             pos_history.push(pos);
         }
         self.pos_history = Some(pos_history);

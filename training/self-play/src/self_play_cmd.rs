@@ -1,7 +1,7 @@
-use cattus::game::cache::ValueFuncCache;
-use cattus::game::common::IGame;
-use cattus::game::mcts::{MctsParams, TemperaturePolicy, ValueFunction};
-use cattus::game::model::InferenceConfig;
+use cattus::mcts::cache::ValueFuncCache;
+use cattus::mcts::value_func::ValueFunction;
+use cattus::mcts::{MctsParams, TemperaturePolicy};
+use cattus::net::model::InferenceConfig;
 use cattus::util;
 use clap::Parser;
 use std::collections::HashMap;
@@ -51,7 +51,7 @@ struct MctsConfig {
     cache_size: usize,
 }
 
-pub fn run_main<Game: IGame + 'static>(
+pub fn run_main<Game: cattus::game::Game + 'static>(
     network_builder: Box<dyn INNetworkBuilder<Game>>,
     serializer: Box<dyn DataSerializer<Game>>,
 ) -> std::io::Result<()> {
@@ -150,7 +150,7 @@ pub fn run_main<Game: IGame + 'static>(
     Ok(())
 }
 
-pub trait INNetworkBuilder<Game: IGame>: Sync + Send {
+pub trait INNetworkBuilder<Game: cattus::game::Game>: Sync + Send {
     fn build_net(
         &self,
         model_path: &Path,

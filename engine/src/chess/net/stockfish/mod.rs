@@ -10,20 +10,20 @@ use pleco::helper::prelude::*;
 use pleco::{BitBoard, Board, File, PieceType, Player, Rank, SQ};
 use std::mem::MaybeUninit;
 
-use crate::chess::chess_game::{ChessGame, ChessPosition};
-use crate::game::common::{GamePosition, IGame};
-use crate::game::mcts::ValueFunction;
-use crate::game::net;
+use crate::chess::{ChessGame, ChessPosition};
+use crate::game::{Game, Position};
+use crate::mcts::value_func::ValueFunction;
+use crate::net;
 
 pub struct StockfishNet;
 impl ValueFunction<ChessGame> for StockfishNet {
-    fn evaluate(&self, position: &ChessPosition) -> (Vec<(<ChessGame as IGame>::Move, f32)>, f32) {
+    fn evaluate(&self, position: &ChessPosition) -> (Vec<(<ChessGame as Game>::Move, f32)>, f32) {
         let (position, is_flipped) = net::flip_pos_if_needed(*position);
         let board = Board::from_fen(&position.fen()).unwrap();
 
         let val = Evaluation::evaluate(&board) as f32 / 1000.0;
 
-        let moves = position.get_legal_moves();
+        let moves = position.legal_moves().collect_vec();
         let move_count = moves.len() as f32;
         let moves_probs = moves.into_iter().map(|m| (m, 1.0 / move_count)).collect_vec();
 
@@ -1021,8 +1021,7 @@ fn king_proximity(king_sq: SQ, sq: SQ) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::StockfishNet;
-    use crate::chess::chess_game::ChessPosition;
-    use crate::game::mcts::ValueFunction;
+    use crate::{chess::ChessPosition, mcts::value_func::ValueFunction};
 
     #[test]
     fn basic_evaluate() {
