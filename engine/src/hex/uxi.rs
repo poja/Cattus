@@ -1,7 +1,8 @@
 use itertools::Itertools;
 
-use crate::game::common::{GameBitboard, GameColor, GamePlayer, GamePosition, IGame};
-use crate::hex::hex_game::{HexBitboard, HexGameStandard, HexMove, HexPosition};
+use crate::game::player::GamePlayer;
+use crate::game::{Bitboard, Game, GameColor, Position};
+use crate::hex::{HexBitboard, HexGameStandard, HexMove, HexPosition};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::string::String;
@@ -167,8 +168,8 @@ impl HexPlayerUXI {
 impl GamePlayer<HexGameStandard> for HexPlayerUXI {
     fn next_move(
         &mut self,
-        pos_history: &[<HexGameStandard as IGame>::Position],
-    ) -> Option<<HexGameStandard as IGame>::Move> {
+        pos_history: &[<HexGameStandard as Game>::Position],
+    ) -> Option<<HexGameStandard as Game>::Move> {
         let mut command = String::with_capacity(10 + HexGameStandard::BOARD_SIZE * HexGameStandard::BOARD_SIZE + 3);
         command.push_str("next_move ");
         position_to_uxi(pos_history.last().unwrap(), &mut command);
@@ -266,7 +267,7 @@ impl UxiEngine {
     }
 }
 
-fn position_to_uxi(position: &<HexGameStandard as IGame>::Position, s: &mut String) {
+fn position_to_uxi(position: &<HexGameStandard as Game>::Position, s: &mut String) {
     for r in 0..HexGameStandard::BOARD_SIZE {
         for c in 0..HexGameStandard::BOARD_SIZE {
             s.push(match position.get_tile(r, c) {
@@ -277,13 +278,13 @@ fn position_to_uxi(position: &<HexGameStandard as IGame>::Position, s: &mut Stri
         }
     }
     s.push(' ');
-    s.push(match position.get_turn() {
+    s.push(match position.turn() {
         GameColor::Player1 => 'r',
         GameColor::Player2 => 'b',
     });
 }
 
-fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<<HexGameStandard as IGame>::Position> {
+fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<<HexGameStandard as Game>::Position> {
     let mut board_red = HexBitboard::new();
     let mut board_blue = HexBitboard::new();
     let mut idx = 0;

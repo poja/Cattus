@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use cattus::chess::chess_game::ChessPosition;
-use cattus::game::common::{GameColor, GamePosition, IGame};
-use cattus::hex::hex_game::HexGame;
+use cattus::chess::ChessPosition;
+use cattus::game::{GameColor, Position};
+use cattus::hex::HexGame;
 use cattus_self_play::self_play::DataEntry;
 use cattus_self_play::serialize::chess::ChessSerializer;
 use cattus_self_play::serialize::hex::HexSerializer;
@@ -57,12 +57,12 @@ fn test_chess(args: Args) -> std::io::Result<()> {
     serialize_position(pos, &serializer, &args.outfile)
 }
 
-fn serialize_position<Game: IGame>(
+fn serialize_position<Game: cattus::game::Game>(
     pos: Game::Position,
     serializer: &impl DataSerializer<Game>,
     filename: &Path,
 ) -> std::io::Result<()> {
-    let moves = pos.get_legal_moves();
+    let moves = pos.legal_moves().collect_vec();
     let moves_num = moves.len();
     let probs = moves
         .into_iter()

@@ -2,24 +2,19 @@ use std::path::Path;
 
 use crate::self_play::{DataEntry, SerializerBase};
 use crate::serialize::DataSerializer;
-use cattus::game::common::{GameColor, GamePosition};
-use cattus::hex::hex_game::HexGame;
-use cattus::hex::net::common::{self};
+use cattus::game::{GameColor, Position};
+use cattus::hex::HexGame;
 use itertools::Itertools;
 
 pub struct HexSerializer;
 impl<const BOARD_SIZE: usize> DataSerializer<HexGame<BOARD_SIZE>> for HexSerializer {
-    fn serialize_data_entry(
-        &self,
-        entry: DataEntry<HexGame<BOARD_SIZE>>,
-        filename: &Path,
-    ) -> std::io::Result<()> {
+    fn serialize_data_entry(&self, entry: DataEntry<HexGame<BOARD_SIZE>>, filename: &Path) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
-        let winner = GameColor::to_idx(entry.winner) as i8;
-        assert!(entry.pos.get_turn() == GameColor::Player1);
+        let winner = GameColor::to_signed_one(entry.winner) as i8;
+        assert!(entry.pos.turn() == GameColor::Player1);
 
         #[allow(clippy::identity_op)]
-        let planes = common::position_to_planes(&entry.pos)
+        let planes = cattus::hex::net::position_to_planes(&entry.pos)
             .into_iter()
             .flat_map(|p| {
                 [

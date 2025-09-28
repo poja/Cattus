@@ -1,8 +1,8 @@
-use cattus::game::mcts::{MctsParams, MctsPlayer};
-use cattus::game::model::InferenceConfig;
-use cattus::hex::hex_game::HEX_STANDARD_BOARD_SIZE;
-use cattus::hex::net::two_headed_net::TwoHeadedNet;
 use cattus::hex::uxi;
+use cattus::hex::HexGameStandard;
+use cattus::mcts::{MctsParams, MctsPlayer};
+use cattus::net::model::InferenceConfig;
+use cattus::net::NNetwork;
 use clap::Parser;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -23,10 +23,11 @@ fn main() {
 
     let args = Args::parse();
 
-    let value_func = Arc::new(TwoHeadedNet::<HEX_STANDARD_BOARD_SIZE>::new(
+    let value_func = Arc::new(NNetwork::<HexGameStandard>::new(
         &args.model_path,
         InferenceConfig::default(),
         args.batch_size,
+        None,
     ));
     let player = Box::new(MctsPlayer::new(MctsParams::new(args.sim_num, value_func)));
     let mut engine = uxi::UxiEngine::new(player);

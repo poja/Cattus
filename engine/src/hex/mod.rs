@@ -1,4 +1,6 @@
-pub mod cmd_player;
-pub mod hex_game;
+mod core;
+pub use core::*;
+
+pub mod cli;
 pub mod net;
 pub mod uxi;

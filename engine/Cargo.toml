@@ -47,6 +47,6 @@ path = "src/bin/cattus.rs"
 required-features = ["stockfish"]
 
 [[example]]
-name = "chess_cmd_vs_stockfish"
-path = "examples/chess_cmd_vs_stockfish.rs"
+name = "chess_cli_vs_stockfish"
+path = "examples/chess_cli_vs_stockfish.rs"
 required-features = ["stockfish"]

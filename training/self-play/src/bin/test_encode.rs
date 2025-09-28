@@ -1,7 +1,7 @@
-use cattus::chess::chess_game::{ChessGame, ChessPosition};
-use cattus::game::net;
-use cattus::hex::hex_game::HexGame;
-use cattus::ttt::ttt_game::TttGame;
+use cattus::chess::{ChessGame, ChessPosition};
+use cattus::hex::HexGame;
+use cattus::net::planes_to_tensor;
+use cattus::ttt::TttGame;
 use cattus::{chess, hex, ttt};
 use cattus_self_play::test_util::{hex_position_from_str, ttt_position_from_str};
 use clap::Parser;
@@ -44,19 +44,19 @@ fn main() -> std::io::Result<()> {
 
 fn create_tensor_tictactoe(args: &Args) -> Array4<f32> {
     let pos = ttt_position_from_str(&args.position);
-    let planes = ttt::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<TttGame>(&[planes], 1)
+    let planes = ttt::net::position_to_planes(&pos);
+    planes_to_tensor::<TttGame>(&[planes], 1)
 }
 fn create_tensor_hex<const BOARD_SIZE: usize>(args: &Args) -> Array4<f32> {
     let pos = hex_position_from_str(&args.position);
-    let planes = hex::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<HexGame<BOARD_SIZE>>(&[planes], 1)
+    let planes = hex::net::position_to_planes(&pos);
+    planes_to_tensor::<HexGame<BOARD_SIZE>>(&[planes], 1)
 }
 
 fn create_tensor_chess(args: &Args) -> Array4<f32> {
     let pos = ChessPosition::from_fen(&args.position);
-    let planes = chess::net::common::position_to_planes(&pos);
-    net::planes_to_tensor::<ChessGame>(&[planes], 1)
+    let planes = chess::net::position_to_planes(&pos);
+    planes_to_tensor::<ChessGame>(&[planes], 1)
 }
 
 fn tensor_to_json(tensor: Array3<f32>, filename: &Path) -> std::io::Result<()> {
