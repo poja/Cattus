@@ -1,6 +1,7 @@
-use cattus::hex::HEX_STANDARD_BOARD_SIZE;
-use cattus_self_play::hex_self_player;
+use cattus::hex::{HexGame, HEX_STANDARD_BOARD_SIZE};
+use cattus_self_play::self_play_cmd;
+use cattus_self_play::serialize::hex::HexSerializer;
 
 fn main() -> std::io::Result<()> {
-    hex_self_player::run_main::<HEX_STANDARD_BOARD_SIZE>()
+    self_play_cmd::run_main::<HexGame<HEX_STANDARD_BOARD_SIZE>>(Box::new(HexSerializer))
 }

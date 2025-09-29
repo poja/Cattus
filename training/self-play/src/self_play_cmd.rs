@@ -2,10 +2,11 @@ use cattus::mcts::cache::ValueFuncCache;
 use cattus::mcts::value_func::ValueFunction;
 use cattus::mcts::{MctsParams, TemperaturePolicy};
 use cattus::net::model::InferenceConfig;
+use cattus::net::NNetwork;
 use cattus::util;
 use clap::Parser;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::self_play::SelfPlayRunner;
@@ -51,10 +52,11 @@ struct MctsConfig {
     cache_size: usize,
 }
 
-pub fn run_main<Game: cattus::game::Game + 'static>(
-    network_builder: Box<dyn INNetworkBuilder<Game>>,
-    serializer: Box<dyn DataSerializer<Game>>,
-) -> std::io::Result<()> {
+pub fn run_main<Game>(serializer: Box<dyn DataSerializer<Game>>) -> std::io::Result<()>
+where
+    Game: cattus::game::Game + 'static,
+    NNetwork<Game>: ValueFunction<Game>,
+{
     util::init_globals();
     let args = SelfPlayArgs::parse();
 
@@ -73,11 +75,11 @@ pub fn run_main<Game: cattus::game::Game + 'static>(
     let last_temperature = config.mcts.temperature_policy.last().unwrap().1;
     let temperature = TemperaturePolicy::scheduled(scheduled_temperatures.to_vec(), last_temperature);
 
-    let player1_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
+    let player1_net: Arc<dyn ValueFunction<Game>> = Arc::new(NNetwork::new(
         &args.model1_path,
         config.model.inference,
         config.model.batch_size,
-        Arc::new(ValueFuncCache::new(config.mcts.cache_size)),
+        Some(Arc::new(ValueFuncCache::new(config.mcts.cache_size))),
     ));
     let player1_params = MctsParams {
         sim_num: config.mcts.sim_num,
@@ -91,11 +93,11 @@ pub fn run_main<Game: cattus::game::Game + 'static>(
     let player2_params = if args.model1_path == args.model2_path {
         player1_params.clone()
     } else {
-        let player2_net: Arc<dyn ValueFunction<Game>> = Arc::from(network_builder.build_net(
+        let player2_net: Arc<dyn ValueFunction<Game>> = Arc::new(NNetwork::new(
             &args.model2_path,
             config.model.inference,
             config.model.batch_size,
-            Arc::new(ValueFuncCache::new(config.mcts.cache_size)),
+            Some(Arc::new(ValueFuncCache::new(config.mcts.cache_size))),
         ));
         MctsParams {
             value_func: player2_net,
@@ -148,14 +150,4 @@ pub fn run_main<Game: cattus::game::Game + 'static>(
     }
 
     Ok(())
-}
-
-pub trait INNetworkBuilder<Game: cattus::game::Game>: Sync + Send {
-    fn build_net(
-        &self,
-        model_path: &Path,
-        inference_cfg: InferenceConfig,
-        batch_size: usize,
-        cache: Arc<ValueFuncCache<Game>>,
-    ) -> Box<dyn ValueFunction<Game>>;
 }
