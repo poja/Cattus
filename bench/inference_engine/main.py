@@ -60,7 +60,9 @@ def main():
             model_path = Path(tempdir) / "model"
             export_model(current_cfg, model_path)
 
-            executable = compile_selfplay_exe("chess", inference_config, debug=False)
+            executable = compile_selfplay_exe(
+                "chess", inference_config, profile="profiling"
+            )
             t0 = time.time()
             score = bench_selfplay(executable, model_path, current_cfg)
             t1 = time.time()
@@ -88,6 +90,7 @@ def bench_selfplay(executable: Path, model_path: Path, cfg: Config) -> float:
         summary_file = tempdir / "summary.json"
         subprocess.check_call(
             [
+                # *("samply", "record"),
                 executable,
                 f"--model1-path={model_path}",
                 f"--model2-path={model_path}",
