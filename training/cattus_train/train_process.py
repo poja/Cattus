@@ -113,14 +113,15 @@ class TrainProcess:
         logging.info("metrics file:\t%s", metrics_filename)
 
         logging.info("Building Self-play executable...")
+        profile = "dev" if self.cfg.debug else "release"
         self._self_play_exec_path.parent.mkdir(parents=True, exist_ok=True)
         self._model_compare_exec_path.parent.mkdir(parents=True, exist_ok=True)
         temp_self_play_exec_path = compile_selfplay_exe(
-            self.cfg.game, self._self_play_engine_cfg.model.inference, self.cfg.debug
+            self.cfg.game, self._self_play_engine_cfg.model.inference, profile=profile
         )
         shutil.copy(temp_self_play_exec_path, self._self_play_exec_path)
         temp_model_compare_exec_path = compile_selfplay_exe(
-            self.cfg.game, self._model_compare_engine_cfg.model.inference, self.cfg.debug
+            self.cfg.game, self._model_compare_engine_cfg.model.inference, profile=profile
         )
         shutil.copy(temp_model_compare_exec_path, self._model_compare_exec_path)
 

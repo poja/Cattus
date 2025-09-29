@@ -19,7 +19,7 @@ SELF_PLAY_CRATE_TOP = CATTUS_TOP / "training" / "self-play"
 ONNX_EXPORT_LOCK = threading.RLock()
 
 
-def compile_selfplay_exe(game: str, cfg: InferenceConfig, debug: bool = False) -> Path:
+def compile_selfplay_exe(game: str, cfg: InferenceConfig, profile: str = "release") -> Path:
     env = os.environ.copy()
     match cfg:
         case TorchPyConfig():
@@ -42,7 +42,6 @@ def compile_selfplay_exe(game: str, cfg: InferenceConfig, debug: bool = False) -
         case _:
             raise ValueError(f"Unsupported inference engine: {cfg}")
     self_play_exec_name = f"{game}_self_player"
-    profile = "dev" if debug else "release"
     subprocess.check_call(
         [
             "cargo",
@@ -56,7 +55,15 @@ def compile_selfplay_exe(game: str, cfg: InferenceConfig, debug: bool = False) -
         env=env,
     )
 
-    build_dir = "debug" if debug else "release"
+    match profile:
+        case "dev":
+            build_dir = "debug"
+        case "release":
+            build_dir = "release"
+        case "profiling":
+            build_dir = "profiling"
+        case _:
+            raise ValueError(f"Unknown profile: {profile}")
     return SELF_PLAY_CRATE_TOP / "target" / build_dir / self_play_exec_name
 
 
