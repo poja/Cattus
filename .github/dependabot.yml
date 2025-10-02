@@ -1,14 +1,20 @@
 version: 2
 updates:
-  - package-ecosystem: "cargo"
-    directory: "engine/"
+  - package-ecosystem: cargo
+    directories:
+      - engine/
+      - training/self-play/
     schedule:
-      interval: "monthly"
-  - package-ecosystem: "pip"
-    directory: "training/"
+      interval: monthly
+    groups:
+      rust-patch-updates:
+        update-types:
+          - patch
+  - package-ecosystem: pip
+    directory: training/
     schedule:
-      interval: "monthly"
+      interval: monthly
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: monthly
